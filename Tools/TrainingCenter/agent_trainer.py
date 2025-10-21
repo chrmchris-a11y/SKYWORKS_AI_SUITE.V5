@@ -18,10 +18,18 @@ Persistence: Training logs + memory snapshots
 """
 
 import json
+import sys
 import yaml
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Dict, List, Any, Optional
+
+# Ensure console encoding won't crash under non-UTF consoles (e.g., Task Scheduler)
+try:
+    sys.stdout.reconfigure(encoding='utf-8', errors='ignore')
+    sys.stderr.reconfigure(encoding='utf-8', errors='ignore')
+except Exception:
+    pass
 
 
 class AgentKnowledgeBase:
