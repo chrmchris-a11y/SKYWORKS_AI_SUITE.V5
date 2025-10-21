@@ -14,3 +14,6 @@ KnowledgeBase/**
 Tools/TrainingCenter/agent_memory/*
 !Tools/TrainingCenter/agent_memory/
 !Tools/TrainingCenter/agent_memory/.gitkeep
+Tools/TrainingCenter/logs/*
+!Tools/TrainingCenter/logs/
+!Tools/TrainingCenter/logs/.gitkeep
