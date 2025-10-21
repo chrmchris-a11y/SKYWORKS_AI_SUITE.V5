@@ -32,9 +32,10 @@ topics:
 
   - name: "OSO"
     keywords:
-      - "safety"
-      - "mitigation"
-      - "objective"
+      - "OSO-"
+      - "operational safety objective"
+      - "robustness level"
+      - "SAIL"
     max_chars: 50000
 
   - name: "PDRA"
