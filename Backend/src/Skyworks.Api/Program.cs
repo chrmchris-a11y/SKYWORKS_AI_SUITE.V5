@@ -1,5 +1,7 @@
-// Phase1 Step3 — Skyworks V5
+// Phase1 Step4 — Skyworks V5
 using Microsoft.OpenApi.Models;
+using Skyworks.AgentComm;
+using Skyworks.AgentComm.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,9 +13,12 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "Skyworks API",
         Version = "v1",
-        Description = "SKYWORKS_AI_SUITE.V5 — Minimal API surface (v1)"
+        Description = "SKYWORKS_AI_SUITE.V5 - Minimal API surface (v1)"
     });
 });
+
+// Agent Communication System (placeholder registration)
+builder.Services.AddSingleton<IAgentComm, SyncService>();
 
 var app = builder.Build();
 
@@ -43,5 +48,15 @@ v1.MapGet("/info", () => Results.Ok(new
   .WithName("ServiceInfo")
   .WithSummary("Service info")
   .WithDescription("Returns basic service metadata (v1).");
+
+// Agent Communication Ping (stub)
+v1.MapGet("/agent/ping", async (IAgentComm agentComm) =>
+{
+    var response = await agentComm.PingAsync();
+    return Results.Ok(new { message = response, timestamp = DateTime.UtcNow });
+})
+  .WithName("AgentCommPing")
+  .WithSummary("Agent communication ping")
+  .WithDescription("Pings the agent communication system to verify connectivity (stub).");
 
 app.Run();

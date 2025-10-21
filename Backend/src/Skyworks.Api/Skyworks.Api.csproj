@@ -14,6 +14,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Skyworks.Core\Skyworks.Core.csproj" />
     <ProjectReference Include="..\Skyworks.Infrastructure\Skyworks.Infrastructure.csproj" />
+    <ProjectReference Include="..\Skyworks.AgentComm\Skyworks.AgentComm.csproj" />
   </ItemGroup>
 
 </Project>
