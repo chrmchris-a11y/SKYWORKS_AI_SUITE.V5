@@ -2,6 +2,7 @@ const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
+const { handleAskAgentWithLLM } = require('./llm_handler');
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -33,9 +34,9 @@ function activate(context) {
             } else if (command === 'agents') {
                 await handleAgents(stream, memoryDir);
             } else if (command === 'ask-sora') {
-                await handleAskAgent(stream, 'SORA_Compliance_Agent', prompt, memoryDir);
+                await handleAskAgentWithLLM(stream, 'SORA_Compliance_Agent', prompt, memoryDir, workspaceRoot);
             } else if (command === 'ask-mission') {
-                await handleAskAgent(stream, 'Mission_Planning_Agent', prompt, memoryDir);
+                await handleAskAgentWithLLM(stream, 'Mission_Planning_Agent', prompt, memoryDir, workspaceRoot);
             } else if (command === 'project-status') {
                 await handleProjectStatus(stream, masterPromptPath, workspaceRoot);
             } else if (command === 'next-steps') {
@@ -208,61 +209,9 @@ async function handleAgents(stream, memoryDir) {
     });
 }
 
+// Deprecated: handled by handleAskAgentWithLLM in llm_handler.js
 async function handleAskAgent(stream, agentName, question, memoryDir) {
-    stream.markdown(`## 🤖 ${agentName}\n\n`);
-
-    if (!question || question.trim() === '') {
-        stream.markdown(`❓ Παρακαλώ δώσε μια ερώτηση.\n\n`);
-        stream.markdown(`Παράδειγμα: \`/ask-sora What is SAIL level for GRC=3?\`\n`);
-        return;
-    }
-
-    stream.markdown(`**Ερώτηση**: ${question}\n\n`);
-
-    // Load agent memory
-    const memFile = agentName === 'SORA_Compliance_Agent' 
-        ? 'SORA_Compliance_Agent_memory.json'
-        : 'Mission_Planning_Agent_memory.json';
-    const memPath = path.join(memoryDir, memFile);
-
-    if (!fs.existsSync(memPath)) {
-        stream.markdown(`⚠️ Agent memory not found. Run training first.\n`);
-        return;
-    }
-
-    const memory = JSON.parse(fs.readFileSync(memPath, 'utf-8'));
-
-    // Simple keyword search in memory (basic implementation)
-    const keywords = question.toLowerCase().split(' ').filter(w => w.length > 3);
-    const relevantEntries = memory.memory.slice(0, 100).filter(entry => {
-        const source = entry.source.toLowerCase();
-        const terms = entry.key_terms.map(t => t.toLowerCase());
-        return keywords.some(kw => source.includes(kw) || terms.some(t => t.includes(kw)));
-    });
-
-    if (relevantEntries.length === 0) {
-        stream.markdown(`⚠️ Δεν βρέθηκαν σχετικές πληροφορίες στη μνήμη του agent.\n\n`);
-        stream.markdown(`Δοκίμασε:\n`);
-        stream.markdown(`- Πιο γενική ερώτηση\n`);
-        stream.markdown(`- Λέξεις-κλειδιά από SORA/PDRA/STS\n`);
-        return;
-    }
-
-    stream.markdown(`✅ Βρέθηκαν **${relevantEntries.length}** σχετικές πηγές στη μνήμη.\n\n`);
-    stream.markdown(`**Απάντηση** (βασισμένη σε training data):\n\n`);
-    stream.markdown(`> Ο agent έχει επεξεργαστεί ${memory.total_memory_entries} έγγραφα και διαθέτει expertise σε:\n`);
-    memory.expertise.slice(0, 3).forEach(exp => stream.markdown(`> - ${exp}\n`));
-    stream.markdown(`\n`);
-
-    stream.markdown(`📎 **Σχετικές πηγές**:\n`);
-    relevantEntries.slice(0, 5).forEach(entry => {
-        stream.markdown(`- \`${entry.source}\` (${entry.content_length} chars)\n`);
-        if (entry.key_terms.length > 0) {
-            stream.markdown(`  - Terms: ${entry.key_terms.slice(0, 5).join(', ')}\n`);
-        }
-    });
-
-    stream.markdown(`\n💡 **Σημείωση**: Για πλήρη απάντηση με LLM reasoning, χρειάζεται ενεργοποίηση AI model (Azure OpenAI / OpenAI API).\n`);
+    return handleAskAgentWithLLM(stream, agentName, question, memoryDir, vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || '');
 }
 
 async function handleProjectStatus(stream, masterPromptPath, workspaceRoot) {
