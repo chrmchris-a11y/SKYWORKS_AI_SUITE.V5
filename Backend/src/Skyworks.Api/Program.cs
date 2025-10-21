@@ -6,6 +6,7 @@ using Skyworks.AgentComm.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Services
+builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -20,6 +21,12 @@ builder.Services.AddSwaggerGen(c =>
 // Agent Communication System (placeholder registration)
 builder.Services.AddSingleton<IAgentComm, SyncService>();
 
+// Agent LLM Service (bridge to Python). Compute workspace root (repo root)
+var contentRoot = builder.Environment.ContentRootPath; // Backend/src/Skyworks.Api
+var workspaceRoot = Path.GetFullPath(Path.Combine(contentRoot, "..", "..", ".."));
+builder.Services.AddSingleton<Skyworks.Core.Services.AgentLLMService>(_ =>
+  new Skyworks.Core.Services.AgentLLMService(workspaceRoot));
+
 var app = builder.Build();
 
 // Swagger
@@ -28,6 +35,9 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Skyworks API v1");
 });
+
+// Enable controllers
+app.MapControllers();
 
 // ---- Minimal API (v1) ----
 var v1 = app.MapGroup("/api/v1").WithTags("v1");
