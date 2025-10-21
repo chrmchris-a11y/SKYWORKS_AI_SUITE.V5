@@ -8,3 +8,9 @@ KnowledgeBase/**
 !KnowledgeBase/Index/
 !KnowledgeBase/Index/.gitkeep
 !KnowledgeBase/README.md
+
+# Training Center generated artifacts
+# Ignore agent memory contents but keep directory via .gitkeep
+Tools/TrainingCenter/agent_memory/*
+!Tools/TrainingCenter/agent_memory/
+!Tools/TrainingCenter/agent_memory/.gitkeep
