@@ -2,3 +2,9 @@ bin/
 obj/
 .vscode/
 node_modules/
+# Phase1 Step2 — Skyworks V5
+.continue/
+KnowledgeBase/**
+!KnowledgeBase/Index/
+!KnowledgeBase/Index/.gitkeep
+!KnowledgeBase/README.md
