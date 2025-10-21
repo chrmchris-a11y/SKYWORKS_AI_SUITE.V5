@@ -21,12 +21,9 @@ echo.
 SETLOCAL ENABLEDELAYEDEXPANSION
 REM Resolve script directory (with trailing backslash)
 SET SCRIPT_DIR=%~dp0
-SET CMD_EXE=%SystemRoot%\System32\cmd.exe
 
-REM Build launch commands to ensure correct working directory and logging via runner
-SET MORNING_CMD="%CMD_EXE%" /c "cd /d \"%SCRIPT_DIR%\" && run_agent_training.cmd morning"
-SET AFTERNOON_CMD="%CMD_EXE%" /c "cd /d \"%SCRIPT_DIR%\" && run_agent_training.cmd afternoon"
-SET EVENING_CMD="%CMD_EXE%" /c "cd /d \"%SCRIPT_DIR%\" && run_agent_training.cmd evening"
+REM Use runner directly (it resolves its own path); pass session labels as args
+SET "RUNNER_PATH=%SCRIPT_DIR%run_agent_training.cmd"
 
 REM Delete existing tasks if they exist
 echo [1/4] Removing existing scheduled tasks (if any)...
@@ -38,7 +35,7 @@ echo ✓ Cleanup complete
 REM Task 1: 08:00 - Morning Training (Full Knowledge Refresh)
 echo.
 echo [2/4] Creating Morning Training Task (08:00)...
-schtasks /create /tn "Skyworks_AgentTraining_Morning" /tr %MORNING_CMD% /sc daily /st 08:00 /f
+schtasks /create /tn "Skyworks_AgentTraining_Morning" /tr "\"%RUNNER_PATH%\" morning" /sc daily /st 08:00 /f
 IF %ERRORLEVEL% EQU 0 (
     echo ✓ Morning training scheduled successfully
 ) ELSE (
@@ -48,7 +45,7 @@ IF %ERRORLEVEL% EQU 0 (
 REM Task 2: 14:00 - Afternoon Training (Incremental Update)
 echo.
 echo [3/4] Creating Afternoon Training Task (14:00)...
-schtasks /create /tn "Skyworks_AgentTraining_Afternoon" /tr %AFTERNOON_CMD% /sc daily /st 14:00 /f
+schtasks /create /tn "Skyworks_AgentTraining_Afternoon" /tr "\"%RUNNER_PATH%\" afternoon" /sc daily /st 14:00 /f
 IF %ERRORLEVEL% EQU 0 (
     echo ✓ Afternoon training scheduled successfully
 ) ELSE (
@@ -58,7 +55,7 @@ IF %ERRORLEVEL% EQU 0 (
 REM Task 3: 20:00 - Evening Training (Daily Summary & Consolidation)
 echo.
 echo [4/4] Creating Evening Training Task (20:00)...
-schtasks /create /tn "Skyworks_AgentTraining_Evening" /tr %EVENING_CMD% /sc daily /st 20:00 /f
+schtasks /create /tn "Skyworks_AgentTraining_Evening" /tr "\"%RUNNER_PATH%\" evening" /sc daily /st 20:00 /f
 IF %ERRORLEVEL% EQU 0 (
     echo ✓ Evening training scheduled successfully
 ) ELSE (

@@ -1,6 +1,7 @@
 bin/
 obj/
-.vscode/
+.vscode/*
+!.vscode/extensions/
 node_modules/
 # Phase1 Step2 — Skyworks V5
 .continue/

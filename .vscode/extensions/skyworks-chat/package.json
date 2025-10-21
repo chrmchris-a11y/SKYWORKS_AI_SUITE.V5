@@ -1,0 +1,86 @@
+{
+  "name": "skyworks-chat",
+  "displayName": "Skyworks Training & Agent Chat",
+  "description": "Chat participant για training monitoring, agent interaction και project status",
+  "version": "1.0.0",
+  "publisher": "skyworks",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "chatParticipants": [
+      {
+        "id": "skyworks.chat",
+        "name": "skyworks",
+        "description": "Skyworks Training & Agent Monitor",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "training-status",
+            "description": "Εμφανίζει την κατάσταση του τελευταίου training session"
+          },
+          {
+            "name": "training-logs",
+            "description": "Λίστα των πιο πρόσφατων training logs"
+          },
+          {
+            "name": "training-report",
+            "description": "Αναλυτική αναφορά από το τελευταίο training"
+          },
+          {
+            "name": "agents",
+            "description": "Λίστα όλων των AI agents με expertise και memory status"
+          },
+          {
+            "name": "ask-sora",
+            "description": "Ρωτά τον SORA_Compliance_Agent"
+          },
+          {
+            "name": "ask-mission",
+            "description": "Ρωτά τον Mission_Planning_Agent"
+          },
+          {
+            "name": "project-status",
+            "description": "Που βρίσκεται το project (Phase/Step από MASTER_PROMPT)"
+          },
+          {
+            "name": "next-steps",
+            "description": "Επόμενα βήματα workflow"
+          },
+          {
+            "name": "run-training",
+            "description": "Τρέχει on-demand training session"
+          },
+          {
+            "name": "view-log",
+            "description": "Εμφανίζει περιεχόμενο log file"
+          },
+          {
+            "name": "scheduled-tasks",
+            "description": "Προγραμματισμένες training εργασίες"
+          },
+          {
+            "name": "help",
+            "description": "Όλες οι διαθέσιμες εντολές"
+          }
+        ]
+      }
+    ]
+  },
+  "main": "./extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "node ./extension.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@types/node": "^20.0.0"
+  }
+}
