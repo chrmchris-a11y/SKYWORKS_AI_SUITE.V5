@@ -24,12 +24,12 @@ def test_sail_v20_basic_letters():
     assert body["final_grc"] == 1
     assert body["residual_arc"].lower().endswith("a")
 
-    # GRC 5, ARC c => SAIL V (σύμφωνα με τον επίσημο πίνακα SORA 2.0)
+    # GRC 5, ARC c => SAIL IV (per EASA AMC/GM SORA 2.0 Table D.1)
     payload = {"sora_version": "2.0", "final_grc": 5, "residual_arc": "ARC-c"}
     r = client.post("/api/v1/calculate/sail", json=payload)
     assert r.status_code == 200
     body = r.json()
-    assert body["sail"] == "V"
+    assert body["sail"] == "IV"
 
 
 def test_sail_category_c_guard():
@@ -42,14 +42,22 @@ def test_sail_category_c_guard():
     assert body.get("sail") is None
 
 
-@pytest.mark.parametrize("arc_token", ["a", "A", "ARC-a", "ARC_A", "xxa"])  # normalization
-def test_sail_arc_token_normalization(arc_token):
+@pytest.mark.parametrize("arc_token", ["a", "A", "ARC-a", "ARC_A"])  # normalization (valid forms)
+def test_sail_arc_token_normalization_valid(arc_token):
     payload = {"sora_version": "2.0", "final_grc": 3, "residual_arc": arc_token}
     r = client.post("/api/v1/calculate/sail", json=payload)
     assert r.status_code == 200
     body = r.json()
     # 3,a => II per grouped mapping
     assert body["sail"] == "II"
+
+
+def test_sail_arc_token_normalization_invalid():
+    # Άκυρο token πρέπει να επιστρέφει 400 (όχι silent fallback)
+    payload = {"sora_version": "2.0", "final_grc": 3, "residual_arc": "xxa"}
+    r = client.post("/api/v1/calculate/sail", json=payload)
+    assert r.status_code == 400
+    assert "Invalid residual_arc" in r.json().get("detail", "")
 
 
 def test_sail_v25_numeric_basic():

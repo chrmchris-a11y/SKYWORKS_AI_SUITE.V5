@@ -55,15 +55,15 @@ def test_sail_v25_additional_examples():
 
 
 def test_sail_v20_letter_and_category_c():
-    # SORA 2.0 table: GRC 5 / ARC c => SAIL V (σύμφωνα με τον επίσημο πίνακα)
+    # SORA 2.0 table: GRC 5 / ARC c => SAIL IV (EASA AMC/GM Annex D, Table D.1)
     r = client.post('/api/v1/calculate/sail', json={
         'sora_version': '2.0',
         'final_grc': 5,
         'residual_arc': 'c'
     })
     assert r.status_code == 200
-    assert r.json()['sail'] == 'V'
-    assert r.json()['oso_count'] == 21
+    assert r.json()['sail'] == 'IV'
+    assert r.json()['oso_count'] == 18
 
     # SORA 2.0: GRC > 7 => Category C
     rC = client.post('/api/v1/calculate/sail', json={

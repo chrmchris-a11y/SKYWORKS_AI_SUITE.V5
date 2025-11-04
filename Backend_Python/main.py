@@ -16,7 +16,7 @@ import os
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 # Create FastAPI app and logger
 logging.basicConfig(
@@ -94,6 +94,7 @@ except Exception as _e:
 
 class GRCInputs(BaseModel):
     """GRC Inputs for SORA 2.5"""
+    model_config = ConfigDict(extra="forbid")
     population_density: str  # "Low", "Medium", "High"
     sheltering: str         # "Low", "Medium", "High"
     m1: Optional[int] = 0   # M1 mitigation credit
@@ -102,11 +103,17 @@ class GRCInputs(BaseModel):
 
 class SoraRequestV25(BaseModel):
     """Complete SORA 2.5 evaluation request"""
+    model_config = ConfigDict(extra="forbid")
     category: str
     grc_inputs: GRCInputs  # ✅ Changed from dict to GRCInputs
     arc_inputs_25: ARCInputs25Model  # ← The 5 enhanced fields (canonical)
     operational_volume: dict
     traffic_density: str
+    # Annex F (authoritative) – optional inputs required for quantitative GRC if using this endpoint end-to-end
+    mtom_kg: Optional[float] = None
+    max_characteristic_dimension_m: Optional[float] = None
+    max_speed_ms: Optional[float] = None
+    population_density_p_km2: Optional[float] = None
 
 
 # ============================================================================
@@ -115,6 +122,7 @@ class SoraRequestV25(BaseModel):
 
 class GrcRequestV20(BaseModel):
     """Simple SORA 2.0 GRC request model (legacy endpoint)"""
+    model_config = ConfigDict(extra="forbid")
     initial_grc: int
     m1: int
     m2: str  # "None" | "Medium" | "High" (legacy: "Low" treated as None)
@@ -371,6 +379,7 @@ async def calculate_grc_v20_new(request: GrcRequest20):
 
 class GrcRequest25(BaseModel):
     """SORA 2.5 GRC calculation request from C# backend (AMC Step #2 compliant)"""
+    model_config = ConfigDict(extra="forbid")
     mtom_kg: float
     population_density: float
     m1a_sheltering: Optional[str] = None
@@ -389,6 +398,7 @@ class GrcRequest25(BaseModel):
 
 class SailRequest(BaseModel):
     """SAIL calculation request"""
+    model_config = ConfigDict(extra="forbid")
     # Make sora_version optional with a safe default for backward compatibility
     sora_version: Optional[str] = "2.0"  # "2.0" or "2.5"
     final_grc: int  # Final GRC (after mitigations)
@@ -522,185 +532,98 @@ async def calculate_grc_v25(request: GrcRequest25):
 # ============================================================================
 
 def _normalize_arc_token_to_letter(arc_token: str) -> str:
-    """Normalize incoming ARC token to a single-letter form: a/b/c/d.
-    Accepts formats like 'ARC-a', 'ARC_a', 'a', 'A', 'arc-b'. Defaults to 'b' if unrecognized.
+    """Κανονικοποίηση ARC token σε γράμμα a/b/c/d.
+
+    Δέχεται μορφές όπως 'ARC-a', 'ARC_a', 'a', 'A', 'arc-b'.
+    Σε άκυρη τιμή ρίχνει 400 (δεν γίνεται silent fallback σε 'b').
     """
+    from fastapi import HTTPException
+
     if not arc_token:
-        return "b"
-    token = str(arc_token).strip()
-    upper = token.upper()
-    if upper.startswith("ARC-"):
-        # e.g., ARC-a -> a
-        return upper.split("-", 1)[1].lower()
-    if upper.startswith("ARC_"):
-        # e.g., ARC_A -> a
-        return upper.split("_", 1)[1].lower()
-    if len(token) == 1 and token.lower() in ["a", "b", "c", "d"]:
-        return token.lower()
-    # Fallback: keep last character if it looks like a/b/c/d
-    last = token[-1].lower()
-    if last in ["a", "b", "c", "d"]:
-        return last
-    return "b"
+        raise HTTPException(status_code=400, detail="residual_arc required (a/b/c/d)")
+    token = str(arc_token).strip().lower()
+    # Αποδοχή prefix 'arc-', 'arc_'
+    if token.startswith("arc-"):
+        token = token.split("-", 1)[1]
+    elif token.startswith("arc_"):
+        token = token.split("_", 1)[1]
+
+    if token in {"a", "b", "c", "d"}:
+        return token
+
+    raise HTTPException(status_code=400, detail=f"Invalid residual_arc '{arc_token}'. Use a/b/c/d.")
 
 
 @app.post("/api/v1/calculate/sail")
 async def calculate_sail(request: SailRequest):
     """
-    Calculate SAIL from final GRC and residual ARC
-    
-    Official Reference: EASA Easy Access Rules, GM1 to Article 11, Step #5
-    SAIL determination table (iGRC × ARC → SAIL)
-    """
-    try:
-        logger.info(f"SAIL calculation: version={request.sora_version}, GRC={request.final_grc}, ARC={request.residual_arc}")
+    Υπολογισμός SAIL από τελικό GRC και residual ARC.
 
-        # Strict input validation & normalization (EASA/JARUS compliance)
-        version = str(request.sora_version).strip() if request.sora_version is not None else "2.0"
+    Σημείωση συμμόρφωσης: Το endpoint αυτό κάνει proxy στα authoritative
+    endpoints του router (`/sail/calculate`) ώστε να μην υπάρχει drift.
+    Προσθέτει μόνο τα legacy echo fields (final_grc, residual_arc) για back-compat.
+    """
+    from fastapi import HTTPException
+    try:
+        # Εξομάλυνση/έλεγχος έκδοσης
+        version = str(request.sora_version or "2.0").strip()
         if version not in ("2.0", "2.5"):
             raise HTTPException(status_code=400, detail=f"Invalid sora_version: {version}. Must be '2.0' or '2.5'")
 
-        try:
-            grc_val = int(request.final_grc)
-        except Exception:
-            raise HTTPException(status_code=400, detail="final_grc must be an integer")
-        if grc_val < 1:
-            raise HTTPException(status_code=400, detail="final_grc must be >= 1")
-        if (request.residual_arc is None or str(request.residual_arc).strip() == "") and request.residual_arc_level is None:
-            raise HTTPException(status_code=400, detail="Provide residual_arc (a–d) or residual_arc_level (1..10)")
+        # Χτίσε canonical request μοντέλο του router
+        from sail.api.sail_api import (
+            SAILCalculationAPIRequest as _SAILReq,
+            calculate_sail as _router_calculate_sail,
+        )
 
-        # Early guard: Category C applies to SORA 2.0 only for GRC > 7.
-        # For SORA 2.5, Table 7 explicitly defines SAIL for GRC 8–10 (all VI).
-        if version == "2.0" and grc_val > 7:
-            explanation = (
-                "Category C (Certified) operation required per SORA 2.0 when final GRC > 7"
-            )
-            logger.info(f"SAIL result: Category C (2.0) - {explanation}")
+        # Έλεγχος/χαρτογράφηση τιμών
+        grc_val = int(request.final_grc)
+
+        if version == "2.0":
+            # Guard για Category C
+            if grc_val > 7:
+                return {
+                    "category": "C",
+                    "sail_level": None,
+                    "sail": None,
+                    "oso_count": None,
+                    "final_grc": grc_val,
+                    "residual_arc": f"ARC-{_normalize_arc_token_to_letter(request.residual_arc)}" if request.residual_arc else None,
+                    "sora_version": version,
+                    "notes": "Category C (Certified) operation required per SORA 2.0 when final GRC > 7",
+                }
+
             arc_letter = _normalize_arc_token_to_letter(request.residual_arc)
-            return {
-                "category": "C",
-                "sail_level": None,
-                "sail": None,  # alias for back-compat
-                "oso_count": None,
-                "final_grc": grc_val,
-                "residual_arc": f"ARC-{arc_letter}",
-                "sora_version": version,
-                "notes": explanation,
-            }
+            _req = _SAILReq(grc_level=grc_val, arc_level=arc_letter, sora_version="SORA_2.0")
+            result = await _router_calculate_sail(_req)
+            # Προσθήκη legacy echoes
+            result = dict(result)
+            result["final_grc"] = grc_val
+            result["residual_arc"] = f"ARC-{arc_letter}"
+            result["sora_version"] = "2.0"
+            return result
 
-        # SORA 2.5: numeric residual ARC is mandatory (1..10); no letter binning for lookup
-        if version == "2.5":
-            try:
-                from sail.sail_calculator_v25 import calculate_sail_v25  # authoritative numeric table
-            except Exception as e:
-                logger.error(f"SORA 2.5 SAIL calculator not available: {e}")
-                raise HTTPException(status_code=501, detail="SORA 2.5 SAIL calculator not available")
-
-            if request.residual_arc_level is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=(
-                        "SORA 2.5 requires residual_arc_level (1..10). Provide numeric residual ARC; "
-                        "letter tokens are not accepted for authoritative Step #5."
-                    )
-                )
-            try:
-                residual_arc_num = int(request.residual_arc_level)
-            except Exception:
-                raise HTTPException(status_code=400, detail="residual_arc_level must be an integer (1..10)")
-            if residual_arc_num < 1 or residual_arc_num > 10:
-                raise HTTPException(status_code=400, detail="residual_arc_level must be in [1..10]")
-
-            sail, explanation = calculate_sail_v25(grc_val, residual_arc_num)
-            return {
-                "sail_level": sail,
-                "sail": sail,  # alias for back-compat
-                # Do not hard-code OSO counts for 2.5; expose via dedicated endpoint
-                "oso_count": None,
-                "oso_count_source": "derived-2.5",
-                "final_grc": grc_val,
-                "residual_arc_level": residual_arc_num,
-                "residual_arc": f"ARC-{residual_arc_num}",
-                "sora_version": version,
-                "reference": "JARUS SORA 2.5 Annex D/Table 7 (numeric ARC)",
-                "notes": f"GRC {request.final_grc} + ARC {residual_arc_num} → SAIL {sail}",
-                "sail_explanation": explanation,
-            }
-
-        # Normalize ARC input across variants (ARC-a, ARC_a, a)
-        arc = _normalize_arc_token_to_letter(request.residual_arc)
-
-        # SORA 2.0 SAIL Table (EASA AMC/GM Table 5) - official mapping
-        sail_table_20 = {
-            (1, "a"): "I", (1, "b"): "I", (1, "c"): "II", (1, "d"): "III",
-            (2, "a"): "I", (2, "b"): "I", (2, "c"): "II", (2, "d"): "III",
-            (3, "a"): "II", (3, "b"): "II", (3, "c"): "III", (3, "d"): "IV",
-            (4, "a"): "II", (4, "b"): "II", (4, "c"): "III", (4, "d"): "IV",
-            (5, "a"): "III", (5, "b"): "III", (5, "c"): "V", (5, "d"): "V",
-            (6, "a"): "III", (6, "b"): "III", (6, "c"): "IV", (6, "d"): "V",
-            (7, "a"): "IV", (7, "b"): "IV", (7, "c"): "V", (7, "d"): "VI",
-        }
-
-        # Select version-specific SAIL table (2.0 only here; 2.5 handled above)
-        sail_table = sail_table_20
-        
-        # Lookup SAIL (with robust Category C fallback for any GRC > 7)
-        key = (grc_val, arc)
-        if key not in sail_table:
-            # If caller provided a GRC beyond the defined SAIL tables, enforce Category C
-            try:
-                if version == "2.0" and grc_val > 7:
-                    explanation = (
-                        "Category C (Certified) operation required per SORA 2.0 when final GRC > 7"
-                    )
-                    logger.info(f"SAIL result (fallback 2.0): Category C - {explanation}")
-                    return {
-                        "category": "C",
-                        "sail_level": None,
-                        "sail": None,  # alias for back-compat
-                        "oso_count": None,
-                        "final_grc": grc_val,
-                        "residual_arc": f"ARC-{arc}",
-                        "sora_version": version,
-                        "notes": explanation,
-                    }
-            except Exception:
-                pass
-            # Otherwise, treat as invalid input for the selected SORA version
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid GRC/ARC combination: GRC={grc_val}, ARC={arc} (SORA {version})"
-            )
-
-        sail = sail_table[key]
-
-        # OSO count by SAIL (EASA Table D.1)
-        oso_count = {
-            "I": 6, "II": 10, "III": 15, "IV": 18, "V": 21, "VI": 24
-        }[sail]
-
-        logger.info(f"SAIL result: {sail} (requires {oso_count} OSOs)")
-
-        return {
-            "sail_level": sail,
-            "sail": sail,  # alias for back-compat
-            "oso_count": oso_count,
-            # Echo inputs for client convenience/compat
-            "final_grc": grc_val,
-            "final_arc": arc,  # plain a/b/c/d for broad compatibility
-            # Back-compat echo field expected by validation scripts
-            "residual_arc": f"ARC-{arc}",
-            # Echo numeric level if provided (SORA 2.5 convenience/explainability only)
-            **({"residual_arc_level": int(request.residual_arc_level)} if (version == "2.5" and getattr(request, "residual_arc_level", None) is not None) else {}),
-            "sora_version": version,
-            "reference": "EASA GM1 to Article 11 - SAIL Table (Step #5)",
-            "notes": f"GRC {request.final_grc} + ARC {arc.upper()} → SAIL {sail}"
-        }
+        # SORA 2.5: απαιτείται residual_arc_level (1..10)
+        if request.residual_arc_level is None:
+            raise HTTPException(status_code=400, detail="SORA 2.5 requires residual_arc_level (1..10)")
+        arc_num = int(request.residual_arc_level)
+        if not (1 <= arc_num <= 10):
+            raise HTTPException(status_code=400, detail="residual_arc_level must be in [1..10]")
+        _req = _SAILReq(grc_level=grc_val, residual_arc_level=arc_num, sora_version="SORA_2.5")
+        result = await _router_calculate_sail(_req)
+        result = dict(result)
+        result["final_grc"] = grc_val
+        result["residual_arc"] = f"ARC-{arc_num}"
+        result["sora_version"] = "2.5"
+        # explicit source for tests/clients
+        if "oso_count_source" not in result:
+            result["oso_count_source"] = "derived-2.5"
+        return result
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"SAIL calculation failed: {str(e)}")
+        logger.error(f"SAIL calculation proxy failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -801,21 +724,38 @@ async def calculate_complete_sora_v25(request: SoraRequestV25):
             request.operational_volume
         )
         
-        # Step #2 & #3: Calculate GRC (use SORA 2.0 functions)
-        logger.info("\n### STEP #2: Calculate Initial GRC ###")
-        initial_grc = calculate_initial_grc(
-            request.grc_inputs.population_density,
-            request.grc_inputs.sheltering
+        # Step #2 & #3: Calculate GRC (SORA 2.5 Annex F – authoritative)
+        logger.info("\n### STEP #2/#3: Calculate GRC (Annex F) ###")
+        from grc.models.grc_models import GRCInputs25, ContainmentQuality
+        from grc.calculators.grc_calculator import GRCCalculator25
+
+        # Απαιτούμενα αριθμητικά πεδία για Annex F
+        if request.mtom_kg is None or request.mtom_kg <= 0:
+            raise HTTPException(status_code=400, detail="Annex F requires positive mtom_kg on complete-v25")
+        if request.max_characteristic_dimension_m is None or request.max_characteristic_dimension_m <= 0:
+            raise HTTPException(status_code=400, detail="Annex F requires max_characteristic_dimension_m (>0) on complete-v25")
+        if request.max_speed_ms is None or request.max_speed_ms <= 0:
+            raise HTTPException(status_code=400, detail="Annex F requires max_speed_ms (>0) on complete-v25")
+        if request.population_density_p_km2 is None or request.population_density_p_km2 < 0:
+            raise HTTPException(status_code=400, detail="Annex F requires population_density_p_km2 (>=0) on complete-v25")
+
+        grc_inputs25 = GRCInputs25(
+            mtom_kg=float(request.mtom_kg),
+            characteristic_dimension_m=float(request.max_characteristic_dimension_m),
+            max_speed_mps=float(request.max_speed_ms),
+            population_density_p_km2=int(request.population_density_p_km2),
+            environment_type=None,
+            containment_quality=ContainmentQuality.ADEQUATE,
+            m1a_sheltering="None",
+            m1b_operational="None",
+            m1c_ground_observation="None",
+            m2_impact="None",
         )
-        logger.info(f"   Initial GRC: {initial_grc}")
-        
-        logger.info("\n### STEP #3: Apply GRC Mitigations ###")
-        final_grc = apply_grc_mitigations(
-            initial_grc,
-            request.grc_inputs.m1,
-            request.grc_inputs.m3
-        )
-        logger.info(f"   Final GRC: {final_grc}")
+        grc_calc = GRCCalculator25()
+        _grc_res = grc_calc.calculate(grc_inputs25)
+        initial_grc = int(_grc_res.initial_grc)
+        final_grc = int(_grc_res.residual_grc)
+        logger.info(f"   GRC (Annex F): intrinsic={initial_grc}, final={final_grc}")
         
     # Step #9: Determine SAIL
         logger.info("\n### STEP #9: Determine SAIL ###")
@@ -849,8 +789,8 @@ async def calculate_complete_sora_v25(request: SoraRequestV25):
             "arc_explanation": arc_explanation,
             "strategic_mitigations": mitigations,
             "sail_explanation": sail_explanation,
-            "initial_grc": initial_grc,  # Placeholder
-            "final_grc": final_grc,      # Placeholder
+            "initial_grc": initial_grc,
+            "final_grc": final_grc,
             "reference": "JAR_doc_25 - SORA 2.5 Main Body (Edition 22.11.2024)",
             "success": True
         }
@@ -913,8 +853,8 @@ def normalize_frontend_payload_v20(payload: Dict[str, Any]) -> Dict[str, Any]:
         - environment: preserved as provided (no SUBURBAN→URBAN coercion by default)
             Optional strict mode: set ANNEXC_STRICT_ENV=1 to coerce SUBURBAN→URBAN
     
-    Ignored FE-only fields:
-    - is_airport_heliport (requires data model change)
+    FE-only fields:
+    - is_airport_heliport: περνάει αυτούσιο για μελλοντική χρήση στο data model
     - tactical_mitigation_level (not used in initial ARC)
     - max_height_amsl_m (for FL600 check, requires data model)
     """
@@ -976,8 +916,8 @@ def normalize_frontend_payload_v25(payload: Dict[str, Any]) -> Dict[str, Any]:
         - environment: preserved as provided (no SUBURBAN→URBAN coercion by default)
             Optional strict mode: set ANNEXC_STRICT_ENV=1 to coerce SUBURBAN→URBAN
     
-    Ignored FE-only fields:
-    - is_airport_heliport (requires data model change)
+    FE-only fields:
+    - is_airport_heliport: περνάει αυτούσιο για μελλοντική χρήση στο data model
     - tactical_mitigation_level (not used in initial ARC)
     - max_height_amsl_m (for FL600 check, requires data model)
     """
@@ -1046,6 +986,8 @@ async def arc_initial_v20(request: Request):
     Returns: { ok: true/false, data: {...}, error: "..." }
     """
     try:
+        from fastapi import HTTPException
+        strict_errors = os.getenv("ARC_STRICT_ERRORS", "0") == "1"
         # Read raw frontend payload
         payload = await request.json()
         logger.info(f"📥 Received FE payload (v2.0): {payload}")
@@ -1057,24 +999,21 @@ async def arc_initial_v20(request: Request):
         # Check if ARC Calculator is available
         if not ARC_CALCULATOR_AVAILABLE:
             logger.error("ARCCalculator not available")
-            return {
-                "ok": False,
-                "error": "ARCCalculator module not available. Please check calculations/arc_calculator.py",
-                "data": None
-            }
+            msg = "ARCCalculator module not available. Please check calculations/arc_calculator.py"
+            if strict_errors:
+                raise HTTPException(status_code=501, detail=msg)
+            return {"ok": False, "error": msg, "data": None}
         
         # Require airspace_class for a deterministic Annex C mapping
         if "airspace_class" not in normalized:
             logger.error("Missing required field: airspace_class")
-            return {
-                "ok": False,
-                "error": (
-                    "Missing required field 'airspace_class'. "
-                    "Annex C Table C.1 requires airspace classification (A/B/C/D/E/G) to map AEC -> ARC."
-                ),
-                "data": None,
-                "reference": "JARUS SORA Annex C Table C.1"
-            }
+            msg = (
+                "Missing required field 'airspace_class'. "
+                "Annex C Table C.1 requires airspace classification (A/B/C/D/E/G) to map AEC -> ARC."
+            )
+            if strict_errors:
+                raise HTTPException(status_code=400, detail=msg)
+            return {"ok": False, "error": msg, "data": None, "reference": "JARUS SORA Annex C Table C.1"}
 
         # Build ARCRequest_2_0 from normalized payload
         try:
@@ -1092,11 +1031,10 @@ async def arc_initial_v20(request: Request):
             )
         except Exception as e:
             logger.error(f"Failed to build ARCRequest_2_0: {e}")
-            return {
-                "ok": False,
-                "error": f"Invalid request parameters: {str(e)}",
-                "data": None
-            }
+            msg = f"Invalid request parameters: {str(e)}"
+            if strict_errors:
+                raise HTTPException(status_code=400, detail=msg)
+            return {"ok": False, "error": msg, "data": None}
         
         # Calculate ARC
         calculator = ARCCalculator()
@@ -1123,11 +1061,10 @@ async def arc_initial_v20(request: Request):
             }
         except Exception as e:
             logger.error(f"ARC calculation failed: {e}")
-            return {
-                "ok": False,
-                "error": f"ARC calculation failed: {str(e)}",
-                "data": None
-            }
+            msg = f"ARC calculation failed: {str(e)}"
+            if strict_errors:
+                raise HTTPException(status_code=500, detail=msg)
+            return {"ok": False, "error": msg, "data": None}
     
     except Exception as e:
         logger.error(f"Endpoint error: {e}", exc_info=True)
@@ -1154,6 +1091,8 @@ async def arc_initial_v25(request: Request):
     Returns: { ok: true/false, data: {...}, error: "..." }
     """
     try:
+        from fastapi import HTTPException
+        strict_errors = os.getenv("ARC_STRICT_ERRORS", "0") == "1"
         # Read raw frontend payload
         payload = await request.json()
         logger.info(f"📥 Received FE payload (v2.5): {payload}")
@@ -1165,24 +1104,21 @@ async def arc_initial_v25(request: Request):
         # Check if ARC Calculator is available
         if not ARC_CALCULATOR_AVAILABLE:
             logger.error("ARCCalculator not available")
-            return {
-                "ok": False,
-                "error": "ARCCalculator module not available. Please check calculations/arc_calculator.py",
-                "data": None
-            }
+            msg = "ARCCalculator module not available. Please check calculations/arc_calculator.py"
+            if strict_errors:
+                raise HTTPException(status_code=501, detail=msg)
+            return {"ok": False, "error": msg, "data": None}
         
         # Require airspace_class for a deterministic Annex C mapping
         if "airspace_class" not in normalized:
             logger.error("Missing required field: airspace_class")
-            return {
-                "ok": False,
-                "error": (
-                    "Missing required field 'airspace_class'. "
-                    "Annex C Table C.1 requires airspace classification (A/B/C/D/E/G) to map AEC -> ARC."
-                ),
-                "data": None,
-                "reference": "JARUS SORA Annex C Table C.1"
-            }
+            msg = (
+                "Missing required field 'airspace_class'. "
+                "Annex C Table C.1 requires airspace classification (A/B/C/D/E/G) to map AEC -> ARC."
+            )
+            if strict_errors:
+                raise HTTPException(status_code=400, detail=msg)
+            return {"ok": False, "error": msg, "data": None, "reference": "JARUS SORA Annex C Table C.1"}
 
         # Build ARCRequest_2_5 from normalized payload
         try:
@@ -1200,11 +1136,10 @@ async def arc_initial_v25(request: Request):
             )
         except Exception as e:
             logger.error(f"Failed to build ARCRequest_2_5: {e}")
-            return {
-                "ok": False,
-                "error": f"Invalid request parameters: {str(e)}",
-                "data": None
-            }
+            msg = f"Invalid request parameters: {str(e)}"
+            if strict_errors:
+                raise HTTPException(status_code=400, detail=msg)
+            return {"ok": False, "error": msg, "data": None}
         
         # Calculate ARC
         calculator = ARCCalculator()
@@ -1231,11 +1166,10 @@ async def arc_initial_v25(request: Request):
             }
         except Exception as e:
             logger.error(f"ARC calculation failed: {e}")
-            return {
-                "ok": False,
-                "error": f"ARC calculation failed: {str(e)}",
-                "data": None
-            }
+            msg = f"ARC calculation failed: {str(e)}"
+            if strict_errors:
+                raise HTTPException(status_code=500, detail=msg)
+            return {"ok": False, "error": msg, "data": None}
     
     except Exception as e:
         logger.error(f"Endpoint error: {e}", exc_info=True)
