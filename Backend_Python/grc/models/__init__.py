@@ -1,0 +1,1 @@
+"""GRC (Ground Risk Class) calculation module for SORA 2.0 and 2.5"""

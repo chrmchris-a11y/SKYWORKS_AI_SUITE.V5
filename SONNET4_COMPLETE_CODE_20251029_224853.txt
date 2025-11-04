@@ -1,0 +1,511 @@
+=== FILE: Backend/src/Skyworks.Api/Program.cs ===
+using Microsoft.EntityFrameworkCore;
+using Skyworks.Infrastructure.Data;
+using Skyworks.Core.Interfaces;
+using Skyworks.Infrastructure.Repositories;
+using Skyworks.Core.Services;
+using Skyworks.Core.JsonConverters;
+using System.Text.Json.Serialization;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddDbContext<SkyworksDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Repository pattern
+builder.Services.AddScoped<IDroneRepository, DroneRepository>();
+builder.Services.AddScoped<IMaintenanceRepository, MaintenanceRepository>();
+builder.Services.AddScoped<IMissionRepository, MissionRepository>();
+builder.Services.AddScoped<IPilotRepository, PilotRepository>();
+builder.Services.AddScoped<ILocationRepository, LocationRepository>();
+builder.Services.AddScoped<IFlightLogRepository, FlightLogRepository>();
+builder.Services.AddScoped<IIncidentRepository, IncidentRepository>();
+builder.Services.AddScoped<IInventoryRepository, InventoryRepository>();
+
+// Services
+builder.Services.AddScoped<SORACalculationService>();
+builder.Services.AddScoped<GroundRiskCalculationService>();
+builder.Services.AddScoped<AirRiskCalculationService>();
+builder.Services.AddScoped<MitigationService>();
+
+// Add controllers with JSON configuration
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Add string enum converter for automatic enum handling
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        
+        // Add custom converter for ARC ratings
+        options.JsonSerializerOptions.Converters.Add(new ARCRatingConverter());
+        
+        // Additional JSON options for better compatibility
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.AllowTrailingCommas = true;
+        options.JsonSerializerOptions.ReadCommentHandling = System.Text.Json.JsonCommentHandling.Skip;
+    });
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
+
+=== FILE: Backend/src/Skyworks.Core/Models/GRC/RobustnessLevel.cs ===
+using System.Text.Json.Serialization;
+
+namespace Skyworks.Core.Models.GRC;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum RobustnessLevel
+{
+    None = 0,
+    Low = 1,
+    Medium = 2,
+    High = 3
+}
+
+=== FILE: Backend/src/Skyworks.Core/Models/GRC/V2_0/SORA_2_0_Models.cs ===
+using System.Text.Json.Serialization;
+using Skyworks.Core.Models.GRC;
+
+namespace Skyworks.Core.Models.GRC.V2_0;
+
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum OperationalScenario
+{
+    ControlledGroundArea = 1,
+    VLOS_SparselyPopulated = 2,
+    BVLOS_SparselyPopulated = 3,
+    VLOS_Populated = 4,
+    BVLOS_Populated = 5,
+    VLOS_GatheringOfPeople = 6,
+    BVLOS_GatheringOfPeople = 7
+}
+
+public class SORA_2_0_Request
+{
+    public string SoraVersion { get; set; } = "2.0";
+    public GroundRisk_2_0 GroundRisk { get; set; } = new();
+    public AirRisk_2_0 AirRisk { get; set; } = new();
+}
+
+public class GroundRisk_2_0
+{
+    public OperationalScenario Scenario_V2_0 { get; set; }
+    public double MTOM_kg { get; set; }
+    public double MaxCharacteristicDimension { get; set; }
+    public List<GroundMitigation> Mitigations { get; set; } = new();
+    public bool IsControlledGroundArea { get; set; }
+}
+
+public class AirRisk_2_0
+{
+    public string ExplicitARC { get; set; } = string.Empty;
+    public List<AirMitigation> StrategicMitigations { get; set; } = new();
+}
+
+public class GroundMitigation
+{
+    public string Type { get; set; } = string.Empty;
+    public RobustnessLevel Robustness { get; set; }
+}
+
+public class AirMitigation
+{
+    public string Type { get; set; } = string.Empty;
+    public RobustnessLevel Robustness { get; set; }
+}
+
+public class SORA_2_0_Response
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public SORA_2_0_Result? Result { get; set; }
+    public List<string> Errors { get; set; } = new();
+}
+
+public class SORA_2_0_Result
+{
+    public string FinalSAIL { get; set; } = string.Empty;
+    public string RequiredOSO { get; set; } = string.Empty;
+    public string RecommendedActions { get; set; } = string.Empty;
+    public Dictionary<string, object> Details { get; set; } = new();
+}
+
+=== FILE: Backend/src/Skyworks.Core/JsonConverters/ARCRatingConverter.cs ===
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Skyworks.Core.Models.ARC;
+
+namespace Skyworks.Core.JsonConverters;
+
+public class ARCRatingConverter : JsonConverter<ARCRating>
+{
+    public override ARCRating Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.String)
+        {
+            throw new JsonException($"Expected string for ARCRating, got {reader.TokenType}");
+        }
+
+        string value = reader.GetString()!;
+        
+        return value.Replace("-", "_").ToUpperInvariant() switch
+        {
+            "ARC_A" => ARCRating.ARC_a,
+            "ARC_B" => ARCRating.ARC_b,
+            "ARC_C" => ARCRating.ARC_c,
+            "ARC_D" => ARCRating.ARC_d,
+            _ => throw new JsonException($"Unknown ARCRating value: {value}")
+        };
+    }
+
+    public override void Write(Utf8JsonWriter writer, ARCRating value, JsonSerializerOptions options)
+    {
+        string stringValue = value switch
+        {
+            ARCRating.ARC_a => "ARC-a",
+            ARCRating.ARC_b => "ARC-b",
+            ARCRating.ARC_c => "ARC-c",
+            ARCRating.ARC_d => "ARC-d",
+            _ => throw new JsonException($"Unknown ARCRating value: {value}")
+        };
+
+        writer.WriteStringValue(stringValue);
+    }
+}
+
+=== FILE: Backend/src/Skyworks.Core/Models/ARC/ARCModels.cs ===
+using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
+using Skyworks.Core.JsonConverters;
+
+namespace Skyworks.Core.Models.ARC;
+
+[JsonConverter(typeof(ARCRatingConverter))]
+public enum ARCRating
+{
+    [EnumMember(Value = "ARC_a")]
+    ARC_a = 0,
+    [EnumMember(Value = "ARC_b")]
+    ARC_b = 1,
+    [EnumMember(Value = "ARC_c")]
+    ARC_c = 2,
+    [EnumMember(Value = "ARC_d")]
+    ARC_d = 3
+}
+
+public class ARCAssessment
+{
+    public ARCRating Rating { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public List<string> RequiredMitigations { get; set; } = new();
+    public Dictionary<string, object> Details { get; set; } = new();
+}
+
+public class ARCCalculationRequest
+{
+    public double AltitudeMeters { get; set; }
+    public string AirspaceType { get; set; } = string.Empty;
+    public bool HasTransponder { get; set; }
+    public bool HasDetectAndAvoid { get; set; }
+    public List<string> ExistingMitigations { get; set; } = new();
+}
+
+public class ARCCalculationResponse
+{
+    public bool Success { get; set; }
+    public ARCRating CalculatedRating { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public List<string> Recommendations { get; set; } = new();
+    public List<string> Errors { get; set; } = new();
+}
+
+=== FILE: Backend/src/Skyworks.Api/Controllers/SORAController.cs ===
+using Microsoft.AspNetCore.Mvc;
+using Skyworks.Core.Services;
+using Skyworks.Core.Models.GRC.V2_0;
+
+namespace Skyworks.Api.Controllers;
+
+[ApiController]
+[Route("api/sora")]
+public class SORAController : ControllerBase
+{
+    private readonly SORACalculationService _soraService;
+    private readonly ILogger<SORAController> _logger;
+
+    public SORAController(SORACalculationService soraService, ILogger<SORAController> logger)
+    {
+        _soraService = soraService;
+        _logger = logger;
+    }
+
+    [HttpPost("complete")]
+    public async Task<ActionResult<SORA_2_0_Response>> CompleteAssessment([FromBody] SORA_2_0_Request request)
+    {
+        try
+        {
+            _logger.LogInformation("Received SORA assessment request for version {Version}", request.SoraVersion);
+
+            if (request == null)
+            {
+                return BadRequest(new SORA_2_0_Response
+                {
+                    Success = false,
+                    Message = "Request cannot be null",
+                    Errors = new List<string> { "Invalid request body" }
+                });
+            }
+
+            var result = await _soraService.PerformCompleteAssessment(request);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("SORA assessment completed successfully");
+                return Ok(result);
+            }
+            else
+            {
+                _logger.LogWarning("SORA assessment failed: {Message}", result.Message);
+                return BadRequest(result);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error performing SORA assessment");
+            return StatusCode(500, new SORA_2_0_Response
+            {
+                Success = false,
+                Message = "Internal server error during SORA assessment",
+                Errors = new List<string> { ex.Message }
+            });
+        }
+    }
+
+    [HttpGet("scenarios")]
+    public ActionResult<List<object>> GetScenarios()
+    {
+        try
+        {
+            var scenarios = Enum.GetValues<OperationalScenario>()
+                .Select(s => new { Value = s.ToString(), Text = s.ToString().Replace("_", " ") })
+                .ToList();
+
+            return Ok(scenarios);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving scenarios");
+            return StatusCode(500, new { error = "Failed to retrieve scenarios" });
+        }
+    }
+}
+
+=== FILE: Backend/src/Skyworks.Core/Services/SORACalculationService.cs ===
+using Skyworks.Core.Models.GRC.V2_0;
+using Skyworks.Core.Models.GRC;
+using Microsoft.Extensions.Logging;
+
+namespace Skyworks.Core.Services;
+
+public class SORACalculationService
+{
+    private readonly ILogger<SORACalculationService> _logger;
+
+    public SORACalculationService(ILogger<SORACalculationService> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task<SORA_2_0_Response> PerformCompleteAssessment(SORA_2_0_Request request)
+    {
+        try
+        {
+            _logger.LogInformation("Starting SORA assessment for scenario {Scenario}", request.GroundRisk.Scenario_V2_0);
+
+            var response = new SORA_2_0_Response
+            {
+                Success = true,
+                Message = "SORA assessment completed successfully"
+            };
+
+            // Calculate Ground Risk
+            var groundRiskLevel = CalculateGroundRisk(request.GroundRisk);
+            
+            // Calculate Air Risk
+            var airRiskLevel = CalculateAirRisk(request.AirRisk);
+            
+            // Determine SAIL
+            var sailLevel = DetermineSAIL(groundRiskLevel, airRiskLevel);
+            
+            // Generate recommendations
+            var recommendations = GenerateRecommendations(request, sailLevel);
+
+            response.Result = new SORA_2_0_Result
+            {
+                FinalSAIL = sailLevel,
+                RequiredOSO = GenerateOSORequirements(sailLevel),
+                RecommendedActions = string.Join("; ", recommendations),
+                Details = new Dictionary<string, object>
+                {
+                    ["GroundRiskLevel"] = groundRiskLevel,
+                    ["AirRiskLevel"] = airRiskLevel,
+                    ["SAILLevel"] = sailLevel,
+                    ["AssessmentDate"] = DateTime.UtcNow,
+                    ["Scenario"] = request.GroundRisk.Scenario_V2_0.ToString(),
+                    ["MTOM"] = request.GroundRisk.MTOM_kg,
+                    ["ExplicitARC"] = request.AirRisk.ExplicitARC
+                }
+            };
+
+            return response;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during SORA assessment");
+            return new SORA_2_0_Response
+            {
+                Success = false,
+                Message = "Assessment failed",
+                Errors = new List<string> { ex.Message }
+            };
+        }
+    }
+
+    private string CalculateGroundRisk(GroundRisk_2_0 groundRisk)
+    {
+        // Basic ground risk calculation based on scenario and MTOM
+        var baseRisk = groundRisk.Scenario_V2_0 switch
+        {
+            OperationalScenario.ControlledGroundArea => 1,
+            OperationalScenario.VLOS_SparselyPopulated => 2,
+            OperationalScenario.BVLOS_SparselyPopulated => 3,
+            OperationalScenario.VLOS_Populated => 4,
+            OperationalScenario.BVLOS_Populated => 5,
+            OperationalScenario.VLOS_GatheringOfPeople => 6,
+            OperationalScenario.BVLOS_GatheringOfPeople => 7,
+            _ => 3
+        };
+
+        // Adjust for MTOM
+        if (groundRisk.MTOM_kg > 25) baseRisk += 1;
+        if (groundRisk.MTOM_kg > 150) baseRisk += 1;
+
+        // Apply mitigations
+        foreach (var mitigation in groundRisk.Mitigations)
+        {
+            var reduction = mitigation.Robustness switch
+            {
+                RobustnessLevel.High => 2,
+                RobustnessLevel.Medium => 1,
+                RobustnessLevel.Low => 0,
+                _ => 0
+            };
+            baseRisk = Math.Max(1, baseRisk - reduction);
+        }
+
+        return $"GRC-{Math.Min(baseRisk, 7)}";
+    }
+
+    private string CalculateAirRisk(AirRisk_2_0 airRisk)
+    {
+        // Use explicit ARC if provided
+        if (!string.IsNullOrEmpty(airRisk.ExplicitARC))
+        {
+            return airRisk.ExplicitARC;
+        }
+
+        // Default ARC calculation
+        return "ARC-b";
+    }
+
+    private string DetermineSAIL(string groundRiskLevel, string airRiskLevel)
+    {
+        // Simplified SAIL determination matrix
+        var grcNumber = int.Parse(groundRiskLevel.Replace("GRC-", ""));
+        
+        return airRiskLevel switch
+        {
+            "ARC-a" => $"SAIL-{Math.Min(grcNumber, 2)}",
+            "ARC-b" => $"SAIL-{Math.Min(grcNumber + 1, 4)}",
+            "ARC-c" => $"SAIL-{Math.Min(grcNumber + 2, 5)}",
+            "ARC-d" => $"SAIL-{Math.Min(grcNumber + 3, 6)}",
+            _ => $"SAIL-{Math.Min(grcNumber + 1, 4)}"
+        };
+    }
+
+    private string GenerateOSORequirements(string sailLevel)
+    {
+        var sailNumber = int.Parse(sailLevel.Replace("SAIL-", ""));
+        
+        var requirements = new List<string>();
+        
+        // Basic OSO requirements based on SAIL level
+        if (sailNumber >= 1) requirements.Add("OSO#01: Procedures for safe operation");
+        if (sailNumber >= 2) requirements.Add("OSO#02: UAS operator competency");
+        if (sailNumber >= 3) requirements.Add("OSO#03: UAS operator training");
+        if (sailNumber >= 4) requirements.Add("OSO#04: UAS design and airworthiness");
+        if (sailNumber >= 5) requirements.Add("OSO#05: UAS geographic containment");
+        if (sailNumber >= 6) requirements.Add("OSO#06: C2 link performance");
+
+        return string.Join(", ", requirements);
+    }
+
+    private List<string> GenerateRecommendations(SORA_2_0_Request request, string sailLevel)
+    {
+        var recommendations = new List<string>();
+        
+        var sailNumber = int.Parse(sailLevel.Replace("SAIL-", ""));
+        
+        if (sailNumber > 4)
+        {
+            recommendations.Add("Consider additional ground risk mitigations");
+        }
+        
+        if (request.GroundRisk.MTOM_kg > 25)
+        {
+            recommendations.Add("Enhanced ground impact mitigation required for MTOM > 25kg");
+        }
+        
+        if (request.AirRisk.ExplicitARC.Contains("c") || request.AirRisk.ExplicitARC.Contains("d"))
+        {
+            recommendations.Add("Consider airspace restrictions or additional air risk mitigations");
+        }
+
+        if (recommendations.Count == 0)
+        {
+            recommendations.Add("Operation appears compliant with current risk assessment");
+        }
+
+        return recommendations;
+    }
+}

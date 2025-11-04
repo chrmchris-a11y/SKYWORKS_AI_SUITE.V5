@@ -1,0 +1,35 @@
+name: CI - Build & Tests (Windows)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r Backend_Python/requirements.txt
+
+      - name: Run build-and-test with Python (PowerShell orchestration)
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File Tools/run-dotnet-tests-with-python.ps1 -BackendPath "$env:GITHUB_WORKSPACE\Backend" -PythonPath "$env:GITHUB_WORKSPACE\Backend_Python" -Port 8001 -HealthTimeoutSeconds 60

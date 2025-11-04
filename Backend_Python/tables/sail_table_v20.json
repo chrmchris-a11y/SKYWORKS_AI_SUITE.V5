@@ -1,0 +1,15 @@
+{
+  "version": "2.0",
+  "arcOrder": ["ARC-a", "ARC-b", "ARC-c", "ARC-d"],
+  "matrix": [
+    ["I",  "I",  "II", "III"],
+    ["I",  "II", "II", "III"],
+    ["I",  "II", "III", "IV"],
+    ["II", "II", "IV", "IV"],
+    ["II", "IV", "V",  "V"],
+    ["II", "IV", "V",  "V"],
+    ["IV", "IV", "VI", "VI"],
+    ["IV", "V",  "VI", "VI"]
+  ],
+  "notes": "EASA GM/AMC SAIL mapping (GRC × ARC → SAIL)."
+}

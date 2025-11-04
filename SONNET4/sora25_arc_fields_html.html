@@ -1,0 +1,146 @@
+<!-- 
+  SORA 2.5 Enhanced ARC Input Fields
+  Replace lines 1114-1169 in mission.html with this code
+  
+  Key Improvements:
+  - ✅ Professional checkbox styling with flexbox alignment
+  - ✅ Helper text for all dropdowns
+  - ✅ Correct JARUS references
+  - ✅ Visual grouping for segregation checkboxes
+  - ✅ Validation warnings
+  - ✅ Consistent with existing form styling
+-->
+
+<div id="arc25Fields" style="display:none; background:#e3f2fd; padding:16px; border-radius:8px; margin-top:12px; border:2px solid #2196f3;">
+  <strong style="color:#0d47a1; font-size:16px; display:block; margin-bottom:16px;">
+    🛰️ SORA 2.5 Enhanced ARC Strategic Mitigations
+  </strong>
+  
+  <!-- Field 1: U-space Services Available -->
+  <label style="display:block; margin-bottom:16px;">
+    <strong style="display:block; margin-bottom:6px; color:#1976d2;">U-space Services Available</strong>
+    <select id="uSpaceServices" style="width:100%; padding:8px; border:1px solid #90caf9; border-radius:4px; font-size:14px;">
+      <option value="false">No - Standard airspace operations</option>
+      <option value="true">Yes - U-space services available and used</option>
+    </select>
+    <small style="display:block; color:#555; margin-top:6px; line-height:1.4;">
+      💡 U-space services provide digital aviation support including geofencing, tracking, and conflict detection.<br>
+      <strong>Reference:</strong> JAR_doc_34 (Annex H) - SORA Safety Services
+    </small>
+  </label>
+  
+  <!-- Field 2: Traffic Density Data Source -->
+  <label style="display:block; margin-bottom:16px;">
+    <strong style="display:block; margin-bottom:6px; color:#1976d2;">Traffic Density Data Source</strong>
+    <select id="trafficDensitySource" style="width:100%; padding:8px; border:1px solid #90caf9; border-radius:4px; font-size:14px;">
+      <option value="Empirical">Empirical - Direct observation (Highest reliability)</option>
+      <option value="Statistical">Statistical - Historical data analysis (Medium reliability)</option>
+      <option value="Expert">Expert - Expert judgment (Low density only)</option>
+    </select>
+    <small style="display:block; color:#555; margin-top:6px; line-height:1.4;">
+      ⚠️ <strong>Expert judgment is only valid for low traffic density areas</strong> and requires substantiation.<br>
+      <strong>Reference:</strong> JAR_doc_25 Step #4 - Determination of Initial ARC
+    </small>
+  </label>
+  
+  <!-- Field 3: Airspace Containment -->
+  <label style="display:block; margin-bottom:16px;">
+    <strong style="display:block; margin-bottom:6px; color:#1976d2;">Airspace Containment</strong>
+    <select id="airspaceContainment25" style="width:100%; padding:8px; border:1px solid #90caf9; border-radius:4px; font-size:14px;">
+      <option value="None">None - No airspace restrictions</option>
+      <option value="Operational">Operational - Temporary restrictions (NOTAMs, ANSP coordination)</option>
+      <option value="Certified">Certified - Permanent segregated airspace (Highest assurance)</option>
+    </select>
+    <small style="display:block; color:#555; margin-top:6px; line-height:1.4;">
+      💡 Higher containment levels provide greater ARC reduction but require ANSP coordination and approval.<br>
+      <strong>Reference:</strong> JAR_doc_25 Step #5 - Application of Strategic Mitigations
+    </small>
+  </label>
+  
+  <!-- Fields 4 & 5: Segregation Checkboxes (Styled Container) -->
+  <div style="background:#f5f5f5; padding:14px; border-radius:6px; margin-top:12px; border:1px solid #bdbdbd;">
+    <strong style="display:block; margin-bottom:12px; color:#0d47a1; font-size:15px;">
+      Strategic Segregation Mitigations
+    </strong>
+    
+    <!-- Temporal Segregation Checkbox -->
+    <label style="display:flex; align-items:flex-start; margin-bottom:14px; cursor:pointer; padding:10px; background:#ffffff; border-radius:4px; border:1px solid #e0e0e0; transition:background 0.2s;">
+      <input type="checkbox" id="temporalSegregation" value="true" 
+             style="width:20px; height:20px; margin-right:12px; margin-top:2px; cursor:pointer; flex-shrink:0;" />
+      <span style="font-size:14px; line-height:1.5;">
+        <strong style="color:#1976d2;">Temporal Segregation</strong><br>
+        <small style="color:#666;">
+          Operation conducted during time periods when manned aviation activity is significantly reduced or absent 
+          (e.g., night operations, outside business hours, or during weather prohibitive to VFR).
+        </small>
+      </span>
+    </label>
+    
+    <!-- Spatial Segregation Checkbox -->
+    <label style="display:flex; align-items:flex-start; cursor:pointer; padding:10px; background:#ffffff; border-radius:4px; border:1px solid #e0e0e0; transition:background 0.2s;">
+      <input type="checkbox" id="spatialSegregation" value="true" 
+             style="width:20px; height:20px; margin-right:12px; margin-top:2px; cursor:pointer; flex-shrink:0;" />
+      <span style="font-size:14px; line-height:1.5;">
+        <strong style="color:#1976d2;">Spatial Segregation</strong><br>
+        <small style="color:#666;">
+          Operation conducted in airspace with defined boundaries that separate it from manned aviation traffic 
+          (e.g., below minimum safe altitude, designated UAS zones, or lateral separation from airways).
+        </small>
+      </span>
+    </label>
+    
+    <!-- Validation Warning Box -->
+    <div style="margin-top:12px; padding:10px; background:#fff3cd; border-left:4px solid #ffc107; border-radius:4px; font-size:13px; line-height:1.5;">
+      ⚠️ <strong style="color:#856404;">Validation Required:</strong>
+      <span style="color:#856404;">
+        Both segregation types require documented procedures, evidence of reduced exposure, 
+        and validation in your Concept of Operations (ConOps). ANSP coordination may be required.
+      </span>
+    </div>
+    
+    <small style="display:block; color:#666; margin-top:10px; font-size:12px;">
+      <strong>Reference:</strong> SORA 1.0 Annex C (Strategic Mitigations) - Operational Restrictions
+    </small>
+  </div>
+  
+  <!-- Information Box with Correct JARUS References -->
+  <div style="margin-top:16px; padding:12px; background:#e8f5e9; border-left:4px solid #4caf50; border-radius:4px;">
+    <strong style="color:#2e7d32; font-size:14px;">✅ SORA 2.5 Enhanced ARC Strategic Mitigations</strong><br>
+    <small style="color:#555; line-height:1.5; display:block; margin-top:6px;">
+      These fields are specific to <strong>SORA 2.5 ONLY</strong> per JARUS Main Body (JAR_doc_25) Step #5 and 
+      supporting annexes. They represent enhanced strategic mitigations introduced in SORA 2.5.<br><br>
+      <strong style="color:#c62828;">⚠️ Not applicable to SORA 2.0 AMC.</strong> 
+      If you need these strategic mitigations, you must use the SORA 2.5 category.
+    </small>
+    <div style="margin-top:10px; padding-top:10px; border-top:1px solid #a5d6a7; font-size:12px; color:#666;">
+      📚 <strong>Official References:</strong><br>
+      • JAR_doc_25 (Main Body 2.5, Edition 22.11.2024) - Step #4 and Step #5<br>
+      • JAR_doc_34 (Annex H) - SORA Safety Services (U-space)<br>
+      • Annex C (v1.0) - Strategic Mitigations Collision Risk Assessment
+    </div>
+  </div>
+</div>
+
+<style>
+/* Hover effects for checkboxes */
+#arc25Fields label:has(input[type="checkbox"]):hover {
+  background: #f0f0f0 !important;
+}
+
+/* Focus styles for accessibility */
+#arc25Fields input[type="checkbox"]:focus {
+  outline: 2px solid #2196f3;
+  outline-offset: 2px;
+}
+
+#arc25Fields select:focus {
+  outline: 2px solid #2196f3;
+  outline-offset: 1px;
+  border-color: #2196f3;
+}
+
+/* Smooth transitions */
+#arc25Fields label:has(input[type="checkbox"]) {
+  transition: background 0.2s ease;
+}
+</style>

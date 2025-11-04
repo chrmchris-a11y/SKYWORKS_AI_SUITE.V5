@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="compliancePage.title">Compliance • Skyworks</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:1024px;margin:40px auto;padding:0 16px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid #e5e7eb;padding:6px 8px}
+    button{padding:8px}
+    pre{background:#f8fafc;border:1px solid #e5e7eb;padding:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1 data-i18n="compliancePage.title">Compliance</h1>
+    <nav><a href="index.html" data-i18n="navigation.home">Home</a> · <a href="kb.html" data-i18n="navigation.knowledge">Knowledge</a></nav>
+  </header>
+
+  <section>
+    <h2 data-i18n="compliancePage.osoMatrix.title">OSO Matrix (raw)</h2>
+    <button onclick="loadMatrix()" data-i18n="compliancePage.osoMatrix.load">Φόρτωση</button>
+    <pre id="matrix"></pre>
+  </section>
+
+  <section>
+    <h2 data-i18n="compliancePage.binders.title">Binders</h2>
+    <button onclick="loadBinders()" data-i18n="compliancePage.binders.list">Λίστα</button>
+    <table>
+      <thead><tr><th data-i18n="compliancePage.binders.name">Όνομα</th><th data-i18n="compliancePage.binders.size">Μέγεθος</th><th data-i18n="compliancePage.binders.date">Ημερομηνία</th></tr></thead>
+      <tbody id="binders"></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2 data-i18n="compliancePage.reports.title">Reports</h2>
+    <button onclick="loadReports()" data-i18n="compliancePage.reports.list">Λίστα</button>
+    <table>
+      <thead><tr><th data-i18n="compliancePage.reports.name">Όνομα</th><th data-i18n="compliancePage.reports.size">Μέγεθος</th><th data-i18n="compliancePage.reports.date">Ημερομηνία</th></tr></thead>
+      <tbody id="reports"></tbody>
+    </table>
+  </section>
+
+  <script src="/app/i18n/i18n-loader.js"></script>
+  <script src="/app/i18n/language-switcher.js"></script>
+  <script>
+    function tok(){return localStorage.getItem('jwt')||''}
+    function hdr(){return tok()?{Authorization:'Bearer '+tok()}:{}}
+
+    async function loadMatrix(){
+      const r = await fetch('/api/compliance/matrix/raw', {headers: hdr()});
+      const j = await r.json();
+      document.getElementById('matrix').textContent = j.content || '—';
+    }
+    async function loadBinders(){ await fill('/api/compliance/binder/list', 'binders'); }
+    async function loadReports(){ await fill('/api/compliance/reports/list', 'reports'); }
+
+    async function fill(path, tbodyId){
+      const r = await fetch(path, {headers: hdr()});
+      const j = await r.json();
+      const tbody = document.getElementById(tbodyId); tbody.innerHTML='';
+      for(const x of j){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${x.name}</td><td>${(x.size/1024).toFixed(1)} KB</td><td>${new Date(x.lastModifiedUtc).toLocaleString()}</td>`;
+        tbody.appendChild(tr);
+      }
+    }
+  </script>
+</body>
+</html>

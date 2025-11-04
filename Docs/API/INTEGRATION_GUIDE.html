@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integration Example - New Components</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .code-block {
+      background: #1e1e1e;
+      color: #d4d4d4;
+      padding: 16px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 16px 0;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .section {
+      background: white;
+      padding: 24px;
+      margin: 24px 0;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1, h2, h3 {
+      color: #1976d2;
+    }
+    .step {
+      background: #e3f2fd;
+      padding: 16px;
+      border-left: 4px solid #1976d2;
+      margin: 16px 0;
+      border-radius: 4px;
+    }
+    .important {
+      background: #fff3e0;
+      border-left: 4px solid #ff9800;
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 4px;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Consolas', monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚀 Quick Integration Guide - New Components</h1>
+  
+  <div class="section">
+    <h2>Overview</h2>
+    <p>This guide shows how to integrate the new Professional Results and OSO References components into <code>mission.html</code>.</p>
+    <p><strong>Time Required:</strong> 5 minutes</p>
+    <p><strong>Difficulty:</strong> Easy (copy-paste)</p>
+  </div>
+
+  <div class="section">
+    <h2>📁 Files You Need</h2>
+    <ul>
+      <li><code>Frontend/Components/professional-results.html</code> ✅ Created</li>
+      <li><code>Frontend/Components/oso-references.html</code> ✅ Created</li>
+      <li><code>Frontend/Pages/mission.html</code> ⚠️ Needs modification</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Step 1️⃣: Add HTML Containers</h2>
+    <div class="step">
+      <p><strong>Location:</strong> In <code>mission.html</code>, after the existing Results <code>&lt;fieldset&gt;</code> (around line 680)</p>
+    </div>
+    
+    <div class="code-block">
+&lt;!-- Existing Results fieldset --&gt;
+&lt;fieldset&gt;
+  &lt;legend data-i18n="missionPlanner.results.title"&gt;Results&lt;/legend&gt;
+  &lt;!-- ... existing result boxes ... --&gt;
+&lt;/fieldset&gt;
+
+&lt;!-- NEW: Professional Results Container --&gt;
+&lt;div id="resultsSection"&gt;&lt;/div&gt;
+
+&lt;!-- NEW: OSO References Container --&gt;
+&lt;div id="ososSection"&gt;&lt;/div&gt;
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Step 2️⃣: Load Components</h2>
+    <div class="step">
+      <p><strong>Location:</strong> In <code>mission.html</code>, inside the <code>&lt;script&gt;</code> section (around line 1800, before <code>&lt;/script&gt;</code>)</p>
+    </div>
+    
+    <div class="code-block">
+// ===== LOAD NEW COMPONENTS =====
+(async function loadComponents() {
+  try {
+    // Load Professional Results
+    const resultsResp = await fetch('/Components/professional-results.html');
+    const resultsHTML = await resultsResp.text();
+    const resultsContainer = document.createElement('div');
+    resultsContainer.innerHTML = resultsHTML;
+    document.getElementById('resultsSection').appendChild(resultsContainer);
+    console.log('[Components] Professional Results loaded ✅');
+
+    // Load OSO References
+    const osoResp = await fetch('/Components/oso-references.html');
+    const osoHTML = await osoResp.text();
+    const osoContainer = document.createElement('div');
+    osoContainer.innerHTML = osoHTML;
+    document.getElementById('ososSection').appendChild(osoContainer);
+    console.log('[Components] OSO References loaded ✅');
+  } catch (err) {
+    console.error('[Components] Load failed:', err);
+  }
+})();
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Step 3️⃣: Update SORA Response Handler</h2>
+    <div class="step">
+      <p><strong>Location:</strong> In the <code>run()</code> function, after successful API response (around line 1470)</p>
+    </div>
+    
+    <div class="code-block">
+// Inside run() function, after resp.ok check:
+if (resp.ok) {
+  status.innerHTML = `&lt;span class="ok"&gt;${window.i18n.t('common.ok')}&lt;/span&gt;`;
+  summary.textContent = data.summary || '';
+  
+  // ... existing code for warnings, GRC, ARC, SAIL ...
+  
+  // <span style="background: #4caf50; padding: 2px 6px; border-radius: 3px;">NEW: Update Professional Results</span>
+  if (typeof window.updateProfessionalResults === 'function') {
+    window.updateProfessionalResults(data, selectedCategory);
+  }
+  
+  // <span style="background: #4caf50; padding: 2px 6px; border-radius: 3px;">NEW: Auto-render OSOs</span>
+  const finalSail = data.sail ?? data.SAIL ?? '-';
+  if (finalSail && finalSail !== '-' && typeof window.renderOSOs === 'function') {
+    window.renderOSOs(finalSail);
+  }
+}
+    </div>
+    
+    <div class="important">
+      <strong>⚠️ Important:</strong> The existing code that updates <code>#initialGRC</code>, <code>#finalGRC</code>, etc. should remain. The new components are <strong>additional</strong> displays.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Step 4️⃣: Test</h2>
+    <ol>
+      <li>Start the backend: <code>cd Backend && dotnet run --project src/Skyworks.Api</code></li>
+      <li>Open: <code>http://localhost:5210/Pages/mission.html</code></li>
+      <li>Select SORA 2.5, fill form, click "Run Evaluation"</li>
+      <li><strong>Expected Results:</strong>
+        <ul>
+          <li>✅ Professional results cards appear below old results</li>
+          <li>✅ Initial → Mitigations → Final flow visible</li>
+          <li>✅ SAIL matrix shows highlighted cell</li>
+          <li>✅ OSO badges appear (click one to test modal)</li>
+        </ul>
+      </li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>📝 Optional: Clean Up Old Results</h2>
+    <p>Once you confirm the new components work, you can optionally hide or remove the old basic results display:</p>
+    
+    <div class="code-block">
+&lt;!-- OLD: Basic Results fieldset --&gt;
+&lt;fieldset style="display: none;"&gt; &lt;!-- Hide old results --&gt;
+  &lt;legend&gt;Results&lt;/legend&gt;
+  &lt;!-- ... --&gt;
+&lt;/fieldset&gt;
+
+&lt;!-- NEW: Professional Results (visible) --&gt;
+&lt;div id="resultsSection"&gt;&lt;/div&gt;
+    </div>
+    
+    <div class="important">
+      <strong>💡 Recommendation:</strong> Keep both for now. Remove old display only after full testing.
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>🐛 Troubleshooting</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <tr style="background: #f5f5f5; font-weight: 600;">
+        <td style="padding: 12px; border: 1px solid #ddd;">Problem</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">Solution</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; border: 1px solid #ddd;">Components don't load</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">Check Console (F12). Verify file paths: <code>/Components/...</code> vs <code>../Components/...</code></td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; border: 1px solid #ddd;">OSOs don't appear</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">Verify <code>window.renderOSOs(finalSail)</code> is called. Check <code>finalSail</code> value (should be "SAIL II", "II", or "2")</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; border: 1px solid #ddd;">SAIL matrix wrong cell</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">Check GRC/ARC values. Matrix expects: GRC (1-7+), ARC ("ARC-a" or "a")</td>
+      </tr>
+      <tr>
+        <td style="padding: 12px; border: 1px solid #ddd;">Translations missing</td>
+        <td style="padding: 12px; border: 1px solid #ddd;">Verify <code>en.json</code> and <code>el.json</code> have new keys. Wait for i18n to load.</td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>✅ Success Indicators</h2>
+    <ul style="line-height: 2;">
+      <li>✅ Console shows: <code>[Components] Professional Results loaded ✅</code></li>
+      <li>✅ Console shows: <code>[Components] OSO References loaded ✅</code></li>
+      <li>✅ Professional results cards visible after SORA run</li>
+      <li>✅ OSO badges grid appears with correct count (e.g., SAIL II = 5 OSOs)</li>
+      <li>✅ Clicking OSO badge opens modal with details</li>
+      <li>✅ SAIL matrix cell highlighted (green)</li>
+      <li>✅ Language switch works (EN ↔ EL)</li>
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>📚 References</h2>
+    <ul>
+      <li><a href="../WEB_PLATFORM_IMPROVEMENTS_SUMMARY.md">Full Improvements Summary</a></li>
+      <li><a href="../../Components/professional-results.html">Professional Results Component</a></li>
+      <li><a href="../../Components/oso-references.html">OSO References Component</a></li>
+      <li>JARUS SORA v2.5 Annex E (OSO Table 14)</li>
+    </ul>
+  </div>
+
+  <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin-top: 32px; text-align: center;">
+    <h2 style="color: #2e7d32; margin: 0 0 8px 0;">🎉 Integration Complete!</h2>
+    <p style="color: #555; margin: 0;">Your web platform now has professional SORA results and comprehensive OSO guidance.</p>
+  </div>
+</body>
+</html>

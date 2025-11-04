@@ -1,0 +1,36 @@
+Scenario,Field,DropdownValues_Exact,How_Set,Notes
+STS-01,Initial GRC,,Not specified by STS doc,JARUS STS-01 δίνει μόνο τελικό GRC=3
+STS-01,Final GRC,3,Fixed,Ρητά ορισμένο
+STS-01,Initial ARC,,Not specified by STS doc,
+STS-01,Final ARC,ARC-b,Fixed,Ρητά ορισμένο (συντηρητική προσέγγιση)
+STS-01,SAIL,II,Fixed,STS ισχύουν μόνο για SAIL II
+STS-02,Initial GRC,3,Fixed,Ρητά: Final GRC = Initial GRC = 3
+STS-02,Final GRC,3,Fixed,Ρητά ορισμένο
+STS-02,Initial ARC,,Not specified by STS doc,
+STS-02,Final ARC,ARC-b,Fixed,Χαμηλή πιθανότητα συνάντησης επανδρωμένων
+STS-02,SAIL,II,Fixed,STS ισχύουν μόνο για SAIL II
+PDRA-S01,Initial GRC,,Not specified by PDRA table,Χρησιμοποιούνται οι τελικές τιμές
+PDRA-S01,Final GRC,3,Fixed,Ρητά στον πίνακα PDRA-S01
+PDRA-S01,Initial ARC,,Not specified by PDRA table,
+PDRA-S01,Final ARC,ARC-b,Fixed,Ρητά: ARC-b ως μέγιστη υπολειμματική
+PDRA-S01,SAIL,II,Fixed,Παράγεται από GRC=3 & ARC-b
+PDRA-S02,Initial GRC,,Not specified by PDRA table,
+PDRA-S02,Final GRC,3,Fixed,Ρητά στον πίνακα PDRA-S02
+PDRA-S02,Initial ARC,,Not specified by PDRA table,
+PDRA-S02,Final ARC,ARC-b,Fixed,Ρητά: ARC-b ως μέγιστη υπολειμματική
+PDRA-S02,SAIL,II,Fixed,Παράγεται από GRC=3 & ARC-b
+PDRA-G01,Initial GRC,,Not specified by PDRA table,
+PDRA-G01,Final GRC,3,Fixed,Ρητά στον πίνακα PDRA-G01
+PDRA-G01,Initial ARC,,Not specified by PDRA table,
+PDRA-G01,Final ARC,ARC-b,Fixed,Ρητά στον πίνακα (uncontrolled airspace <150 m)
+PDRA-G01,SAIL,II,Fixed,Παράγεται από GRC=3 & ARC-b
+PDRA-G02,Initial GRC,,Not specified by PDRA table,
+PDRA-G02,Final GRC,3,Fixed,Ρητά στον πίνακα PDRA-G02
+PDRA-G02,Initial ARC,,Not specified by PDRA table,
+PDRA-G02,Final ARC,ARC-a,Fixed,Ρητά: reserved/segregated airspace -> ARC-a
+PDRA-G02,SAIL,II,Fixed,Παράγεται από GRC=3 & ARC-a
+PDRA-G03,Initial GRC,,Not specified by PDRA table,
+PDRA-G03,Final GRC,3,Fixed,Ρητά στον πίνακα/επεξηγηματικό σημείωμα
+PDRA-G03,Initial ARC,,Not specified by PDRA table,
+PDRA-G03,Final ARC,ARC-a,Fixed,Ρητά για ‘near obstacles’ linear inspections
+PDRA-G03,SAIL,II,Fixed,Παράγεται από GRC=3 & ARC-a

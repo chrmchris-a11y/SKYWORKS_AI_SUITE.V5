@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  
+  <!-- Common API Messages (Greek) -->
+  <data name="RequestBodyRequired" xml:space="preserve">
+    <value>Το σώμα αιτήματος είναι υποχρεωτικό</value>
+  </data>
+  <data name="InvalidSoraVersion" xml:space="preserve">
+    <value>Η SoraVersion πρέπει να είναι '2.0' ή '2.5'</value>
+  </data>
+  <data name="ProcessingError" xml:space="preserve">
+    <value>Παρουσιάστηκε σφάλμα κατά την επεξεργασία</value>
+  </data>
+  
+  <!-- SORA Pipeline Messages (Greek) -->
+  <data name="SoraPipelineDescription" xml:space="preserve">
+    <value>Ολοκληρωμένη Αξιολόγηση Κινδύνου Ειδικών Λειτουργιών σύμφωνα με JARUS SORA 2.0 και 2.5</value>
+  </data>
+  <data name="SoraPipelineName" xml:space="preserve">
+    <value>Ολοκληρωμένη Αξιολόγηση SORA</value>
+  </data>
+  <data name="SoraPipelineStep1" xml:space="preserve">
+    <value>1. Κατηγορία Κινδύνου Εδάφους (GRC): Εγγενής → Μετριασμοί → Τελικός</value>
+  </data>
+  <data name="SoraPipelineStep2" xml:space="preserve">
+    <value>2. Κατηγορία Κινδύνου Αέρα (ARC): Αρχικός → Στρατηγικοί Μετριασμοί → Υπολειπόμενος</value>
+  </data>
+  <data name="SoraPipelineStep3" xml:space="preserve">
+    <value>3. Προσδιορισμός SAIL: Τελικός GRC × Υπολειπόμενος ARC → SAIL I-VI</value>
+  </data>
+  <data name="SoraPipelineStep4" xml:space="preserve">
+    <value>4. TMPR: Υπολειπόμενος ARC → Απαιτήσεις Επίδοσης Τακτικών Μετριασμών</value>
+  </data>
+  <data name="SoraPipelineStep5" xml:space="preserve">
+    <value>5. OSO: SAIL → Απαιτήσεις Στόχων Λειτουργικής Ασφάλειας</value>
+  </data>
+  <data name="SoraPipelineStep6" xml:space="preserve">
+    <value>6. Συμμόρφωση: Επικύρωση OSO + Βαθμολόγηση Κινδύνου</value>
+  </data>
+  
+  <!-- Explanatory Note (Greek) -->
+  <data name="ExplanatoryNoteTitle" xml:space="preserve">
+    <value>Επαλήθευση Επεξηγηματικής Σημείωσης</value>
+  </data>
+  <data name="ExplanatoryNoteDescription" xml:space="preserve">
+    <value>Επαλήθευση συμμόρφωσης SORA έναντι λίστας ελέγχου Επεξηγηματικής Σημείωσης</value>
+  </data>
+  
+  <!-- SAIL Report (Greek) -->
+  <data name="SailReportGenerated" xml:space="preserve">
+    <value>Η αναφορά SAIL δημιουργήθηκε επιτυχώς</value>
+  </data>
+  <data name="SailReportSaved" xml:space="preserve">
+    <value>Η αναφορά αποθηκεύτηκε στο Docs/Compliance/Deliverables</value>
+  </data>
+  
+  <!-- Case Studies (Greek) -->
+  <data name="CaseStudyNotFound" xml:space="preserve">
+    <value>Η μελέτη περίπτωσης δεν βρέθηκε</value>
+  </data>
+  <data name="CaseStudyExecuted" xml:space="preserve">
+    <value>Η μελέτη περίπτωσης εκτελέστηκε επιτυχώς</value>
+  </data>
+</root>

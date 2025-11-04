@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>SORA 2.0 & 2.5 Quick Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 20px auto; padding: 20px; background: #f5f5f5; }
+        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1 { color: #2196F3; border-bottom: 3px solid #2196F3; padding-bottom: 10px; }
+        h2 { color: #666; margin-top: 30px; }
+        .test-section { background: #e3f2fd; padding: 20px; border-radius: 6px; margin: 20px 0; }
+        button { background: #2196F3; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 4px; cursor: pointer; margin: 10px 5px; }
+        button:hover { background: #1976D2; }
+        .result { background: #f9f9f9; padding: 15px; border-left: 4px solid #4CAF50; margin: 10px 0; border-radius: 4px; }
+        .error { background: #ffebee; border-left-color: #f44336; }
+        .success { background: #e8f5e9; border-left-color: #4CAF50; }
+        pre { background: #263238; color: #aed581; padding: 15px; border-radius: 4px; overflow-x: auto; }
+        .status { font-weight: bold; font-size: 18px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 SORA 2.0 & 2.5 Quick Test</h1>
+        <p>Testing Python API on <strong>http://localhost:8001</strong></p>
+        
+        <div class="test-section">
+            <h2>1️⃣ SORA 2.0 Test</h2>
+            <p>Tests the M2 fix (Low instead of Medium) per JAR_doc_06 Table 3</p>
+            <button onclick="testSora20()">▶ Run SORA 2.0 Test</button>
+            <div id="sora20-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>2️⃣ SORA 2.5 Test</h2>
+            <p>Tests all 5 new ARC fields with strategic mitigations</p>
+            <button onclick="testSora25()">▶ Run SORA 2.5 Test</button>
+            <div id="sora25-result"></div>
+        </div>
+    </div>
+
+    <script>
+        async function testSora20() {
+            const resultDiv = document.getElementById('sora20-result');
+            resultDiv.innerHTML = '<p>⏳ Running SORA 2.0 test...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8001/api/grc/calculate-v20', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        initial_grc: 5,
+                        m1: 1,
+                        m2: "Low",
+                        m3: 1
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <div class="status">✅ SORA 2.0 Test PASSED</div>
+                            <p><strong>Initial GRC:</strong> ${data.initial_grc}</p>
+                            <p><strong>M1:</strong> ${data.m1}</p>
+                            <p><strong>M2:</strong> ${data.m2} (Value: ${data.m2_value})</p>
+                            <p><strong>M3:</strong> ${data.m3}</p>
+                            <p><strong>Final GRC:</strong> ${data.final_grc}</p>
+                            <p><strong>Reference:</strong> ${data.reference}</p>
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <div class="status">❌ Test Failed</div>
+                            <p>${JSON.stringify(data)}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <div class="status">❌ Connection Error</div>
+                        <p>${error.message}</p>
+                        <p>Make sure Python API is running on port 8001</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testSora25() {
+            const resultDiv = document.getElementById('sora25-result');
+            resultDiv.innerHTML = '<p>⏳ Running SORA 2.5 test...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8001/api/sora/complete-v25', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        operational_volume: {
+                            max_altitude: 120,
+                            area_size_km2: 5.0,
+                            in_u_space_airspace: true
+                        },
+                        traffic_density: "Low",
+                        arc_inputs_25: {
+                            u_space_services_available: true,
+                            traffic_density_data_source: "Empirical",
+                            airspace_containment: "Operational",
+                            temporal_segregation: true,
+                            spatial_segregation: false
+                        },
+                        grc_inputs: {
+                            population_density: "Low",
+                            sheltering: "High",
+                            m1: 0,
+                            m3: 0
+                        },
+                        category: "SORA-2.5"
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <div class="status">✅ SORA 2.5 Test PASSED</div>
+                            <p><strong>Initial GRC:</strong> ${data.initial_grc} → <strong>Final GRC:</strong> ${data.final_grc}</p>
+                            <p><strong>Initial ARC:</strong> ${data.initial_arc} → <strong>Residual ARC:</strong> ${data.residual_arc}</p>
+                            <p><strong>SAIL:</strong> ${data.sail}</p>
+                            <p><strong>Strategic Mitigations Applied:</strong></p>
+                            <ul>
+                                ${data.strategic_mitigations.map(m => `<li>${m}</li>`).join('')}
+                            </ul>
+                            <p><strong>Reference:</strong> ${data.reference}</p>
+                        </div>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <div class="status">❌ Test Failed</div>
+                            <p>${JSON.stringify(data)}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <div class="status">❌ Connection Error</div>
+                        <p>${error.message}</p>
+                        <p>Make sure Python API is running on port 8001</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

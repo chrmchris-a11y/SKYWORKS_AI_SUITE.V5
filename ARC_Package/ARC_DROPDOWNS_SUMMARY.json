@@ -1,0 +1,81 @@
+{
+  "schema_version": "1.0",
+  "generated_utc": "2025-10-30T09:38:15.591657Z",
+  "arc_dropdowns": {
+    "common": {
+      "operation_type": [
+        "VLOS",
+        "EVLOS",
+        "BVLOS"
+      ],
+      "airspace_classes": [
+        "Class G",
+        "Class E",
+        "Class D",
+        "Class C",
+        "CTR",
+        "TMA",
+        "TIZ",
+        "ATZ",
+        "RMZ",
+        "TMZ"
+      ],
+      "u_space": [
+        "None",
+        "U-space (if applicable)"
+      ],
+      "proximity_aerodrome": [
+        "Inside CTR/TMA",
+        "Near CTR/TMA (adjacent)",
+        "Outside CTR/TMA"
+      ],
+      "air_traffic_density": [
+        "Very High (5)",
+        "High (4)",
+        "Medium (3)",
+        "Low (2)",
+        "Very Low (1)"
+      ],
+      "time_of_operation": [
+        "Day",
+        "Night",
+        "Off-peak window"
+      ]
+    },
+    "sora20": {
+      "strategic_mitigations": [
+        "Airspace organisation/service arrangements",
+        "Operational limitation (Boundary)",
+        "Operational limitation (Chronology / short exposure)",
+        "Procedural separation / ATS coordination",
+        "Geo-awareness / Geofencing constraints"
+      ]
+    },
+    "sora25": {
+      "strategic_mitigations_annex_c": [
+        "Airspace design / segregation",
+        "Operational limitation (Boundary)",
+        "Operational limitation (Chronology / short exposure)",
+        "Procedural / Service arrangements with ATS/ANSP",
+        "Time-/Area-based density reduction (with data)"
+      ],
+      "airspace_classes_extended": [
+        "Class G",
+        "Class E",
+        "Class D",
+        "Class C",
+        "CTR",
+        "TMA",
+        "TIZ",
+        "ATZ",
+        "RMZ",
+        "TMZ",
+        "U-space"
+      ]
+    }
+  },
+  "outputs": [
+    "initial_arc",
+    "residual_arc"
+  ]
+}

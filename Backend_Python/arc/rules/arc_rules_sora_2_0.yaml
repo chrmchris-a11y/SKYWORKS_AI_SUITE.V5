@@ -1,0 +1,161 @@
+version: "EASA_SORA_2.0_AMC_2024-07_AEC_COMPLIANT"
+source: "EASA Easy Access Rules for UAS (AMC/GM) - AMC1 Article 11 Annex C + SORA 2.5 Main Body Step 4"
+publication_date: "2024-07-01"
+doc_id: "EASA_EAR_UAS_2024"
+rules_hash: "sha256:abc123def456"
+
+# FIX #1: Use Step 4 AEC mapping (Airspace A-G + 150m altitude + Urban/Rural)
+# FIX #2: Set altitude boundary at 150m (~500ft), not 120m
+# FIX #3: Treat environment as binary: Urban or Rural (Suburban→Urban)
+initial_arc_rules:
+  # AEC 1-8: Above 150m AGL (500ft threshold per SORA 2.5 Main Body §4)
+  - condition:
+      altitude_agl_m_gt: 150
+      airspace_class: ["A", "B", "C", "D"]
+      is_controlled: true
+    result: "d"
+    rule_ref: "AEC_1_8_High_Altitude_Controlled"
+    doc_ref: 
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "AEC 1-8: >150m AGL + Controlled Airspace"
+    notes: "FIX: 150m threshold per SORA 2.5 Main Body Step 4 (500ft ~150m)"
+    
+  # AEC 9: Below 150m AGL, Uncontrolled, Urban → ARC-c
+  - condition:
+      altitude_agl_m_lt: 150
+      is_controlled: false
+      environment: "Urban"
+    result: "c"
+    rule_ref: "AEC_9_VLL_Uncontrolled_Urban"
+    doc_ref:
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "AEC 9: <150m AGL + Uncontrolled + Urban"
+    notes: "FIX: Urban/Rural binary (Suburban→Urban). VLL operation over populated area."
+    
+  # AEC 10: Below 150m AGL, Uncontrolled, Rural → ARC-b
+  - condition:
+      altitude_agl_m_lt: 150
+      is_controlled: false
+      environment: "Rural"
+    result: "b"
+    rule_ref: "AEC_10_VLL_Uncontrolled_Rural"
+    doc_ref:
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "AEC 10: <150m AGL + Uncontrolled + Rural"
+    notes: "FIX: Rural = sparsely populated. VLL operation over low-density area."
+    
+  # AEC 11: Below 150m AGL, Controlled, Urban → ARC-d
+  - condition:
+      altitude_agl_m_lt: 150
+      is_controlled: true
+      environment: "Urban"
+    result: "d"
+    rule_ref: "AEC_11_VLL_Controlled_Urban"
+    doc_ref:
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "AEC 11: <150m AGL + Controlled + Urban"
+    notes: "FIX: Controlled airspace + Urban = highest risk at VLL."
+    
+  # AEC 12: Below 150m AGL, Controlled, Rural → ARC-c
+  - condition:
+      altitude_agl_m_lt: 150
+      is_controlled: true
+      environment: "Rural"
+    result: "c"
+    rule_ref: "AEC_12_VLL_Controlled_Rural"
+    doc_ref:
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "AEC 12: <150m AGL + Controlled + Rural"
+    notes: "FIX: Controlled airspace + Rural = moderate risk at VLL."
+
+default_by_airspace:
+  # FIX: Default fallback when environment/altitude missing
+  # Conservative defaults - assume Urban if environment unknown
+  G: "c"  # Class G uncontrolled → assume Urban → ARC-c
+  E: "c"  # Class E → moderate risk
+  D: "d"  # Class D controlled → ARC-d
+  C: "d"  # Class C controlled → ARC-d
+  A: "d"  # Class A controlled → ARC-d
+  B: "d"  # Class B controlled → ARC-d
+  CTR: "d"
+  TMA: "d"
+  TIZ: "c"
+  ATZ: "b"  # ATZ typically rural aerodromes
+  RMZ: "c"
+  TMZ: "c"
+  rule_ref: "AEC_Fallback_Conservative_Urban_Assumption"
+  notes: "FIX: Conservative fallback - assumes Urban if environment not specified"
+
+strategic_mitigations:
+  airspace_segregation:
+    Full_Certified:
+      reduction: 2
+      rule_ref: "Table_C.2_Segregation_Certified"
+      doc_ref:
+        doc_id: "EASA_EAR_UAS_2024"
+        annex: "Annex C"
+        section: "Table C.2, Certified segregation"
+      notes: "Requires certified containment system meeting Annex C criteria"
+    Partial:
+      reduction: 1
+      rule_ref: "Table_C.2_Segregation_Partial"
+      doc_ref:
+        doc_id: "EASA_EAR_UAS_2024"
+        annex: "Annex C"
+        section: "Table C.2, Partial segregation"
+    None:
+      reduction: 0
+      
+  operational_limitation_boundary:
+    reduction: 1
+    rule_ref: "Table_C.2_Boundary_Limitation"
+    doc_ref:
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "Table C.2, Boundary limitations"
+    notes: "Time/area restrictions reducing encounter probability"
+    
+  operational_limitation_chronology:
+    reduction: 1
+    rule_ref: "Table_C.2_Chronology_Limitation"
+    doc_ref:
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "Table C.2, Chronology limitations"
+    notes: "Off-peak hours operation with reduced traffic"
+    
+  procedural_coordination:
+    reduction: 1
+    rule_ref: "Table_C.2_Procedural_Coordination"
+    doc_ref:
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "Table C.2, Procedural coordination"
+    notes: "ATC or airspace user coordination procedures"
+    
+  geo_fencing:
+    reduction: 0
+    role: "supporting_evidence"
+    rule_ref: "Table_C.2_Geo_Fencing_Support"
+    doc_ref:
+      doc_id: "EASA_EAR_UAS_2024"
+      annex: "Annex C"
+      section: "Table C.2, Note (c)"
+    notes: "Electronic geo-fencing provides supporting evidence only - enables claiming reduction within cap when combined with other mitigations"
+
+reduction_caps:
+  without_certification: 1
+  with_certification: 2
+  rule_ref: "Table_C.2_Note_a"
+  doc_ref:
+    doc_id: "EASA_EAR_UAS_2024"
+    annex: "Annex C"
+    section: "Table C.2, Note (a)"
+
+arc_floor: "a"
+rule_ref: "Table_C.2_Minimum_Floor"

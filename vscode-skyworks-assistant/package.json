@@ -1,0 +1,43 @@
+{
+  "name": "skyworks-assistant",
+  "displayName": "Skyworks Assistant",
+  "description": "Auto-onboarding + session summary for SKYWORKS workspace. Shows ready message on startup and writes summary on shutdown.",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.93.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chrmchris-a11y/SKYWORKS_AI_SUITE.V5"
+  },
+  "license": "MIT",
+  "categories": ["Other"],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "skyworks.assistant.openSummary",
+        "title": "Skyworks: Open Session Summary"
+      },
+      {
+        "command": "skyworks.assistant.readyMessage",
+        "title": "Skyworks: Ready Message"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "node ./node_modules/typescript/bin/tsc -p .",
+    "watch": "node ./node_modules/typescript/bin/tsc -w -p .",
+    "package": "npx --yes @vscode/vsce package --no-yarn"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2",
+    "@vscode/vsce": "^3.0.0",
+    "@types/vscode": "^1.93.0"
+  },
+  "dependencies": {}
+}

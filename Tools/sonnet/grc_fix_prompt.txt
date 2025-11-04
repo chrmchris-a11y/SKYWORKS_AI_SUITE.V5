@@ -1,0 +1,72 @@
+You are Claude Sonnet 4. Your task is to FIX a quantitative Ground Risk Class (GRC) model for JARUS SORA 2.5.
+
+Repository context (paths and components):
+- Python service: Backend_Python (FastAPI)
+- GRC calculator class: Backend_Python\grc\calculators\grc_calculator.py (class GRCCalculator25)
+- Quantitative model YAML: Backend_Python\grc\rules\grc_rules_sora_2_5.yaml (quantitative_model section)
+- .NET orchestrator: Backend\src\Skyworks.Core\Services\Orchestration\SORAOrchestrationService.cs
+- .NET Python client: Backend\src\Skyworks.Core\Services\Python\PythonCalculationClient.cs
+- Authoritative tests: Backend\tests\Skyworks.Api.Tests\Orchestration\SORAAuthoritative_E2E_Tests.cs and TestData\SORAAuthoritative_TestCases.v2.json
+
+What changed already (done):
+- Added strict 250g micro‑UAS rule: mass<=0.25 AND speed<=25 m/s AND dimension<1m
+- Ensured request fields align: .NET now sends max_dimension_m, max_characteristic_dimension_m, and max_speed_ms when present
+- Python endpoint now requires dimension (no default 0.1m), falls back to max_dimension_m if needed
+- SAIL mapping uses official SORA 2.5 matrix, no custom override for (6, ARC-b)
+
+Current YAML (post-initial calibration):
+quantitative_model:
+  kinetic_factor: 0.3
+  dimension_exponent: 2
+  speed_exponent: 2
+  population_factor: 0.001
+  exposure_band_weights: [0.5, 1.0, 4.0, 8.0, 12.0, 16.0]
+  risk_score_mapping:
+    - range: [0, 800]   ; igrc: 1
+    - range: [800, 1800]; igrc: 2
+    - range: [1800, 3500]; igrc: 3
+    - range: [3500, 5000]; igrc: 4
+    - range: [5000, 7500]; igrc: 5
+    - range: [7500, 10000]; igrc: 6
+    - range: [10000, 15000]; igrc: 7
+    - range: [15000, 999999]; igrc: 8
+
+Authoritative failing tests and REQUIRED targets:
+1) SORA25_002 (Urban, sheltering Low)
+   input: dimension=3.0 m, speed=20 m/s, populationDensity=3000 /km²
+   expected: iGRC=6, fGRC=5, SAIL=IV
+   current: iGRC=6 (OK), fGRC=5 (OK)
+   Keep this invariant.
+
+2) SORA25_007 (Controlled airspace D, 750 ft AGL)
+   input: dimension=3.0 m, speed=22 m/s, populationDensity=250 /km²
+   expected: iGRC=5, fGRC=5, SAIL=V
+   current: iGRC=4 (WRONG by -1), SAIL=IV
+
+Mathematical model used by code (confirmed):
+- risk_score = kinetic_factor * (dimension_m ^ 2) * (speed_mps ^ 2) * exposure_weight
+- exposure_weight taken from exposure_band_weights by band index determined from population_density_bands:
+  bands: <5, <50, <500, <5000, <50000, >=50000 (strict < for thresholds)
+
+Verified calculations with current YAML:
+- For SORA25_002: KE = 0.3*9*400 = 1080; population 3000 → band index 3 → weight 8.0; risk = 1080*8.0 = 8640 → iGRC=6 (OK)
+- For SORA25_007: KE = 0.3*9*484 = 1306.8; population 250 → band index 2 → weight 4.0; risk = 1306.8*4.0 = 5227.2
+  This should map to iGRC 5 (range [5000, 7500]) but test output shows iGRC 4. Root cause suspected: band lookup or boundary bucket in mapping.
+
+Your job:
+- Provide a precise updated quantitative_model section that GUARANTEES:
+  • SORA25_002 → iGRC=6
+  • SORA25_007 → iGRC=5
+- Keep exponents fixed at 2.
+- Prefer minimal deltas: adjust either exposure_band_weights (w2, w3) and/or risk_score_mapping bucket boundaries so the above two land in exact buckets.
+- Do not change population_density_bands structure.
+- Do not weaken safety philosophy; be conservative elsewhere.
+
+Deliverables (exact, ready to paste):
+1) Full YAML block for quantitative_model with exact numeric arrays and ranges.
+2) Show both calculations with your numbers:
+   - 002: K*9*400*w3 = risk → which range → iGRC 6
+   - 007: K*9*484*w2 = risk → which range → iGRC 5
+3) Brief note: why the previous iGRC=4 occurred for 007 and how the proposed boundaries/weights eliminate that.
+
+Return only the YAML block and the two worked calculations.

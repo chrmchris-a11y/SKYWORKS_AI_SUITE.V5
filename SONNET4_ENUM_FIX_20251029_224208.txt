@@ -1,0 +1,325 @@
+Looking at your detailed problem description, I can see the issue clearly. The backend is shutting down immediately due to unhandled exceptions during JSON deserialization. Here's the complete fix:
+
+## ROOT CAUSE DIAGNOSIS
+
+The immediate shutdown occurs because:
+1. ASP.NET Core receives malformed JSON (from its perspective)
+2. Model binding fails during deserialization of string enums
+3. Unhandled exception causes application termination
+4. Individual `[JsonConverter]` attributes aren't sufficient without proper global configuration
+
+## COMPLETE SOLUTION
+
+### 1. Fix Program.cs - Global JSON Configuration
+
+**File: `Backend/src/Skyworks.Api/Program.cs`**
+
+```csharp
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        // Enable string enum conversion globally
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        
+        // Additional options for better compatibility
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        
+        // Handle null values gracefully
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        
+        // Allow trailing commas and comments (helpful for debugging)
+        options.JsonSerializerOptions.AllowTrailingCommas = true;
+        options.JsonSerializerOptions.ReadCommentHandling = JsonCommentHandling.Skip;
+    });
+
+// Add API Explorer for Swagger
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Register your services
+builder.Services.AddScoped<ISORAOrchestrationService, SORAOrchestrationService>();
+
+// Add CORS if needed
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowLocalhost", policy =>
+    {
+        policy.WithOrigins("http://localhost:5210")
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseCors("AllowLocalhost");
+app.UseStaticFiles(); // For serving Frontend/ files
+app.UseRouting();
+app.MapControllers();
+
+app.Run();
+```
+
+### 2. Create Custom ARC Rating Converter
+
+**File: `Backend/src/Skyworks.Core/JsonConverters/ARCRatingConverter.cs`** (create new file)
+
+```csharp
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Skyworks.Core.JsonConverters;
+
+public class ARCRatingConverter : JsonConverter<ARCRating>
+{
+    public override ARCRating Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.String)
+        {
+            throw new JsonException($"Expected string for ARCRating, got {reader.TokenType}");
+        }
+
+        string value = reader.GetString()!;
+        
+        return value.ToUpperInvariant() switch
+        {
+            "ARC-A" => ARCRating.ARC_A,
+            "ARC-B" => ARCRating.ARC_B,
+            "ARC-C" => ARCRating.ARC_C,
+            "ARC-D" => ARCRating.ARC_D,
+            _ => throw new JsonException($"Unknown ARCRating value: {value}")
+        };
+    }
+
+    public override void Write(Utf8JsonWriter writer, ARCRating value, JsonSerializerOptions options)
+    {
+        string stringValue = value switch
+        {
+            ARCRating.ARC_A => "ARC-a",
+            ARCRating.ARC_B => "ARC-b", 
+            ARCRating.ARC_C => "ARC-c",
+            ARCRating.ARC_D => "ARC-d",
+            _ => throw new JsonException($"Unknown ARCRating value: {value}")
+        };
+        
+        writer.WriteStringValue(stringValue);
+    }
+}
+```
+
+### 3. Update ARCRating Enum
+
+**File: `Backend/src/Skyworks.Core/Models/GRC/ARCRating.cs`**
+
+```csharp
+using System.Text.Json.Serialization;
+using Skyworks.Core.JsonConverters;
+
+namespace Skyworks.Core.Models.GRC;
+
+/// <summary>
+/// Air Risk Class ratings for SORA assessment
+/// </summary>
+[JsonConverter(typeof(ARCRatingConverter))]
+public enum ARCRating
+{
+    ARC_A = 1,
+    ARC_B = 2,
+    ARC_C = 3,
+    ARC_D = 4
+}
+```
+
+### 4. Verify All Enum Converters
+
+Make sure these enums have the converter attribute:
+
+**RobustnessLevel** (already fixed):
+```csharp
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum RobustnessLevel
+{
+    None = 0,
+    Low = 1,
+    Medium = 2,
+    High = 3
+}
+```
+
+**OperationalScenario** (already fixed):
+```csharp
+[JsonConverter(typeof(JsonStringEnumConverter))]
+public enum OperationalScenario
+{
+    ControlledGroundArea = 1,
+    VLOS_SparselyPopulated = 2,
+    BVLOS_SparselyPopulated = 3,
+    VLOS_Populated = 4,
+    BVLOS_Populated = 5,
+    VLOS_GatheringOfPeople = 6,
+    BVLOS_GatheringOfPeople = 7
+}
+```
+
+### 5. Enhanced Error Handling in Controller
+
+**File: `Backend/src/Skyworks.Api/Controllers/SORAController.cs`**
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+
+namespace Skyworks.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class SORAController : ControllerBase
+{
+    private readonly ISORAOrchestrationService _soraService;
+    private readonly ILogger<SORAController> _logger;
+
+    public SORAController(ISORAOrchestrationService soraService, ILogger<SORAController> logger)
+    {
+        _soraService = soraService;
+        _logger = logger;
+    }
+
+    [HttpPost("complete")]
+    public async Task<IActionResult> Complete([FromBody] SORACompleteRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("Received SORA calculation request for version {Version}", request?.SoraVersion);
+            
+            if (request == null)
+            {
+                _logger.LogWarning("Request body was null or could not be deserialized");
+                return BadRequest("Invalid request body");
+            }
+
+            var result = await _soraService.ProcessSORACalculationAsync(request);
+            
+            _logger.LogInformation("SORA calculation completed successfully");
+            return Ok(result);
+        }
+        catch (JsonException jsonEx)
+        {
+            _logger.LogError(jsonEx, "JSON deserialization error: {Message}", jsonEx.Message);
+            return BadRequest($"Invalid JSON format: {jsonEx.Message}");
+        }
+        catch (ArgumentException argEx)
+        {
+            _logger.LogError(argEx, "Invalid argument: {Message}", argEx.Message);
+            return BadRequest($"Invalid input: {argEx.Message}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during SORA calculation: {Message}", ex.Message);
+            return StatusCode(500, "An internal server error occurred");
+        }
+    }
+}
+```
+
+## ADDITIONAL ENUM FIXES NEEDED
+
+Check these files and add `[JsonConverter(typeof(JsonStringEnumConverter))]` if missing:
+
+1. **MitigationType** - if it exists and used in JSON
+2. **SORAVersion** - if it's an enum rather than string
+3. Any other enums in request/response models
+
+## VALIDATION TESTING
+
+### Test 1: Direct API Call
+```powershell
+# PowerShell test
+$body = @{
+    SoraVersion = "2.0"
+    GroundRisk = @{
+        Scenario_V2_0 = "VLOS_Populated"
+        MTOM_kg = 32.0
+        MaxCharacteristicDimension = 1.0
+        Mitigations = @(
+            @{ Type = "M1"; Robustness = "Medium" }
+            @{ Type = "M2"; Robustness = "High" }
+        )
+        IsControlledGroundArea = $false
+    }
+    AirRisk = @{
+        ExplicitARC = "ARC-b"
+        StrategicMitigations = @()
+    }
+} | ConvertTo-Json -Depth 5
+
+Invoke-RestMethod -Uri "http://localhost:5210/api/sora/complete" -Method POST -Body $body -ContentType "application/json"
+```
+
+### Test 2: Browser Console Test
+```javascript
+// Paste this in browser console at http://localhost:5210
+fetch('/api/sora/complete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+        SoraVersion: "2.0",
+        GroundRisk: {
+            Scenario_V2_0: "VLOS_Populated",
+            MTOM_kg: 32.0,
+            MaxCharacteristicDimension: 1.0,
+            Mitigations: [
+                { Type: "M1", Robustness: "Medium" },
+                { Type: "M2", Robustness: "High" }
+            ],
+            IsControlledGroundArea: false
+        },
+        AirRisk: {
+            ExplicitARC: "ARC-b",
+            StrategicMitigations: []
+        }
+    })
+})
+.then(response => response.json())
+.then(data => console.log('Success:', data))
+.catch(error => console.error('Error:', error));
+```
+
+## DEPLOYMENT STEPS
+
+1. **Apply all code changes** above
+2. **Rebuild solution:**
+   ```powershell
+   dotnet build Skyworks.sln --configuration Debug
+   ```
+3. **Run backend:**
+   ```powershell
+   cd Backend/src/Skyworks.Api
+   dotnet run
+   ```
+4. **Verify startup logs** - should show listening message without immediate shutdown
+5. **Test API endpoint** using PowerShell or browser console
+6. **Test Mission Planner UI** - full end-to-end workflow
+
+## WHY THIS WILL WORK
+
+1. **Global JsonStringEnumConverter** handles all string→enum conversions by default
+2. **Individual [JsonConverter] attributes** provide explicit control where needed
+3. **Custom ARCRatingConverter** handles the hyphenated format correctly
+4. **Enhanced error handling** prevents unhandled exceptions from crashing the app
+5. **Comprehensive logging** helps diagnose any remaining issues
+
+The key insight is that **both global configuration AND individual attributes** are needed - the global config provides the foundation, while individual converters handle special cases.

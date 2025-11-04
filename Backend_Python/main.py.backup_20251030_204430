@@ -1,0 +1,790 @@
+"""
+SKYWORKS AI SUITE - FastAPI Main Entry Point
+Python microservice for SORA calculations
+"""
+
+import logging
+from typing import Any, Dict, List
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
+import json
+
+from models.sora_models import (
+    GRCRequest_2_0,
+    GRCRequest_2_5,
+    GRCResponse,
+    ARCRequest_2_0,
+    ARCRequest_2_5,
+    ARCResponse,
+    SAILRequest,
+    SAILResponse,
+)
+from calculations.grc_calculator import GRCCalculator
+from calculations.arc_calculator import ARCCalculator
+from calculations.sail_calculator import SAILCalculator
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ===== SORA 2.0 Table 2 - MTOM-based Implementation =====
+class SORAv2_0_Table2:
+    """
+    SORA 2.0 MTOM-based Table 2 Implementation
+    Source: EASA AMC1 UAS.OPEN.040/050/060
+    Structure: 5×4 matrix (MTOM categories × Population density)
+    """
+    
+    # SORA 2.0 Initial GRC Matrix (MTOM-based)
+    # Population Density →  ≤1/km²  ≤500   ≤10k   >10k
+    # MTOM Category ↓      (Cat 0) (Cat 1)(Cat 2)(Cat 3)
+    IGRC_MATRIX = [
+        [1, 2, 3, 4],  # Category 0 (<0.25kg)
+        [1, 2, 4, 5],  # Category 1 (0.25-1kg)  
+        [2, 3, 5, 6],  # Category 2 (1-25kg)
+        [3, 4, 6, 7],  # Category 3 (25-150kg)
+        [4, 5, 7, 8]   # Category 4 (>150kg)
+    ]
+    
+    @staticmethod
+    def get_mtom_category(mtom_kg: float) -> int:
+        """Get MTOM category per SORA 2.0"""
+        if mtom_kg < 0.25:
+            return 0
+        elif mtom_kg < 1:
+            return 1
+        elif mtom_kg < 25:
+            return 2
+        elif mtom_kg < 150:
+            return 3
+        else:
+            return 4
+    
+    @staticmethod
+    def get_population_category(population_density: int) -> int:
+        """Get population density category per SORA 2.0"""
+        if population_density <= 1:
+            return 0  # Controlled ground area
+        elif population_density <= 500:
+            return 1  # Sparsely populated
+        elif population_density <= 10000:
+            return 2  # Moderately populated  
+        else:
+            return 3  # High density populated (>10k/km²)
+    
+    @staticmethod
+    def get_column_floor(pop_category: int) -> int:
+        """
+        Get column floor (minimum GRC) for M1 floor cap rule
+        Per EASA Table 3 note d: M1 cannot reduce GRC below column minimum
+        
+        Column floors from Table 2:
+        - Pop Cat 0 (Controlled): floor = 1
+        - Pop Cat 1 (Sparsely): floor = 2  
+        - Pop Cat 2 (Moderately): floor = 3
+        - Pop Cat 3 (High Density): floor = 4
+        """
+        column_floors = [1, 2, 3, 4]  # Minimum GRC per population category
+        return column_floors[pop_category] if 0 <= pop_category < len(column_floors) else 1
+    
+    @staticmethod
+    def calculate_initial_grc(mtom_kg: float, population_density: int) -> Dict[str, Any]:
+        """Calculate initial GRC using SORA 2.0 Table 2"""
+        mtom_category = SORAv2_0_Table2.get_mtom_category(mtom_kg)
+        pop_category = SORAv2_0_Table2.get_population_category(population_density)
+        
+        initial_grc = SORAv2_0_Table2.IGRC_MATRIX[mtom_category][pop_category]
+        
+        return {
+            "initial_grc": initial_grc,
+            "mtom_category": mtom_category,
+            "population_category": pop_category,
+            "calculation_method": "SORA_2_0_TABLE_2",
+            "debug_info": {
+                "mtom_kg": mtom_kg,
+                "population_density": population_density,
+                "matrix_lookup": f"MTOM_Cat_{mtom_category} × Pop_Cat_{pop_category} = {initial_grc}"
+            }
+        }
+
+
+# ===== JARUS SORA 2.5 Table 2 - Dimension+Speed-based Implementation =====
+class JARUSSORAv2_5_Table2:
+    """
+    JARUS SORA 2.5 Dimension+Speed-based Table 2 Implementation
+    Source: JAR-DEL-SRM-SORA-MB-2.5, Section 2.3, Table 2
+    Structure: 7×5 matrix (Population density × UA dimension+speed)
+    """
+    
+    # JARUS SORA 2.5 Initial GRC Matrix (Dimension+Speed-based)
+    IGRC_MATRIX = [
+        [1, 1, 2, 3, 3],   # Row 0: Controlled area
+        [2, 3, 4, 5, 6],   # Row 1: <5 ppl/km²
+        [3, 4, 5, 6, 7],   # Row 2: ≥5 and <50
+        [4, 5, 6, 7, 8],   # Row 3: ≥50 and <500
+        [5, 6, 7, 8, 9],   # Row 4: ≥500 and <5,000
+        [6, 7, 8, 9, 10],  # Row 5: ≥5,000 and <50,000
+        [7, 8, -1, -1, -1] # Row 6: ≥50,000 (grey cells = out of scope)
+    ]
+    
+    @staticmethod
+    def get_dimension_speed_category(dimension_m: float, speed_ms: float) -> int:
+        """Get UA dimension+speed category per JARUS SORA 2.5"""
+        if dimension_m <= 1 and speed_ms <= 25:
+            return 0  # Small
+        elif dimension_m <= 3 and speed_ms <= 35:
+            return 1  # Medium
+        elif dimension_m <= 8 and speed_ms <= 75:
+            return 2  # Large
+        elif dimension_m <= 20 and speed_ms <= 120:
+            return 3  # Very Large
+        else:
+            return 4  # Extra Large
+    
+    @staticmethod
+    def get_population_category(population_density: int) -> int:
+        """Get population density category per JARUS SORA 2.5"""
+        if population_density < 5:
+            return 1  # Remote
+        elif population_density < 50:
+            return 2  # Lightly populated
+        elif population_density < 500:
+            return 3  # Sparsely populated
+        elif population_density < 5000:
+            return 4  # Suburban
+        elif population_density < 50000:
+            return 5  # High density metro
+        else:
+            return 6  # Assemblies of people
+    
+    @staticmethod
+    def calculate_initial_grc(dimension_m: float, speed_ms: float, 
+                            population_density: int, mtom_kg: float = None) -> Dict[str, Any]:
+        """Calculate initial GRC using JARUS SORA 2.5 Table 2"""
+        
+        # Special rule: ≤250g MTOM AND ≤25m/s → Always iGRC=1
+        if mtom_kg and mtom_kg <= 0.25 and speed_ms <= 25:
+            return {
+                "initial_grc": 1,
+                "dimension_speed_category": 0,
+                "population_category": JARUSSORAv2_5_Table2.get_population_category(population_density),
+                "calculation_method": "JARUS_SORA_2_5_SPECIAL_RULE",
+                "special_rule_applied": "≤250g AND ≤25m/s override",
+                "debug_info": {
+                    "dimension_m": dimension_m,
+                    "speed_ms": speed_ms,
+                    "population_density": population_density,
+                    "mtom_kg": mtom_kg
+                }
+            }
+        
+        dim_speed_category = JARUSSORAv2_5_Table2.get_dimension_speed_category(dimension_m, speed_ms)
+        pop_category = JARUSSORAv2_5_Table2.get_population_category(population_density)
+        
+        # Check for grey cells (out of scope)
+        if pop_category == 6 and dim_speed_category >= 2:
+            return {
+                "initial_grc": -1,
+                "error": "OUT_OF_SORA_2_5_SCOPE",
+                "message": "Large UA over assemblies of people (≥50,000) is out of SORA 2.5 scope",
+                "dimension_speed_category": dim_speed_category,
+                "population_category": pop_category,
+                "calculation_method": "JARUS_SORA_2_5_GREY_CELL"
+            }
+        
+        initial_grc = JARUSSORAv2_5_Table2.IGRC_MATRIX[pop_category][dim_speed_category]
+        
+        return {
+            "initial_grc": initial_grc,
+            "dimension_speed_category": dim_speed_category,
+            "population_category": pop_category,
+            "calculation_method": "JARUS_SORA_2_5_TABLE_2",
+            "debug_info": {
+                "dimension_m": dimension_m,
+                "speed_ms": speed_ms,
+                "population_density": population_density,
+                "mtom_kg": mtom_kg,
+                "matrix_lookup": f"Pop_Cat_{pop_category} × DimSpeed_Cat_{dim_speed_category} = {initial_grc}"
+            }
+        }
+
+
+# Keep backward compatibility alias
+JARUSSORATable2 = SORAv2_0_Table2
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# MITIGATION VALUE TABLES (JARUS OFFICIAL VALUES)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# SORA 2.0 Mitigation Values per EASA Easy Access Rules Table 3
+# Source: EASA Easy Access Rules for Unmanned Aircraft Systems (Table 3 + notes d,e,f)
+# CRITICAL: M3 has +1 penalty when None/Low (not validated ERP)
+SORA_20_MITIGATIONS = {
+    "M1_strategic": {
+        "None": 0,
+        "Low": -1,
+        "Medium": -2, 
+        "High": -4  # ✅ FIXED: Was -2, now -4 per EASA Table 3
+    },
+    "M2_impact": {
+        "None": 0,
+        "Low": -1,  # ✅ FIXED: Added Low level
+        "Medium": -1,
+        "High": -2
+    },
+    "M3_erp": {
+        "None": +1,    # ✅ FIXED: +1 penalty when no ERP
+        "Low": +1,     # ✅ FIXED: +1 penalty when ERP not validated
+        "Medium": 0,   # ✅ FIXED: 0 when ERP partially validated
+        "High": -1     # ✅ FIXED: -1 when ERP fully validated & effective
+    }
+}
+
+# SORA 2.5 Mitigation Values per JARUS SORA 2.5 Annex C (Table C-1 to C-4)
+# CRITICAL: Many "N/A" cells mean combination is INVALID (not 0!)
+# M1A: None/Low/Medium/High → 0/-1/-2/N/A
+# M1B: None/N/A/Medium/High → 0/N/A/-1/-2
+# M1C: None/Low/N/A/N/A → 0/-1/N/A/N/A
+# M2: None/N/A/Medium/High → 0/N/A/-1/-2
+SORA_25_MITIGATIONS = {
+    "M1A_sheltering": {
+        "None": 0,
+        "Low": -1,
+        "Medium": -2
+        # "High": N/A (validation added in calculate_grc_2_5)
+    },
+    "M1B_operational": {
+        "None": 0,
+        # "Low": N/A (removed - invalid combination)
+        "Medium": -1,
+        "High": -2  # ✅ FIXED: Added High=-2
+    },
+    "M1C_ground_observation": {
+        "None": 0,
+        "Low": -1
+        # "Medium": N/A, "High": N/A (removed - invalid)
+    },
+    "M2_impact": {
+        "None": 0,
+        # "Low": N/A (removed - invalid combination)
+        "Medium": -1,
+        "High": -2
+    }
+}
+
+
+app = FastAPI(
+    title="SKYWORKS AI SUITE - SORA Calculator API",
+    description="EASA/JARUS SORA 2.0 and 2.5 Calculations",
+    version="1.0.0",
+)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize calculators
+grc_calculator = GRCCalculator()
+arc_calculator = ARCCalculator()
+sail_calculator = SAILCalculator()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# VALIDATION ERROR HANDLERS
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Custom validation error handler with detailed logging
+    """
+    # Log the raw request body for debugging
+    try:
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        logger.error(f"VALIDATION ERROR - URL: {request.url}")
+        logger.error(f"VALIDATION ERROR - Raw body: {body_str}")
+    except Exception as e:
+        logger.error(f"Could not read request body: {e}")
+    
+    # Log detailed validation errors
+    logger.error(f"VALIDATION ERROR - Details: {exc.errors()}")
+    
+    # Create user-friendly error response
+    error_details = []
+    for error in exc.errors():
+        field_path = " -> ".join(str(loc) for loc in error["loc"])
+        error_details.append({
+            "field": field_path,
+            "message": error["msg"],
+            "type": error["type"]
+        })
+    
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=422,
+        content={
+            "message": "Validation failed",
+            "errors": error_details,
+            "url": str(request.url)
+        }
+    )
+
+
+def log_request_data(endpoint: str, data: Dict[str, Any]) -> None:
+    """Helper to log incoming request data"""
+    logger.info(f"{endpoint} - Received data: {json.dumps(data, indent=2, default=str)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HEALTH CHECK
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.get("/")
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "SKYWORKS SORA Calculator",
+        "version": "1.0.0",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HELPER FUNCTIONS
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _generate_warnings(request: Any, final_grc: int) -> List[str]:
+    """Generate warnings without overriding calculations"""
+    warnings = []
+    
+    # Urban environment warnings (but don't override GRC)
+    if hasattr(request, 'environment_type') and request.environment_type == "Urban":
+        if final_grc < 3:
+            warnings.append("Urban environment with GRC < 3 - verify mitigation adequacy")
+    
+    # High density warnings
+    if hasattr(request, 'population_density') and request.population_density > 10000:
+        if final_grc < 2: 
+            warnings.append("High population density with very low GRC - review risk assessment")
+    
+    return warnings
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GRC ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/v1/calculate/grc/2.0", response_model=GRCResponse)
+async def calculate_grc_2_0(request: GRCRequest_2_0):
+    """
+    Calculate Ground Risk Class for SORA 2.0 using unified Table 2 approach
+    
+    Source: JARUS SORA 2.0, Table 2 & 3
+    """
+    try:
+        print(f"[PYTHON GRC 2.0] Received request: {request.dict()}")
+        log_request_data("GRC 2.0", request.dict())
+        
+        # Step 1: Calculate initial GRC using Table 2 (NOT scenario-based)
+        initial_result = JARUSSORATable2.calculate_initial_grc(
+            request.mtom_kg, 
+            request.population_density
+        )
+        initial_grc = initial_result["initial_grc"]
+        
+        # Step 2: Apply SORA 2.0 mitigations SEQUENTIALLY (CRITICAL ORDER!)
+        # Per EASA Table 3 notes: M1 → check floor → M2 → M3 → final min(1)
+        
+        mitigation_details = {}
+        current_grc = initial_grc  # Start with iGRC
+        
+        # ─────────────────────────────────────────────────────────────────────
+        # M1 Strategic Mitigation with FLOOR CAP (EASA Table 3 note d)
+        # ─────────────────────────────────────────────────────────────────────
+        m1_level = getattr(request, 'm1_strategic', 'None')
+        m1_reduction = SORA_20_MITIGATIONS["M1_strategic"].get(m1_level, 0)
+        after_m1 = current_grc + m1_reduction
+        
+        # ✅ CRITICAL: M1 floor cap - cannot go below column minimum
+        # Get column floor from Table 2 based on population density
+        mtom_category = JARUSSORATable2.get_mtom_category(request.mtom_kg)
+        pop_category = JARUSSORATable2.get_population_category(request.population_density)
+        column_floor = JARUSSORATable2.get_column_floor(pop_category)
+        
+        # Apply floor cap (M1 cannot reduce below column minimum)
+        after_m1_with_floor = max(column_floor, after_m1)
+        
+        mitigation_details["M1_strategic"] = {
+            "level": m1_level,
+            "reduction": m1_reduction,
+            "result_before_floor": after_m1,
+            "result_after_floor": after_m1_with_floor,
+            "floor_applied": after_m1_with_floor > after_m1
+        }
+        current_grc = after_m1_with_floor
+        
+        # ─────────────────────────────────────────────────────────────────────
+        # M2 Impact Mitigation (no floor cap)
+        # ─────────────────────────────────────────────────────────────────────
+        m2_level = getattr(request, 'm2_impact', 'None')
+        m2_reduction = SORA_20_MITIGATIONS["M2_impact"].get(m2_level, 0)
+        current_grc = current_grc + m2_reduction
+        
+        mitigation_details["M2_impact"] = {
+            "level": m2_level,
+            "reduction": m2_reduction,
+            "result": current_grc
+        }
+        
+        # ─────────────────────────────────────────────────────────────────────
+        # M3 ERP Mitigation (PENALTY +1 if None/Low!)
+        # ─────────────────────────────────────────────────────────────────────
+        m3_level = getattr(request, 'm3_erp', 'None')
+        m3_reduction = SORA_20_MITIGATIONS["M3_erp"].get(m3_level, +1)  # Default +1 penalty
+        current_grc = current_grc + m3_reduction
+        
+        mitigation_details["M3_erp"] = {
+            "level": m3_level, 
+            "reduction": m3_reduction,
+            "result": current_grc
+        }
+        
+        # ─────────────────────────────────────────────────────────────────────
+        # Step 3: Final GRC constraint (minimum = 1)
+        # ─────────────────────────────────────────────────────────────────────
+        final_grc = max(1, current_grc)  # GRC cannot be less than 1
+        
+        # ✅ DETAILED LOGGING for debugging
+        logger.info(f"═══ GRC 2.0 Calculation ═══")
+        logger.info(f"  Initial GRC: {initial_grc} (MTOM Cat {mtom_category}, Pop Cat {pop_category})")
+        logger.info(f"  → After M1 {m1_level} ({m1_reduction:+d}): {after_m1} → Floor Cap: {after_m1_with_floor} (floor={column_floor})")
+        logger.info(f"  → After M2 {m2_level} ({m2_reduction:+d}): {mitigation_details['M2_impact']['result']}")
+        logger.info(f"  → After M3 {m3_level} ({m3_reduction:+d}): {mitigation_details['M3_erp']['result']}")
+        logger.info(f"  → Final GRC (min=1): {final_grc}")
+        
+        # Step 4: Return detailed response
+        return {
+            "version": "SORA_2.0",
+            "initial_grc": initial_grc,
+            "final_grc": final_grc,
+            "mitigation_total": mitigation_reductions,
+            "mitigations_applied": mitigation_details,
+            "calculation_steps": {
+                "step1_initial": initial_result,
+                "step2_mitigations": f"{initial_grc} + ({mitigation_reductions}) = {calculated_grc}",
+                "step3_minimum_applied": calculated_grc != final_grc,
+                "step3_final": f"max(1, {calculated_grc}) = {final_grc}"
+            },
+            "warnings": _generate_warnings(request, final_grc)
+        }
+        
+    except Exception as e:
+        logger.error(f"GRC 2.0 - Internal error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"GRC 2.0 calculation failed: {str(e)}")
+
+
+@app.post("/api/v1/calculate/grc/2.5", response_model=GRCResponse)
+async def calculate_grc_2_5(request: GRCRequest_2_5):
+    """
+    Calculate Ground Risk Class for SORA 2.5 using unified Table 2 approach
+    
+    Source: JARUS SORA 2.5, Table 2 & 5
+    """
+    try:
+        log_request_data("GRC 2.5", request.dict())
+        
+        # Step 1: Calculate initial GRC using Table 2 (same as 2.0)
+        initial_result = JARUSSORATable2.calculate_initial_grc(
+            request.mtom_kg,
+            request.population_density  
+        )
+        initial_grc = initial_result["initial_grc"]
+        
+        # Step 2: Apply SORA 2.5 specific mitigations
+        mitigation_reductions = 0
+        mitigation_details = {}
+        
+        # M1A Sheltering
+        if hasattr(request, 'm1a_sheltering') and request.m1a_sheltering:
+            m1a_reduction = SORA_25_MITIGATIONS["M1A_sheltering"].get(request.m1a_sheltering, 0)
+            mitigation_reductions += m1a_reduction
+            mitigation_details["M1A_sheltering"] = {
+                "level": request.m1a_sheltering,
+                "reduction": m1a_reduction
+            }
+        
+        # M1B Operational  
+        if hasattr(request, 'm1b_operational') and request.m1b_operational:
+            m1b_reduction = SORA_25_MITIGATIONS["M1B_operational"].get(request.m1b_operational, 0)
+            mitigation_reductions += m1b_reduction
+            mitigation_details["M1B_operational"] = {
+                "level": request.m1b_operational,
+                "reduction": m1b_reduction
+            }
+            
+        # M1C Ground Observation
+        if hasattr(request, 'm1c_ground_observation') and request.m1c_ground_observation:
+            m1c_reduction = SORA_25_MITIGATIONS["M1C_ground_observation"].get(request.m1c_ground_observation, 0)
+            mitigation_reductions += m1c_reduction  
+            mitigation_details["M1C_ground_observation"] = {
+                "level": request.m1c_ground_observation,
+                "reduction": m1c_reduction
+            }
+            
+        # M2 Impact Dynamics
+        if hasattr(request, 'm2_impact') and request.m2_impact:
+            m2_reduction = SORA_25_MITIGATIONS["M2_impact"].get(request.m2_impact, 0)
+            mitigation_reductions += m2_reduction
+            mitigation_details["M2_impact"] = {
+                "level": request.m2_impact,
+                "reduction": m2_reduction
+            }
+        
+        # Step 3: Calculate final GRC with minimum constraint  
+        calculated_grc = initial_grc + mitigation_reductions  # Note: reductions are negative
+        final_grc = max(1, calculated_grc)  # GRC cannot be less than 1
+        
+        # CRITICAL: DO NOT APPLY ADDITIONAL VALIDATION PENALTIES HERE
+        # Warnings yes, overrides NO
+        
+        logger.info(f"GRC 2.5 - Success: iGRC={initial_grc}, Mitigations={mitigation_reductions}, Final GRC={final_grc}")
+        
+        return {
+            "version": "SORA_2.5", 
+            "initial_grc": initial_grc,
+            "final_grc": final_grc,
+            "mitigation_total": mitigation_reductions,
+            "mitigations_applied": mitigation_details,
+            "calculation_steps": {
+                "step1_initial": initial_result,
+                "step2_mitigations": f"{initial_grc} + ({mitigation_reductions}) = {calculated_grc}",
+                "step3_minimum_applied": calculated_grc != final_grc,
+                "step3_final": f"max(1, {calculated_grc}) = {final_grc}"
+            },
+            "warnings": _generate_warnings(request, final_grc)
+        }
+        
+    except Exception as e:
+        logger.error(f"GRC 2.5 - Internal error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"GRC 2.5 calculation failed: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ARC ENDPOINTS - ENHANCED WITH VALIDATION LOGGING
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/v1/calculate/arc/2.0", response_model=ARCResponse)
+async def calculate_arc_2_0(request: Request):
+    """
+    Calculate Air Risk Class for SORA 2.0
+    
+    Source: JARUS SORA 2.0, Section 2.3.2
+    
+    ENHANCED: Added detailed validation error logging
+    """
+    try:
+        # Get raw request body for detailed logging
+        body = await request.body()
+        raw_data = json.loads(body.decode('utf-8'))
+        
+        logger.info("=" * 80)
+        logger.info("ARC 2.0 REQUEST RECEIVED")
+        logger.info("=" * 80)
+        logger.info(f"Raw frontend data: {json.dumps(raw_data, indent=2)}")
+        
+        # Validate required fields before Pydantic validation
+        required_fields = ["airspace_class", "altitude_agl_ft", "environment"]
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in raw_data or raw_data[field] is None:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            logger.error(f"ARC 2.0 - Missing required fields: {missing_fields}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Missing required fields for ARC 2.0: {missing_fields}"
+            )
+        
+        # Validate enum values
+        valid_airspace = ["A", "B", "C", "D", "E", "F", "G"]
+        valid_environment = ["Urban", "Suburban", "Rural"]
+        
+        if raw_data["airspace_class"] not in valid_airspace:
+            logger.error(f"ARC 2.0 - Invalid airspace_class: {raw_data['airspace_class']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid airspace_class. Must be one of: {valid_airspace}"
+            )
+            
+        if raw_data["environment"] not in valid_environment:
+            logger.error(f"ARC 2.0 - Invalid environment: {raw_data['environment']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid environment. Must be one of: {valid_environment}"
+            )
+        
+        # Now attempt Pydantic validation
+        try:
+            arc_request = ARCRequest_2_0(**raw_data)
+            logger.info(f"ARC 2.0 - Validation successful: {arc_request.dict()}")
+        except ValidationError as ve:
+            logger.error(f"ARC 2.0 - Pydantic validation failed: {ve}")
+            error_details = []
+            for error in ve.errors():
+                field_path = " -> ".join(str(loc) for loc in error["loc"])
+                error_details.append(f"{field_path}: {error['msg']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"ARC 2.0 validation errors: {'; '.join(error_details)}"
+            )
+        
+        # Calculate ARC
+        result = arc_calculator.calculate_arc_2_0(arc_request)
+        logger.info(f"ARC 2.0 - Success: {result.residual_arc}")
+        logger.info("=" * 80)
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ARC 2.0 - Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@app.post("/api/v1/calculate/arc/2.5", response_model=ARCResponse)
+async def calculate_arc_2_5(request: Request):
+    """
+    Calculate Air Risk Class for SORA 2.5
+    
+    Source: JARUS SORA 2.5, Annex B
+    
+    ENHANCED: Added detailed validation error logging
+    """
+    try:
+        # Get raw request body for detailed logging
+        body = await request.body()
+        raw_data = json.loads(body.decode('utf-8'))
+        
+        logger.info("=" * 80)
+        logger.info("ARC 2.5 REQUEST RECEIVED")
+        logger.info("=" * 80)
+        logger.info(f"Raw frontend data: {json.dumps(raw_data, indent=2)}")
+        
+        # Validate required fields before Pydantic validation
+        required_fields = ["airspace_class", "altitude_agl_m", "environment"]
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in raw_data or raw_data[field] is None:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            logger.error(f"ARC 2.5 - Missing required fields: {missing_fields}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Missing required fields for ARC 2.5: {missing_fields}"
+            )
+        
+        # Check for common field name mistakes
+        if "altitude_agl_ft" in raw_data:
+            logger.warning("ARC 2.5 - Found altitude_agl_ft instead of altitude_agl_m, converting...")
+            # Convert feet to meters
+            altitude_ft = raw_data["altitude_agl_ft"]
+            raw_data["altitude_agl_m"] = altitude_ft * 0.3048
+            logger.info(f"Converted {altitude_ft} ft to {raw_data['altitude_agl_m']} m")
+        
+        # Validate enum values
+        valid_airspace = ["A", "B", "C", "D", "E", "F", "G"]
+        valid_environment = ["Urban", "Suburban", "Rural"]
+        
+        if raw_data["airspace_class"] not in valid_airspace:
+            logger.error(f"ARC 2.5 - Invalid airspace_class: {raw_data['airspace_class']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid airspace_class. Must be one of: {valid_airspace}"
+            )
+            
+        if raw_data["environment"] not in valid_environment:
+            logger.error(f"ARC 2.5 - Invalid environment: {raw_data['environment']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid environment. Must be one of: {valid_environment}"
+            )
+        
+        # Now attempt Pydantic validation
+        try:
+            arc_request = ARCRequest_2_5(**raw_data)
+            logger.info(f"ARC 2.5 - Validation successful: {arc_request.dict()}")
+        except ValidationError as ve:
+            logger.error(f"ARC 2.5 - Pydantic validation failed: {ve}")
+            error_details = []
+            for error in ve.errors():
+                field_path = " -> ".join(str(loc) for loc in error["loc"])
+                error_details.append(f"{field_path}: {error['msg']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"ARC 2.5 validation errors: {'; '.join(error_details)}"
+            )
+        
+        # Calculate ARC
+        result = arc_calculator.calculate_arc_2_5(arc_request)
+        logger.info(f"ARC 2.5 - Success: {result.residual_arc}")
+        logger.info("=" * 80)
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ARC 2.5 - Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SAIL ENDPOINT
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/v1/calculate/sail", response_model=SAILResponse)
+async def calculate_sail(request: SAILRequest):
+    """
+    Calculate SAIL from Final GRC and Residual ARC
+    
+    Source: JARUS SORA Table 6
+    """
+    try:
+        log_request_data("SAIL", request.dict())
+        result = sail_calculator.calculate_sail(request)
+        logger.info(f"SAIL - Success: SAIL={result.sail}")
+        return result
+    except ValueError as e:
+        logger.error(f"SAIL - ValueError: {str(e)}")
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"SAIL - Internal error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# STARTUP
+# ═══════════════════════════════════════════════════════════════════════════
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        "main:app",
+        host="127.0.0.1",
+        port=8001,
+        reload=True,
+        log_level="info",
+    )

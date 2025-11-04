@@ -1,0 +1,202 @@
+SKYWORKS AI SUITE — ARC Calculator: Corrections & Official References
+Version: 2025-10-31
+Author: ChatGPT (GPT-5 Thinking)
+
+Scope
+This document lists concrete fixes to apply to the ARC Calculator, without code. Each fix cites the official EASA/JARUS source so your AI agent can read and implement safely.
+
+Primary Authority Used
+• EASA “AMC & GM to Commission Implementing Regulation (EU) 2019/947 — Issue 1, Amendment 3 (corrected 2)”, Annex C (Strategic Mitigation — Collision Risk Assessment), esp. Table C.1 and §C.6.3 (Strategic mitigation). This AMC aligns with SORA v2.x logic and is acceptable to EU CAs.
+  – Table C.1 (Initial air risk category assessment) defines AEC→Initial ARC mappings across environments and altitudes.
+  – §C.6.3 defines where strategic mitigation may/ may not lower ARC and by how much.
+
+— — — — — — — — — — — — — — — — — — — — — — —
+
+A) TAXONOMY / COVERAGE
+
+A1) Extend AEC universe to 1–12 (not 1–9)
+What to change
+• Replace “AEC 1–9 only” with the full set AEC 1…12, including:
+  – AEC 10: <150 m AGL in uncontrolled rural (Initial ARC-b)
+  – AEC 11: > FL 600 (Initial ARC-b)
+  – AEC 12: Atypical/segregated airspace (Initial ARC-a)
+Why
+• Your current logic and notes restrict to 1–9; AMC Table C.1 clearly includes AEC 10–12.
+Reference
+• AMC Annex C, Table C.1 (“Operations below 150 m…”, rows for AEC 8–10; “Operations above FL 600” AEC 11; “Operations in atypical/segregated airspace” AEC 12).
+
+A2) Treat “atypical/segregated” as an AEC on its own (AEC 12)
+What to change
+• If the operation is in atypical/segregated airspace, set AEC=12 with Initial ARC-a directly. Do NOT derive it via rural/uncontrolled logic.
+Reference
+• AMC Annex C, Table C.1 (“Operations in atypical/segregated airspace → AEC 12 → Initial ARC-a”).
+
+— — — — — — — — — — — — — — — — — — — — — — —
+
+B) INITIAL AEC/ARC MAPPING (VLL <150 m and >150 m)
+
+B1) Mode‑S veil / TMZ must be split by altitude
+What to change
+• If Mode‑S/TMZ and altitude <150 m AGL → AEC 7 → Initial ARC-c.
+• If Mode‑S/TMZ and altitude >150 m AGL (<FL600) → AEC 2 → Initial ARC-d.
+Why
+• Current code always returns AEC 2 for Mode‑S/TMZ; that is incorrect below 150 m.
+Reference
+• AMC Annex C, Table C.1 (“OPS <150 m AGL in a Mode‑S Veil or TMZ → AEC 7 → ARC‑c”; “OPS >150 m AGL… in a Mode‑S Veil or TMZ → AEC 2 → ARC‑d”).
+
+B2) “Airport/heliport environment” replaces hardcoded “near aerodrome” distances
+What to change
+• Remove fixed 3 NM (2.0) or 5 km (2.5) thresholds.
+• Introduce an explicit boolean “airport/heliport environment” (computed from CTR/ATZ/TMZ/airport boundaries per national AIP), then map:
+  – If airport/heliport env & class B/C/D → AEC 1 → Initial ARC‑d
+  – If airport/heliport env & class E/F/G → AEC 6 → Initial ARC‑c
+Why
+• AMC uses “airport/heliport environment”, not a generic proximity distance.
+Reference
+• AMC Annex C, Table C.1 (“Airport/heliport environment… in class B/C/D → AEC 1 → ARC‑d; …in class E or F/G → AEC 6 → ARC‑c”).
+
+B3) Controlled airspace <150 m AGL (VLL) does NOT depend on urban/rural
+What to change
+• For class A–E at <150 m AGL (and not airport environment or TMZ), always map to AEC 8 → Initial ARC‑c. Do not branch by urban vs rural.
+Why
+• Current code uses AEC 3 (rural) vs AEC 8 (urban); Table C.1 shows a single line for controlled <150 m → AEC 8.
+Reference
+• AMC Annex C, Table C.1 (“OPS <150 m AGL in controlled airspace → AEC 8 → ARC‑c”).
+
+B4) Uncontrolled <150 m AGL must branch as: urbanised → AEC 9, rural → AEC 10
+What to change
+• If class F/G and <150 m:
+  – urbanised area → AEC 9 → Initial ARC‑c
+  – rural area → AEC 10 → Initial ARC‑b
+Why
+• Current code places “uncontrolled urban” in AEC 9 correctly, but rural should be AEC 10 (not AEC 1).
+Reference
+• AMC Annex C, Table C.1 (“OPS <150 m AGL in uncontrolled airspace over an urbanised area → AEC 9 → ARC‑c; …over a rural area → AEC 10 → ARC‑b”).
+
+B5) Uncontrolled >150 m AGL mapping
+What to change
+• If >150 m and uncontrolled:
+  – urbanised area → AEC 4 → Initial ARC‑c
+  – rural area → AEC 5 → Initial ARC‑c
+Why
+• Current 2.5 branch uses 120 m and a generic “consult authority”; align to 150 m thresholds and AEC 4/5 per table.
+Reference
+• AMC Annex C, Table C.1 (“OPS >150 m AGL… uncontrolled urban → AEC 4 → ARC‑c; …uncontrolled rural → AEC 5 → ARC‑c”).
+
+B6) Above FL600 and atypical/segregated
+What to change
+• If > FL600 → AEC 11 → Initial ARC‑b.
+• If atypical/segregated → AEC 12 → Initial ARC‑a (overrides environment).
+Reference
+• AMC Annex C, Table C.1 (“OPS > FL 600 → AEC 11 → ARC‑b; OPS in atypical/segregated → AEC 12 → ARC‑a”).
+
+— — — — — — — — — — — — — — — — — — — — — — —
+
+C) STRATEGIC MITIGATIONS (SM) — REDUCTION RULES
+
+C1) Allow at most ONE ARC level reduction via “common structures & rules”
+What to change
+• Replace the “each SM reduces ARC by 1 level” with: “max total reduction = one (1) ARC level”.
+Reference
+• AMC Annex C §C.6.3 (“The maximum amount of ARC reduction… is by one ARC level.”).
+
+C2) Permit ARC reduction ONLY in VLL AECs 7–10
+What to change
+• Only allow the one‑level reduction when AEC ∈ {7, 8, 9, 10} (i.e., operations <150 m AGL).
+Reference
+• AMC Annex C §C.6.3 (“The SORA does allow… below 150 m AGL within VLL airspace (AECs 7, 8, 9 and 10).”).
+
+C3) PROHIBIT ARC reduction for AEC 1, 2, 3, 4, 5, and 11
+What to change
+• Do not allow any strategic mitigation ARC reduction in AEC {1,2,3,4,5,11}.
+Reference
+• AMC Annex C §C.6.3 (“The SORA does not allow… for all operations in AEC 1, 2, 3, 4, 5, and 11.”).
+
+C4) Special rule for AEC 10 (rural VLL): cannot reach ARC‑a unless AEC 12
+What to change
+• Even within VLL, do not reduce AEC 10 (Initial ARC‑b) down to ARC‑a unless the op qualifies as AEC 12 (atypical/segregated).
+Reference
+• AMC Annex C §C.6.3 note (“AEC 10: the initial ARC is ARC‑b. To lower… to ARC‑a requires… atypical/segregated airspace.”).
+
+C5) Keep the floor: Typical operations cannot go below ARC‑b
+What to change
+• Enforce residual floor ARC‑b unless in AEC 12.
+Reference
+• Implied by AMC Annex C §C.6.3 (see AEC‑10 note) + Table C.1 (only AEC 12 starts at ARC‑a).
+
+— — — — — — — — — — — — — — — — — — — — — — —
+
+D) ENVIRONMENT & TERMINOLOGY
+
+D1) Replace “SUBURBAN” with “urbanised area” (or map SUBURBAN→URBAN)
+What to change
+• In 2.5, the dichotomy is “urbanised vs rural”. Remove “Suburban” as a separate state or map it to URBAN for decision logic.
+Reference
+• AMC Annex C, Table C.1 (“…over an urbanised area” vs “…over a rural area”).
+
+D2) Align altitude thresholds: use 150 m (≈500 ft) for VLL split
+What to change
+• For SORA 2.5 logic: 150 m boundary. For 2.0 you may keep 500 ft, but maintain equivalence (150 m ≈ 500 ft) for consistency.
+Reference
+• AMC Annex C §C.3.3 & Table C.1 (explicit 150 m VLL boundary; text notes ≈500 ft equivalence).
+
+D3) “Airport/heliport environment” input
+What to change
+• Replace distance heuristics (e.g., “<3 NM” / “<5 km”) with a boolean determined from the aerodrome controlled surfaces (CTR/TIZ/ATZ/airfield traffic zones) as published in the national AIP/UAS geography. Feed that boolean into the AEC 1 vs 6 mapping.
+Reference
+• AMC Annex C, Table C.1 (uses “airport/heliport environment” — no fixed distance).
+
+— — — — — — — — — — — — — — — — — — — — — — —
+
+E) TEST MATRIX UPDATES (no code — just expectations)
+
+Update unit test expectations to match Table C.1 and §C.6.3:
+
+E1) “Controlled + <150 m + (any environment)” → Initial ARC‑c via AEC 8
+• Expected AEC: 8; Expected Initial ARC: ARC‑c.
+• If you apply strategic mitigation: residual ARC may drop by at most 1 (if AEC=8).
+
+E2) “Uncontrolled + <150 m + URBAN(ised)” → AEC 9 → Initial ARC‑c
+• Expected AEC: 9; Expected Initial ARC: ARC‑c.
+• Max 1‑level reduction permitted (to ARC‑b).
+
+E3) “Uncontrolled + <150 m + RURAL” → AEC 10 → Initial ARC‑b
+• Expected AEC: 10; Expected Initial ARC: ARC‑b.
+• Cannot reduce to ARC‑a unless AEC 12 (segregated).
+
+E4) “Mode‑S/TMZ + <150 m” → AEC 7 → Initial ARC‑c (not AEC 2)
+• Expected AEC: 7; Expected Initial ARC: ARC‑c.
+
+E5) “Mode‑S/TMZ + >150 m” → AEC 2 → Initial ARC‑d
+• Expected AEC: 2; Expected Initial ARC: ARC‑d.
+
+E6) “Airport/heliport environment + Class B/C/D” → AEC 1 → Initial ARC‑d
+E7) “Airport/heliport environment + Class E/F/G” → AEC 6 → Initial ARC‑c
+
+E8) “Uncontrolled + >150 m + URBAN(ised)” → AEC 4 → Initial ARC‑c
+E9) “Uncontrolled + >150 m + RURAL” → AEC 5 → Initial ARC‑c
+
+E10) “> FL600” → AEC 11 → Initial ARC‑b
+E11) “Atypical/segregated airspace” → AEC 12 → Initial ARC‑a
+
+E12) Strategic mitigation tests
+• Replace “2 SM → reduce 2 levels” with “any SM set → reduce by max 1 level, and only if AEC ∈ {7,8,9,10}”.
+
+— — — — — — — — — — — — — — — — — — — — — — —
+
+F) DOCUMENTATION NOTES (UI/Notes output)
+
+F1) Update your explanatory “Notes” section text
+• Replace “Each SM reduces ARC by 1 level” with: “Per AMC Annex C §C.6.3, ARC reduction via common structures/rules is (i) allowed only for AEC 7–10 (VLL), (ii) capped at one (1) ARC level, (iii) not allowed for AEC 1–5 and 11, and (iv) AEC 10 cannot reach ARC‑a unless the operation is AEC 12 (atypical/segregated).”
+
+F2) Replace “Near aerodrome: Yes/No” with “Airport/heliport environment: Yes/No (derived from CTR/TIZ/ATZ per national AIP)”
+
+— — — — — — — — — — — — — — — — — — — — — — —
+
+G) TRACEABILITY (for your OM/SORA pack)
+
+G1) Embed the reference table extract (or paraphrase) in your OM Annex (Air Risk)
+• Cite: EASA AMC & GM to Part‑UAS — Annex C, Table C.1 and §C.6.3.
+• Keep screenshots/printouts with page refs for regulator traceability.
+
+— END —

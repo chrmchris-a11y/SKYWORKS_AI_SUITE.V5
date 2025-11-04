@@ -1,0 +1,687 @@
+# JARUS SORA Critical Bug Analysis & Exact Fixes
+
+## Root Cause Analysis
+
+### 🔴 **BUG #1: SORA 2.0 Initial iGRC - Legacy Scenario Logic**
+
+**Root Cause:** SORA 2.0 endpoint is using deprecated scenario-based iGRC calculation instead of the unified JARUS SORA Table 2 approach that was standardized across both versions.
+
+**Evidence:**
+- Frontend shows: `"iGRC = 3 (VLOS_Sparsely, 1.2m)"` ← **Scenario-based (WRONG)**
+- Should use: `Table 2: 32kg (Cat 3) + 25k density (High) = iGRC 7` ← **Unified (CORRECT)**
+
+**Why this violates JARUS SORA:**
+JARUS SORA 2.0 (JAR_doc_06) and 2.5 (JAR_doc_25) both reference the same Table 2 for initial GRC. The scenario-based approach was an implementation shortcut that doesn't align with the official methodology.
+
+### 🔴 **BUG #2: SORA 2.5 Final GRC - Mitigation Application Logic**
+
+**Root Cause:** Python backend has either:
+1. Incorrect mitigation value mapping from C# frontend
+2. Additional validation penalties being applied after calculation
+3. Missing mitigation applications in the calculation loop
+
+**Evidence:**
+```
+Expected: 7 - 1 - 1 - 1 - 1 = 3
+Actual: Shows 5 (missing -2 reduction)
+```
+
+### 🔴 **BUG #3: Data Flow Issue Between C# and Python**
+
+**Root Cause:** The C# orchestration service may be sending incorrect mitigation values or the Python backend may be misinterpreting the mitigation robustness levels.
+
+---
+
+## EXACT CODE FIXES
+
+### Fix #1: Backend_Python/main.py - Unified Table 2 Implementation
+
+```python
+from typing import Dict, Any, List
+from pydantic import BaseModel
+import logging
+
+# Add this class at the top of the file
+class JARUSSORATable2:
+    """Official JARUS SORA Table 2 implementation for both 2.0 and 2.5"""
+    
+    # Table 2: Initial GRC Matrix
+    IGRC_MATRIX = [
+        [1, 1, 1, 2],  # Category 0 (<0.25kg)
+        [2, 2, 3, 4],  # Category 1 (0.25-1kg)  
+        [3, 4, 5, 6],  # Category 2 (1-25kg)
+        [4, 5, 6, 7],  # Category 3 (25-150kg) ← 32kg case
+        [5, 6, 7, 8]   # Category 4 (>150kg)
+    ]
+    
+    @staticmethod
+    def get_mtom_category(mtom_kg: float) -> int:
+        """Get MTOM category per JARUS SORA Table 2"""
+        if mtom_kg < 0.25:
+            return 0
+        elif mtom_kg < 1:
+            return 1
+        elif mtom_kg < 25:
+            return 2
+        elif mtom_kg < 150:
+            return 3
+        else:
+            return 4
+    
+    @staticmethod
+    def get_population_category(population_density: int) -> int:
+        """Get population density category per JARUS SORA Table 2"""
+        if population_density <= 1:
+            return 0  # Controlled ground area
+        elif population_density <= 500:
+            return 1  # Sparsely populated
+        elif population_density <= 10000:
+            return 2  # Moderately populated  
+        else:
+            return 3  # High density populated (>10k/km²)
+    
+    @staticmethod
+    def calculate_initial_grc(mtom_kg: float, population_density: int) -> Dict[str, Any]:
+        """Calculate initial GRC using official JARUS SORA Table 2"""
+        mtom_category = JARUSSORATable2.get_mtom_category(mtom_kg)
+        pop_category = JARUSSORATable2.get_population_category(population_density)
+        
+        initial_grc = JARUSSORATable2.IGRC_MATRIX[mtom_category][pop_category]
+        
+        return {
+            "initial_grc": initial_grc,
+            "mtom_category": mtom_category,
+            "population_category": pop_category,
+            "calculation_method": "JARUS_SORA_TABLE_2",
+            "debug_info": {
+                "mtom_kg": mtom_kg,
+                "population_density": population_density,
+                "matrix_lookup": f"MTOM_Cat_{mtom_category} × Pop_Cat_{pop_category} = {initial_grc}"
+            }
+        }
+
+# SORA 2.0 Mitigation Values per JARUS SORA 2.0 Table 3
+SORA_20_MITIGATIONS = {
+    "M1_strategic": {
+        "Low": -1,
+        "Medium": -2, 
+        "High": -2  # Limited by column minimum
+    },
+    "M2_impact": {
+        "Low": 0,
+        "Medium": -1,
+        "High": -2
+    },
+    "M3_erp": {
+        "Low": 0,
+        "Medium": 0, 
+        "High": 0
+    }
+}
+
+# SORA 2.5 Mitigation Values per JARUS SORA 2.5 Table 5
+SORA_25_MITIGATIONS = {
+    "M1A_sheltering": {
+        "Low": -1,
+        "Medium": -2
+    },
+    "M1B_operational": {
+        "Low": 0,
+        "Medium": -1
+    },
+    "M1C_ground_observation": {
+        "Low": -1,
+        "Medium": -1  # Same as Low per Table 5
+    },
+    "M2_impact": {
+        "Low": 0,
+        "Medium": -1,
+        "High": -2  # Note: High available in 2.5
+    }
+}
+
+@app.post("/api/v1/calculate/grc/2.0")
+async def calculate_grc_2_0(request: GRCRequest_2_0):
+    """SORA 2.0 GRC Calculation using unified Table 2 approach"""
+    try:
+        # Step 1: Calculate initial GRC using Table 2 (NOT scenario-based)
+        initial_result = JARUSSORATable2.calculate_initial_grc(
+            request.mtom_kg, 
+            request.population_density
+        )
+        initial_grc = initial_result["initial_grc"]
+        
+        # Step 2: Apply SORA 2.0 specific mitigations
+        mitigation_reductions = 0
+        mitigation_details = {}
+        
+        # M1 Strategic Mitigation
+        if hasattr(request, 'm1_strategic') and request.m1_strategic:
+            m1_reduction = SORA_20_MITIGATIONS["M1_strategic"].get(request.m1_strategic, 0)
+            mitigation_reductions += m1_reduction
+            mitigation_details["M1_strategic"] = {
+                "level": request.m1_strategic,
+                "reduction": m1_reduction
+            }
+        
+        # M2 Impact Mitigation  
+        if hasattr(request, 'm2_impact') and request.m2_impact:
+            m2_reduction = SORA_20_MITIGATIONS["M2_impact"].get(request.m2_impact, 0)
+            mitigation_reductions += m2_reduction
+            mitigation_details["M2_impact"] = {
+                "level": request.m2_impact,
+                "reduction": m2_reduction
+            }
+            
+        # M3 ERP Mitigation (always 0 per Table 3)
+        if hasattr(request, 'm3_erp') and request.m3_erp:
+            m3_reduction = SORA_20_MITIGATIONS["M3_erp"].get(request.m3_erp, 0)
+            mitigation_reductions += m3_reduction
+            mitigation_details["M3_erp"] = {
+                "level": request.m3_erp, 
+                "reduction": m3_reduction
+            }
+        
+        # Step 3: Calculate final GRC with minimum constraint
+        calculated_grc = initial_grc + mitigation_reductions  # Note: reductions are negative
+        final_grc = max(1, calculated_grc)  # GRC cannot be less than 1
+        
+        # Step 4: Determine SAIL level (will be done by calling service)
+        
+        return {
+            "version": "SORA_2.0",
+            "initial_grc": initial_grc,
+            "final_grc": final_grc,
+            "mitigation_total": mitigation_reductions,
+            "mitigations_applied": mitigation_details,
+            "calculation_steps": {
+                "step1_initial": initial_result,
+                "step2_mitigations": f"{initial_grc} + ({mitigation_reductions}) = {calculated_grc}",
+                "step3_minimum_applied": calculated_grc != final_grc,
+                "step3_final": f"max(1, {calculated_grc}) = {final_grc}"
+            },
+            "warnings": _generate_warnings(request, final_grc)
+        }
+        
+    except Exception as e:
+        logging.error(f"SORA 2.0 GRC calculation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"GRC 2.0 calculation failed: {str(e)}")
+
+@app.post("/api/v1/calculate/grc/2.5") 
+async def calculate_grc_2_5(request: GRCRequest_2_5):
+    """SORA 2.5 GRC Calculation using unified Table 2 approach"""
+    try:
+        # Step 1: Calculate initial GRC using Table 2 (same as 2.0)
+        initial_result = JARUSSORATable2.calculate_initial_grc(
+            request.mtom_kg,
+            request.population_density  
+        )
+        initial_grc = initial_result["initial_grc"]
+        
+        # Step 2: Apply SORA 2.5 specific mitigations
+        mitigation_reductions = 0
+        mitigation_details = {}
+        
+        # M1A Sheltering
+        if hasattr(request, 'm1a_sheltering') and request.m1a_sheltering:
+            m1a_reduction = SORA_25_MITIGATIONS["M1A_sheltering"].get(request.m1a_sheltering, 0)
+            mitigation_reductions += m1a_reduction
+            mitigation_details["M1A_sheltering"] = {
+                "level": request.m1a_sheltering,
+                "reduction": m1a_reduction
+            }
+        
+        # M1B Operational  
+        if hasattr(request, 'm1b_operational') and request.m1b_operational:
+            m1b_reduction = SORA_25_MITIGATIONS["M1B_operational"].get(request.m1b_operational, 0)
+            mitigation_reductions += m1b_reduction
+            mitigation_details["M1B_operational"] = {
+                "level": request.m1b_operational,
+                "reduction": m1b_reduction
+            }
+            
+        # M1C Ground Observation
+        if hasattr(request, 'm1c_ground_observation') and request.m1c_ground_observation:
+            m1c_reduction = SORA_25_MITIGATIONS["M1C_ground_observation"].get(request.m1c_ground_observation, 0)
+            mitigation_reductions += m1c_reduction  
+            mitigation_details["M1C_ground_observation"] = {
+                "level": request.m1c_ground_observation,
+                "reduction": m1c_reduction
+            }
+            
+        # M2 Impact Dynamics
+        if hasattr(request, 'm2_impact') and request.m2_impact:
+            m2_reduction = SORA_25_MITIGATIONS["M2_impact"].get(request.m2_impact, 0)
+            mitigation_reductions += m2_reduction
+            mitigation_details["M2_impact"] = {
+                "level": request.m2_impact,
+                "reduction": m2_reduction
+            }
+        
+        # Step 3: Calculate final GRC with minimum constraint  
+        calculated_grc = initial_grc + mitigation_reductions  # Note: reductions are negative
+        final_grc = max(1, calculated_grc)  # GRC cannot be less than 1
+        
+        # CRITICAL: DO NOT APPLY ADDITIONAL VALIDATION PENALTIES HERE
+        # Warnings yes, overrides NO
+        
+        return {
+            "version": "SORA_2.5", 
+            "initial_grc": initial_grc,
+            "final_grc": final_grc,
+            "mitigation_total": mitigation_reductions,
+            "mitigations_applied": mitigation_details,
+            "calculation_steps": {
+                "step1_initial": initial_result,
+                "step2_mitigations": f"{initial_grc} + ({mitigation_reductions}) = {calculated_grc}",
+                "step3_minimum_applied": calculated_grc != final_grc,
+                "step3_final": f"max(1, {calculated_grc}) = {final_grc}"
+            },
+            "warnings": _generate_warnings(request, final_grc)
+        }
+        
+    except Exception as e:
+        logging.error(f"SORA 2.5 GRC calculation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"GRC 2.5 calculation failed: {str(e)}")
+
+def _generate_warnings(request: Any, final_grc: int) -> List[str]:
+    """Generate warnings without overriding calculations"""
+    warnings = []
+    
+    # Urban environment warnings (but don't override GRC)
+    if hasattr(request, 'environment_type') and request.environment_type == "Urban":
+        if final_grc < 3:
+            warnings.append("Urban environment with GRC < 3 - verify mitigation adequacy")
+    
+    # High density warnings
+    if hasattr(request, 'population_density') and request.population_density > 10000:
+        if final_grc < 2: 
+            warnings.append("High population density with very low GRC - review risk assessment")
+    
+    return warnings
+```
+
+### Fix #2: Backend/src/Skyworks.Core/Services/Orchestration/SORAOrchestrationService.cs
+
+```csharp
+// Add these methods to SORAOrchestrationService class
+
+private string ConvertMitigationLevelToString(MitigationLevel level)
+{
+    return level switch
+    {
+        MitigationLevel.Low => "Low",
+        MitigationLevel.Medium => "Medium", 
+        MitigationLevel.High => "High",
+        MitigationLevel.None => null,
+        _ => null
+    };
+}
+
+private async Task<SORACalculationResult> CalculateSORA20Async(
+    SORACalculationRequest request)
+{
+    try 
+    {
+        // Build Python request with exact parameter mapping
+        var pythonRequest = new
+        {
+            mtom_kg = request.Drone.MTOM_kg,
+            population_density = request.Environment.PopulationDensity,
+            m1_strategic = ConvertMitigationLevelToString(request.Mitigations.M1_Strategic),
+            m2_impact = ConvertMitigationLevelToString(request.Mitigations.M2_Impact), 
+            m3_erp = ConvertMitigationLevelToString(request.Mitigations.M3_ERP),
+            environment_type = request.Environment.EnvironmentType
+        };
+
+        _logger.LogInformation("SORA 2.0 Request: {@Request}", pythonRequest);
+
+        // Call Python backend
+        var response = await _pythonClient.CalculateGRC20Async(pythonRequest);
+        
+        _logger.LogInformation("SORA 2.0 Response: {@Response}", response);
+
+        // Validate response has expected structure
+        if (!response.ContainsKey("initial_grc") || !response.ContainsKey("final_grc"))
+        {
+            throw new InvalidOperationException("Python backend returned incomplete GRC 2.0 response");
+        }
+
+        var initialGrc = Convert.ToInt32(response["initial_grc"]);
+        var finalGrc = Convert.ToInt32(response["final_grc"]);
+        
+        // Calculate ARC (same logic for both versions)
+        var arcResult = await CalculateARCAsync(request);
+        
+        // Calculate SAIL using JARUS SORA Table 1
+        var sail = CalculateSAILLevel(finalGrc, arcResult.ResidualARC);
+        
+        return new SORACalculationResult
+        {
+            Version = "SORA 2.0",
+            InitialGRC = initialGrc,
+            FinalGRC = finalGrc,
+            InitialARC = arcResult.InitialARC,
+            ResidualARC = arcResult.ResidualARC, 
+            SAIL = sail,
+            CalculationSteps = response.ContainsKey("calculation_steps") ? 
+                response["calculation_steps"].ToString() : "N/A",
+            Warnings = response.ContainsKey("warnings") ? 
+                ((IEnumerable)response["warnings"]).Cast<string>().ToList() : new List<string>()
+        };
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "SORA 2.0 calculation failed");
+        throw new SORACalculationException("SORA 2.0 calculation failed", ex);
+    }
+}
+
+private async Task<SORACalculationResult> CalculateSORA25Async(
+    SORACalculationRequest request)
+{
+    try
+    {
+        // Build Python request with exact parameter mapping 
+        var pythonRequest = new
+        {
+            mtom_kg = request.Drone.MTOM_kg,
+            population_density = request.Environment.PopulationDensity,
+            m1a_sheltering = ConvertMitigationLevelToString(request.Mitigations.M1A_Sheltering),
+            m1b_operational = ConvertMitigationLevelToString(request.Mitigations.M1B_Operational),
+            m1c_ground_observation = ConvertMitigationLevelToString(request.Mitigations.M1C_GroundObservation), 
+            m2_impact = ConvertMitigationLevelToString(request.Mitigations.M2_Impact),
+            environment_type = request.Environment.EnvironmentType
+        };
+
+        _logger.LogInformation("SORA 2.5 Request: {@Request}", pythonRequest);
+
+        // Call Python backend
+        var response = await _pythonClient.CalculateGRC25Async(pythonRequest);
+        
+        _logger.LogInformation("SORA 2.5 Response: {@Response}", response);
+
+        // Validate response has expected structure
+        if (!response.ContainsKey("initial_grc") || !response.ContainsKey("final_grc"))
+        {
+            throw new InvalidOperationException("Python backend returned incomplete GRC 2.5 response");
+        }
+
+        var initialGrc = Convert.ToInt32(response["initial_grc"]);
+        var finalGrc = Convert.ToInt32(response["final_grc"]);
+        
+        // CRITICAL: Do not override finalGrc here with validation rules
+        // If validation needed, add to warnings only
+        
+        // Calculate ARC (same logic for both versions)
+        var arcResult = await CalculateARCAsync(request);
+        
+        // Calculate SAIL using JARUS SORA Table 1  
+        var sail = CalculateSAILLevel(finalGrc, arcResult.ResidualARC);
+        
+        return new SORACalculationResult
+        {
+            Version = "SORA 2.5",
+            InitialGRC = initialGrc,
+            FinalGRC = finalGrc, // Use calculated value, do not override
+            InitialARC = arcResult.InitialARC,
+            ResidualARC = arcResult.ResidualARC,
+            SAIL = sail,
+            CalculationSteps = response.ContainsKey("calculation_steps") ? 
+                response["calculation_steps"].ToString() : "N/A",
+            Warnings = response.ContainsKey("warnings") ? 
+                ((IEnumerable)response["warnings"]).Cast<string>().ToList() : new List<string>()
+        };
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "SORA 2.5 calculation failed");
+        throw new SORACalculationException("SORA 2.5 calculation failed", ex);
+    }
+}
+
+private SAILLevel CalculateSAILLevel(int grc, ARCLevel arc)
+{
+    // JARUS SORA Table 1: SAIL Matrix (same for both 2.0 and 2.5)
+    // Reference: JAR_doc_25 Table 1, JAR_doc_06 Table 1
+    
+    return (grc, arc) switch
+    {
+        (1, ARCLevel.A) => SAILLevel.I,
+        (1, ARCLevel.B) => SAILLevel.I, 
+        (1, ARCLevel.C) => SAILLevel.II,
+        (1, ARCLevel.D) => SAILLevel.III,
+        
+        (2, ARCLevel.A) => SAILLevel.I,
+        (2, ARCLevel.B) => SAILLevel.II,
+        (2, ARCLevel.C) => SAILLevel.II, 
+        (2, ARCLevel.D) => SAILLevel.III,
+        
+        (3, ARCLevel.A) => SAILLevel.I,    // ← Expected for our test case
+        (3, ARCLevel.B) => SAILLevel.II,
+        (3, ARCLevel.C) => SAILLevel.III,
+        (3, ARCLevel.D) => SAILLevel.IV,
+        
+        (4, ARCLevel.A) => SAILLevel.II,
+        (4, ARCLevel.B) => SAILLevel.II,
+        (4, ARCLevel.C) => SAILLevel.III,
+        (4, ARCLevel.D) => SAILLevel.IV,
+        
+        (5, ARCLevel.A) => SAILLevel.II,   // Current wrong SORA 2.5 result
+        (5, ARCLevel.B) => SAILLevel.III,
+        (5, ARCLevel.C) => SAILLevel.IV,
+        (5, ARCLevel.D) => SAILLevel.IV,
+        
+        // Higher GRC levels
+        (>= 6, ARCLevel.A) => SAILLevel.III,
+        (>= 6, ARCLevel.B) => SAILLevel.III,
+        (>= 6, ARCLevel.C) => SAILLevel.IV,
+        (>= 6, ARCLevel.D) => SAILLevel.IV,
+        
+        _ => throw new ArgumentOutOfRangeException($"Invalid GRC/ARC combination: GRC={grc}, ARC={arc}")
+    };
+}
+```
+
+### Fix #3: Backend/src/Skyworks.Core/Services/Python/PythonCalculationClient.cs
+
+```csharp
+public class PythonCalculationClient : IPythonCalculationClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<PythonCalculationClient> _logger;
+    private readonly string _baseUrl;
+
+    public PythonCalculationClient(HttpClient httpClient, ILogger<PythonCalculationClient> logger, IConfiguration configuration)
+    {
+        _httpClient = httpClient;
+        _logger = logger;
+        _baseUrl = configuration.GetValue<string>("PythonBackend:BaseUrl") ?? "http://localhost:8000";
+    }
+
+    public async Task<Dictionary<string, object>> CalculateGRC20Async(object request)
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            _logger.LogDebug("Calling Python GRC 2.0 endpoint: {Url}", $"{_baseUrl}/api/v1/calculate/grc/2.0");
+            _logger.LogDebug("Request payload: {Json}", json);
+            
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/v1/calculate/grc/2.0", content);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Python GRC 2.0 call failed: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                throw new HttpRequestException($"Python backend returned {response.StatusCode}: {errorContent}");
+            }
+            
+            var responseJson = await response.Content.ReadAsStringAsync();
+            _logger.LogDebug("Python GRC 2.0 response: {Json}", responseJson);
+            
+            var result = JsonSerializer.Deserialize<Dictionary<string, object>>(responseJson);
+            
+            // Validate required fields
+            if (!result.ContainsKey("initial_grc") || !result.ContainsKey("final_grc"))
+            {
+                throw new InvalidOperationException("Python backend response missing required GRC fields");
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to calculate GRC 2.0");
+            throw new PythonCalculationException("GRC 2.0 calculation failed", ex);
+        }
+    }
+
+    public async Task<Dictionary<string, object>> CalculateGRC25Async(object request)  
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            _logger.LogDebug("Calling Python GRC 2.5 endpoint: {Url}", $"{_baseUrl}/api/v1/calculate/grc/2.5");
+            _logger.LogDebug("Request payload: {Json}", json);
+            
+            var response = await _httpClient.PostAsync($"{_baseUrl}/api/v1/calculate/grc/2.5", content);
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError("Python GRC 2.5 call failed: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                throw new HttpRequestException($"Python backend returned {response.StatusCode}: {errorContent}");
+            }
+            
+            var responseJson = await response.Content.ReadAsStringAsync();
+            _logger.LogDebug("Python GRC 2.5 response: {Json}", responseJson);
+            
+            var result = JsonSerializer.Deserialize<Dictionary<string, object>>(responseJson);
+            
+            // Validate required fields
+            if (!result.ContainsKey("initial_grc") || !result.ContainsKey("final_grc"))
+            {
+                throw new InvalidOperationException("Python backend response missing required GRC fields");
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to calculate GRC 2.5");
+            throw new PythonCalculationException("GRC 2.5 calculation failed", ex);
+        }
+    }
+}
+
+public class PythonCalculationException : Exception
+{
+    public PythonCalculationException(string message) : base(message) { }
+    public PythonCalculationException(string message, Exception innerException) : base(message, innerException) { }
+}
+```
+
+## Validation Test Cases
+
+### Test Case 1: Primary Bug Reproduction
+
+**Input:**
+```json
+{
+  "mtom_kg": 32,
+  "population_density": 25000,
+  "sora_20": {
+    "m1_strategic": "Medium",
+    "m2_impact": "High", 
+    "m3_erp": "Medium"
+  },
+  "sora_25": {
+    "m1a_sheltering": "Low",
+    "m1b_operational": "Medium",
+    "m1c_ground_observation": "Low", 
+    "m2_impact": "Medium"
+  }
+}
+```
+
+**Expected Output:**
+```json
+{
+  "sora_20": {
+    "initial_grc": 7,
+    "final_grc": 3,
+    "mitigation_total": -4,
+    "calculation_steps": {
+      "step1_initial": "MTOM_Cat_3 × Pop_Cat_3 = 7",
+      "step2_mitigations": "7 + (-4) = 3"
+    }
+  },
+  "sora_25": {
+    "initial_grc": 7, 
+    "final_grc": 3,
+    "mitigation_total": -4,
+    "calculation_steps": {
+      "step1_initial": "MTOM_Cat_3 × Pop_Cat_3 = 7",
+      "step2_mitigations": "7 + (-4) = 3"
+    }
+  }
+}
+```
+
+### Test Case 2: Minimum GRC Constraint
+
+**Input:**
+```json
+{
+  "mtom_kg": 0.2,
+  "population_density": 100, 
+  "sora_25": {
+    "m1a_sheltering": "Medium",
+    "m1b_operational": "Medium",
+    "m1c_ground_observation": "Low",
+    "m2_impact": "Medium"
+  }
+}
+```
+
+**Expected Calculation:**
+```
+Initial iGRC: 0.2kg (Cat 0) × 100 density (Sparsely) = 1
+Mitigations: -2 + -1 + -1 + -1 = -5  
+Calculated GRC: 1 + (-5) = -4
+Final GRC: max(1, -4) = 1  ← Minimum constraint applied
+```
+
+**Expected Output:**
+```json
+{
+  "initial_grc": 1,
+  "final_grc": 1, 
+  "mitigation_total": -5,
+  "calculation_steps": {
+    "step3_minimum_applied": true,
+    "step3_final": "max(1, -4) = 1"
+  }
+}
+```
+
+### Test Case 3: High Category Drone
+
+**Input:**
+```json
+{
+  "mtom_kg": 200,
+  "population_density": 50000,
+  "sora_20": {
+    "m1_strategic": "High",
+    "m2_impact": "High"
+  }
+}
+```
+
+**Expected Calculation:**
+```

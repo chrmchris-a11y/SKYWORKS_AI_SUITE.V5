@@ -1,0 +1,771 @@
+```csharp
+// SORAOrchestrationService.cs
+using Microsoft.Extensions.Logging;
+using Skyworks.Core.Models.ARC;
+using Skyworks.Core.Models.GRC;
+using Skyworks.Core.Models.GRC.V2_0;
+using Skyworks.Core.Models.GRC.V2_5;
+using Skyworks.Core.Models.SAIL;
+using Skyworks.Core.Services.GRC;
+using Skyworks.Core.Services.Risk;
+using Skyworks.Core.Services.ARC;
+using Skyworks.Core.Services.Drones;
+using Skyworks.Core.Services.Python;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Skyworks.Core.Services.Orchestration;
+
+public class SORAOrchestrationService : ISORAOrchestrationService
+{
+    private readonly ILogger<SORAOrchestrationService> _logger;
+    private readonly IPythonGRCService _pythonGRCService;
+    private readonly IPythonARCService _pythonARCService;
+    private readonly IGRCService _grcService;
+    private readonly IARCService _arcService;
+    private readonly ISAILMatrixService _sailMatrixService;
+    private readonly IDroneService _droneService;
+    private readonly bool _allowExplicitARC;
+
+    public SORAOrchestrationService(
+        ILogger<SORAOrchestrationService> logger,
+        IPythonGRCService pythonGRCService,
+        IPythonARCService pythonARCService,
+        IGRCService grcService,
+        IARCService arcService,
+        ISAILMatrixService sailMatrixService,
+        IDroneService droneService,
+        bool allowExplicitARC = false)
+    {
+        _logger = logger;
+        _pythonGRCService = pythonGRCService;
+        _pythonARCService = pythonARCService;
+        _grcService = grcService;
+        _arcService = arcService;
+        _sailMatrixService = sailMatrixService;
+        _droneService = droneService;
+        _allowExplicitARC = allowExplicitARC;
+    }
+
+    /// <summary>
+    /// Synchronous wrapper for ExecuteCompleteAsync
+    /// </summary>
+    public SORACompleteResult ExecuteComplete(SORACompleteInput input)
+    {
+        return ExecuteCompleteAsync(input).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Executes complete SORA assessment asynchronously
+    /// </summary>
+    public async Task<SORACompleteResult> ExecuteCompleteAsync(SORACompleteInput input)
+    {
+        _logger.LogInformation("Starting complete SORA orchestration for version {Version}", input.Version);
+
+        var result = new SORACompleteResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>()
+        };
+
+        try
+        {
+            // Step 1: Calculate GRC
+            _logger.LogInformation("Step 1: Calculating GRC");
+            var grcResult = await CalculateGRCAsync(input);
+            
+            if (!grcResult.IsSuccessful)
+            {
+                result.Errors.AddRange(grcResult.Errors);
+                return result;
+            }
+
+            result.InitialGRC = grcResult.InitialGRC;
+            result.FinalGRC = grcResult.FinalGRC;
+            result.StrategicMitigations = grcResult.StrategicMitigations;
+
+            // Step 2: Filter mitigations (remove evidence-only tokens)
+            _logger.LogInformation("Step 2: Filtering strategic mitigations");
+            result.StrategicMitigations = FilterMitigations(result.StrategicMitigations);
+
+            // Step 3: Calculate ARC
+            _logger.LogInformation("Step 3: Calculating ARC");
+            var arcResult = await CalculateARCAsync(input);
+            
+            if (!arcResult.IsSuccessful)
+            {
+                result.Errors.AddRange(arcResult.Errors);
+                return result;
+            }
+
+            result.InitialARC = arcResult.InitialARC;
+            result.ResidualARC = arcResult.ResidualARC;
+            result.TacticalMitigations = arcResult.TacticalMitigations;
+
+            // Step 4: Validate operation scope
+            _logger.LogInformation("Step 4: Validating operation scope");
+            var (isInScope, reasonCode) = ValidateOperationScope(result.FinalGRC, result.ResidualARC);
+            
+            if (!isInScope)
+            {
+                result.OutOfScopeReason = reasonCode;
+                result.Errors.Add($"Operation is out of scope: {reasonCode}");
+                return result;
+            }
+
+            // Step 5: Determine SAIL
+            _logger.LogInformation("Step 5: Determining SAIL");
+            var sailResult = await DetermineSAILAsync(result.FinalGRC, result.ResidualARC);
+            
+            if (!sailResult.IsSuccessful)
+            {
+                result.Errors.AddRange(sailResult.Errors);
+                return result;
+            }
+
+            result.SAIL = sailResult.SAIL;
+
+            // Step 6: Check OSO compliance
+            _logger.LogInformation("Step 6: Checking OSO compliance");
+            var osoResult = await CheckOSOComplianceAsync(result.SAIL, result.StrategicMitigations, result.TacticalMitigations);
+            
+            if (!osoResult.IsSuccessful)
+            {
+                result.Errors.AddRange(osoResult.Errors);
+                return result;
+            }
+
+            result.RequiredOSOs = osoResult.RequiredOSOs;
+            result.AppliedOSOs = osoResult.AppliedOSOs;
+            result.MissingOSOs = osoResult.MissingOSOs;
+
+            result.IsSuccessful = true;
+            _logger.LogInformation("SORA orchestration completed successfully: SAIL={SAIL}, FinalGRC={GRC}, ResidualARC={ARC}", 
+                result.SAIL, result.FinalGRC, result.ResidualARC);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during SORA orchestration");
+            result.Errors.Add($"Orchestration error: {ex.Message}");
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Calculates Ground Risk Class asynchronously
+    /// </summary>
+    private async Task<GRCResult> CalculateGRCAsync(SORACompleteInput input)
+    {
+        var result = new GRCResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>()
+        };
+
+        try
+        {
+            if (input.Version == "2.0")
+            {
+                return await CalculateGRC_2_0_Async(input);
+            }
+            else if (input.Version == "2.5")
+            {
+                return await CalculateGRC_2_5_Async(input);
+            }
+            else
+            {
+                result.Errors.Add($"Unsupported SORA version: {input.Version}");
+                return result;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating GRC");
+            result.Errors.Add($"GRC calculation error: {ex.Message}");
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Calculates GRC for SORA 2.0
+    /// </summary>
+    private async Task<GRCResult> CalculateGRC_2_0_Async(SORACompleteInput input)
+    {
+        var result = new GRCResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>()
+        };
+
+        // Validate required inputs
+        if (string.IsNullOrEmpty(input.Scenario_V2_0))
+        {
+            result.Errors.Add("Scenario_V2_0 is required for SORA 2.0");
+            return result;
+        }
+
+        var pythonRequest = new PythonGRCRequest_2_0
+        {
+            Scenario = input.Scenario_V2_0
+        };
+
+        _logger.LogInformation("Calling Python GRC 2.0 engine with Scenario={Scenario}", pythonRequest.Scenario);
+        var pythonResponse = await _pythonGRCService.CalculateGRC_2_0_Async(pythonRequest);
+
+        if (!pythonResponse.IsSuccessful)
+        {
+            result.Errors.Add("Python GRC 2.0 calculation failed");
+            result.Errors.AddRange(pythonResponse.Errors);
+            return result;
+        }
+
+        result.InitialGRC = pythonResponse.InitialGRC;
+        result.FinalGRC = pythonResponse.FinalGRC;
+        result.StrategicMitigations = pythonResponse.AppliedMitigations ?? new List<string>();
+        result.IsSuccessful = true;
+
+        return result;
+    }
+
+    /// <summary>
+    /// Calculates GRC for SORA 2.5
+    /// </summary>
+    private async Task<GRCResult> CalculateGRC_2_5_Async(SORACompleteInput input)
+    {
+        var result = new GRCResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>()
+        };
+
+        // Validate required inputs - MTOM and MaxSpeed are mandatory
+        if (!input.MTOM_kg.HasValue)
+        {
+            result.Errors.Add("MTOM_kg is required for SORA 2.5");
+            return result;
+        }
+
+        if (!input.MaxSpeed.HasValue)
+        {
+            result.Errors.Add("MaxSpeed is required for SORA 2.5");
+            return result;
+        }
+
+        // Check for sub-250g special case
+        if (input.MTOM_kg.Value <= 0.25)
+        {
+            _logger.LogInformation("Sub-250g drone detected (MTOM={MTOM}kg), checking speed bin", input.MTOM_kg.Value);
+            
+            // Apply iGRC=1 only if speed is within acceptable bin
+            if (IsSpeedWithinSub250gBin(input.MaxSpeed.Value))
+            {
+                result.InitialGRC = 1;
+                result.FinalGRC = 1;
+                result.StrategicMitigations = new List<string> { "SUB_250G_LOW_SPEED" };
+                result.IsSuccessful = true;
+                _logger.LogInformation("Sub-250g with acceptable speed: iGRC=1");
+                return result;
+            }
+            else
+            {
+                _logger.LogInformation("Sub-250g but speed exceeds bin, calculating normally");
+            }
+        }
+
+        var pythonRequest = new PythonGRCRequest_2_5
+        {
+            MTOM_kg = input.MTOM_kg.Value,
+            MaxSpeed_mps = input.MaxSpeed.Value,
+            EnvironmentType = input.EnvironmentType,
+            HasSheltering = input.HasSheltering ?? false
+        };
+
+        _logger.LogInformation("Calling Python GRC 2.5 engine with MTOM={MTOM}kg, MaxSpeed={Speed}m/s", 
+            pythonRequest.MTOM_kg, pythonRequest.MaxSpeed_mps);
+        
+        var pythonResponse = await _pythonGRCService.CalculateGRC_2_5_Async(pythonRequest);
+
+        if (!pythonResponse.IsSuccessful)
+        {
+            result.Errors.Add("Python GRC 2.5 calculation failed");
+            result.Errors.AddRange(pythonResponse.Errors);
+            return result;
+        }
+
+        result.InitialGRC = pythonResponse.InitialGRC;
+        result.FinalGRC = pythonResponse.FinalGRC;
+        result.StrategicMitigations = pythonResponse.AppliedMitigations ?? new List<string>();
+        result.IsSuccessful = true;
+
+        return result;
+    }
+
+    /// <summary>
+    /// Checks if speed is within acceptable bin for sub-250g drones
+    /// </summary>
+    private bool IsSpeedWithinSub250gBin(double maxSpeed_mps)
+    {
+        // Typical threshold for sub-250g low-speed category
+        const double MAX_SPEED_THRESHOLD = 19.0; // m/s (~68 km/h)
+        return maxSpeed_mps <= MAX_SPEED_THRESHOLD;
+    }
+
+    /// <summary>
+    /// Filters out evidence-only mitigation tokens
+    /// </summary>
+    private List<string> FilterMitigations(List<string> mitigations)
+    {
+        if (mitigations == null || !mitigations.Any())
+            return mitigations;
+
+        var evidenceOnlyTokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "U-SPACE",
+            "USPACE",
+            "GEOFENCING",
+            "GEO-FENCING"
+        };
+
+        var filtered = mitigations.Where(m => !evidenceOnlyTokens.Contains(m)).ToList();
+        
+        if (filtered.Count < mitigations.Count)
+        {
+            _logger.LogInformation("Filtered {Count} evidence-only mitigation tokens", mitigations.Count - filtered.Count);
+        }
+
+        return filtered;
+    }
+
+    /// <summary>
+    /// Calculates Air Risk Class asynchronously
+    /// </summary>
+    private async Task<ARCResult> CalculateARCAsync(SORACompleteInput input)
+    {
+        var result = new ARCResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>()
+        };
+
+        try
+        {
+            // Check if explicit ARC is provided
+            if (!string.IsNullOrEmpty(input.ExplicitARC))
+            {
+                if (!_allowExplicitARC)
+                {
+                    result.Errors.Add("Explicit ARC is only allowed in test mode");
+                    return result;
+                }
+
+                _logger.LogInformation("Using explicit ARC: {ARC}", input.ExplicitARC);
+                result.InitialARC = input.ExplicitARC;
+                result.ResidualARC = input.ExplicitARC;
+                result.TacticalMitigations = new List<string>();
+                result.IsSuccessful = true;
+                return result;
+            }
+
+            // Derive ARC from AEC decision tree
+            if (input.Version == "2.0")
+            {
+                return await CalculateARC_2_0_Async(input);
+            }
+            else if (input.Version == "2.5")
+            {
+                return await CalculateARC_2_5_Async(input);
+            }
+            else
+            {
+                result.Errors.Add($"Unsupported SORA version: {input.Version}");
+                return result;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating ARC");
+            result.Errors.Add($"ARC calculation error: {ex.Message}");
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Calculates ARC for SORA 2.0
+    /// </summary>
+    private async Task<ARCResult> CalculateARC_2_0_Async(SORACompleteInput input)
+    {
+        var result = new ARCResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>()
+        };
+
+        var arcInput = new ARCEnvironmentInput
+        {
+            AirspaceClass = input.AirRisk?.AirspaceClass,
+            MaxHeightAGL_m = input.AirRisk?.MaxHeightAGL_m ?? 0,
+            EnvironmentType = NormalizeEnvironmentType(input.AirRisk?.EnvironmentType),
+            IsNearAerodrome = input.AirRisk?.IsNearAerodrome ?? false,
+            DistanceToAerodrome_km = input.AirRisk?.DistanceToAerodrome_km,
+            IsInCTR = input.AirRisk?.IsInCTR ?? false
+        };
+
+        var pythonRequest = new PythonARCRequest_2_0
+        {
+            AirspaceClass = arcInput.AirspaceClass,
+            MaxHeightAGL_ft = ConvertMetersToFeet(arcInput.MaxHeightAGL_m),
+            EnvironmentType = arcInput.EnvironmentType,
+            DistanceToAerodrome_nm = ConvertKmToNauticalMiles(arcInput.DistanceToAerodrome_km),
+            IsInCTR = arcInput.IsInCTR
+        };
+
+        _logger.LogInformation("Calling Python ARC 2.0 engine with AirspaceClass={Class}, Height={Height}ft", 
+            pythonRequest.AirspaceClass, pythonRequest.MaxHeightAGL_ft);
+        
+        var pythonResponse = await _pythonARCService.CalculateARC_2_0_Async(pythonRequest);
+
+        if (!pythonResponse.IsSuccessful)
+        {
+            result.Errors.Add("Python ARC 2.0 calculation failed");
+            result.Errors.AddRange(pythonResponse.Errors);
+            return result;
+        }
+
+        result.InitialARC = pythonResponse.InitialARC;
+        result.ResidualARC = pythonResponse.ResidualARC;
+        result.TacticalMitigations = pythonResponse.AppliedMitigations ?? new List<string>();
+        result.IsSuccessful = true;
+
+        return result;
+    }
+
+    /// <summary>
+    /// Calculates ARC for SORA 2.5
+    /// </summary>
+    private async Task<ARCResult> CalculateARC_2_5_Async(SORACompleteInput input)
+    {
+        var result = new ARCResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>()
+        };
+
+        var arcInput = new ARCEnvironmentInput
+        {
+            AirspaceClass = input.AirRisk?.AirspaceClass,
+            MaxHeightAGL_m = input.AirRisk?.MaxHeightAGL_m ?? 0,
+            EnvironmentType = NormalizeEnvironmentType(input.AirRisk?.EnvironmentType),
+            IsNearAerodrome = input.AirRisk?.IsNearAerodrome ?? false,
+            DistanceToAerodrome_km = input.AirRisk?.DistanceToAerodrome_km,
+            IsInCTR = input.AirRisk?.IsInCTR ?? false
+        };
+
+        var pythonRequest = new PythonARCRequest_2_5
+        {
+            AirspaceClass = arcInput.AirspaceClass,
+            MaxHeightAGL_m = arcInput.MaxHeightAGL_m,
+            EnvironmentType = arcInput.EnvironmentType,
+            IsNearAerodrome = arcInput.IsNearAerodrome,
+            DistanceToAerodrome_km = arcInput.DistanceToAerodrome_km,
+            IsInCTR = arcInput.IsInCTR
+        };
+
+        _logger.LogInformation("Calling Python ARC 2.5 engine with AirspaceClass={Class}, Height={Height}m", 
+            pythonRequest.AirspaceClass, pythonRequest.MaxHeightAGL_m);
+        
+        var pythonResponse = await _pythonARCService.CalculateARC_2_5_Async(pythonRequest);
+
+        if (!pythonResponse.IsSuccessful)
+        {
+            result.Errors.Add("Python ARC 2.5 calculation failed");
+            result.Errors.AddRange(pythonResponse.Errors);
+            return result;
+        }
+
+        result.InitialARC = pythonResponse.InitialARC;
+        result.ResidualARC = pythonResponse.ResidualARC;
+        result.TacticalMitigations = pythonResponse.AppliedMitigations ?? new List<string>();
+        result.IsSuccessful = true;
+
+        return result;
+    }
+
+    /// <summary>
+    /// Normalizes environment type (Suburban/Industrial â Urban)
+    /// </summary>
+    private string NormalizeEnvironmentType(string environmentType)
+    {
+        if (string.IsNullOrEmpty(environmentType))
+            return environmentType;
+
+        var normalized = environmentType.Trim();
+        
+        if (normalized.Equals("Suburban", StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals("Industrial", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("Normalizing environment type {Original} â Urban", normalized);
+            return "Urban";
+        }
+
+        return normalized;
+    }
+
+    /// <summary>
+    /// Converts meters to feet for SORA 2.0
+    /// </summary>
+    private double ConvertMetersToFeet(double meters)
+    {
+        return meters * 3.28084;
+    }
+
+    /// <summary>
+    /// Converts kilometers to nautical miles
+    /// </summary>
+    private double? ConvertKmToNauticalMiles(double? km)
+    {
+        if (!km.HasValue)
+            return null;
+        
+        return km.Value * 0.539957;
+    }
+
+    /// <summary>
+    /// Validates if operation is within SORA scope
+    /// </summary>
+    private (bool IsInScope, string ReasonCode) ValidateOperationScope(int finalGRC, string residualARC)
+    {
+        // Check GRC >= 6
+        if (finalGRC >= 6)
+        {
+            _logger.LogWarning("Operation out of scope: GRC >= 6 (GRC={GRC})", finalGRC);
+            return (false, "OOS.GRC_GE_6");
+        }
+
+        // Check GRC=5 + ARC-d
+        if (finalGRC == 5 && residualARC?.Equals("ARC_d", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            _logger.LogWarning("Operation out of scope: GRC=5 with ARC-d");
+            return (false, "OOS.GRC5_PLUS_ARCd");
+        }
+
+        // Check SAIL VI (would be determined in matrix, but pre-check here)
+        // This is a placeholder - actual SAIL VI check happens in matrix lookup
+
+        return (true, null);
+    }
+
+    /// <summary>
+    /// Determines SAIL from GRC and ARC using matrix
+    /// </summary>
+    private async Task<SAILResult> DetermineSAILAsync(int finalGRC, string residualARC)
+    {
+        var result = new SAILResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>()
+        };
+
+        try
+        {
+            _logger.LogInformation("Looking up SAIL for GRC={GRC}, ARC={ARC}", finalGRC, residualARC);
+            
+            var sail = await _sailMatrixService.GetSAILAsync(finalGRC, residualARC);
+            
+            if (string.IsNullOrEmpty(sail))
+            {
+                result.Errors.Add($"Could not determine SAIL for GRC={finalGRC}, ARC={residualARC}");
+                return result;
+            }
+
+            // Check for SAIL VI (out of scope)
+            if (sail.Equals("SAIL_VI", StringComparison.OrdinalIgnoreCase) || 
+                sail.Equals("VI", StringComparison.OrdinalIgnoreCase))
+            {
+                result.Errors.Add("Operation results in SAIL VI (out of scope)");
+                return result;
+            }
+
+            result.SAIL = sail;
+            result.IsSuccessful = true;
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error determining SAIL");
+            result.Errors.Add($"SAIL determination error: {ex.Message}");
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Checks OSO compliance for the determined SAIL
+    /// </summary>
+    private async Task<OSOComplianceResult> CheckOSOComplianceAsync(
+        string sail, 
+        List<string> strategicMitigations, 
+        List<string> tacticalMitigations)
+    {
+        var result = new OSOComplianceResult
+        {
+            IsSuccessful = false,
+            Errors = new List<string>(),
+            RequiredOSOs = new List<string>(),
+            AppliedOSOs = new List<string>(),
+            MissingOSOs = new List<string>()
+        };
+
+        try
+        {
+            _logger.LogInformation("Checking OSO compliance for SAIL={SAIL}", sail);
+
+            // Get required OSOs for this SAIL
+            var requiredOSOs = await GetRequiredOSOsForSAILAsync(sail);
+            result.RequiredOSOs = requiredOSOs;
+
+            // Map mitigations to OSOs
+            var appliedOSOs = MapMitigationsToOSOs(strategicMitigations, tacticalMitigations);
+            result.AppliedOSOs = appliedOSOs;
+
+            // Find missing OSOs
+            var missingOSOs = requiredOSOs.Except(appliedOSOs, StringComparer.OrdinalIgnoreCase).ToList();
+            result.MissingOSOs = missingOSOs;
+
+            if (missingOSOs.Any())
+            {
+                _logger.LogWarning("Missing {Count} required OSOs for SAIL {SAIL}", missingOSOs.Count, sail);
+                result.Errors.Add($"Missing required OSOs: {string.Join(", ", missingOSOs)}");
+            }
+
+            result.IsSuccessful = true;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking OSO compliance");
+            result.Errors.Add($"OSO compliance check error: {ex.Message}");
+            return result;
+        }
+    }
+
+    /// <summary>
+    /// Gets required OSOs for a given SAIL level
+    /// </summary>
+    private async Task<List<string>> GetRequiredOSOsForSAILAsync(string sail)
+    {
+        // This would typically call a service or lookup table
+        // Placeholder implementation
+        await Task.CompletedTask;
+        
+        return sail switch
+        {
+            "SAIL_I" => new List<string> { "OSO#1", "OSO#2" },
+            "SAIL_II" => new List<string> { "OSO#1", "OSO#2", "OSO#3" },
+            "SAIL_III" => new List<string> { "OSO#1", "OSO#2", "OSO#3", "OSO#4" },
+            "SAIL_IV" => new List<string> { "OSO#1", "OSO#2", "OSO#3", "OSO#4", "OSO#5" },
+            "SAIL_V" => new List<string> { "OSO#1", "OSO#2", "OSO#3", "OSO#4", "OSO#5", "OSO#6" },
+            _ => new List<string>()
+        };
+    }
+
+    /// <summary>
+    /// Maps applied mitigations to OSO identifiers
+    /// </summary>
+    private List<string> MapMitigationsToOSOs(List<string> strategicMitigations, List<string> tacticalMitigations)
+    {
+        var osoSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Map strategic mitigations
+        if (strategicMitigations != null)
+        {
+            foreach (var mitigation in strategicMitigations)
+            {
+                var osos = MapMitigationToOSO(mitigation);
+                foreach (var oso in osos)
+                {
+                    osoSet.Add(oso);
+                }
+            }
+        }
+
+        // Map tactical mitigations
+        if (tacticalMitigations != null)
+        {
+            foreach (var mitigation in tacticalMitigations)
+            {
+                var osos = MapMitigationToOSO(mitigation);
+                foreach (var oso in osos)
+                {
+                    osoSet.Add(oso);
+                }
+            }
+        }
+
+        return osoSet.ToList();
+    }
+
+    /// <summary>
+    /// Maps a single mitigation to its corresponding OSOs
+    /// </summary>
+    private List<string> MapMitigationToOSO(string mitigation)
+    {
+        // Placeholder mapping - would be more comprehensive in production
+        return mitigation?.ToUpperInvariant() switch
+        {
+            "M1" => new List<string> { "OSO#1" },
+            "M2" => new List<string> { "OSO#2" },
+            "M3" => new List<string> { "OSO#3" },
+            "TACTICAL_MITIGATION_1" => new List<string> { "OSO#4" },
+            "TACTICAL_MITIGATION_2" => new List<string> { "OSO#5" },
+            _ => new List<string>()
+        };
+    }
+}
+
+// Supporting result classes
+public class GRCResult
+{
+    public bool IsSuccessful { get; set; }
+    public List<string> Errors { get; set; }
+    public int InitialGRC { get; set; }
+    public int FinalGRC { get; set; }
+    public List<string> StrategicMitigations { get; set; }
+}
+
+public class ARCResult
+{
+    public bool IsSuccessful { get; set; }
+    public List<string> Errors { get; set; }
+    public string InitialARC { get; set; }
+    public string ResidualARC { get; set; }
+    public List<string> TacticalMitigations { get; set; }
+}
+
+public class SAILResult
+{
+    public bool IsSuccessful { get; set; }
+    public List<string> Errors { get; set; }
+    public string SAIL { get; set; }
+}
+
+public class OSOComplianceResult
+{
+    public bool IsSuccessful { get; set; }
+    public List<string> Errors { get; set; }
+    public List<string> RequiredOSOs { get; set; }
+    public List<string> AppliedOSOs { get; set; }
+    public List<string> MissingOSOs { get; set; }
+}
+```
+
+```csharp
+// Models/GRC/V2_0/PythonGRCRequest_2_0.cs
+namespace Skyworks.Core.Models.GRC.V2_0;
+
+public class PythonGRCRequest_2_0
+{
+    /// <summary>
+    

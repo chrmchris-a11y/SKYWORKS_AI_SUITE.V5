@@ -1,0 +1,1268 @@
+=== FILE: sail/data/oso_requirements.py ===
+
+"""
+OSO (Operational Safety Objectives) requirements and robustness levels for SAIL ratings.
+
+This module defines the 24 OSO requirements as specified in JARUS SORA and EASA AMC/GM,
+including robustness level assignments and differences between SORA 2.0 and 2.5.
+"""
+
+from typing import Dict, List
+from enum import Enum
+from pydantic import BaseModel, ConfigDict
+from sail.models.sail_models import SAILLevel
+
+
+class RobustnessLevel(str, Enum):
+    """OSO robustness levels."""
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+
+
+class OSORequirement(BaseModel):
+    """Individual OSO requirement definition."""
+    model_config = ConfigDict(
+        frozen=True,
+        use_enum_values=True,
+        validate_assignment=True
+    )
+    
+    oso_id: str
+    title: str
+    description: str
+    category: str
+    robustness_levels: Dict[SAILLevel, RobustnessLevel]
+
+
+# OSO #1-24 complete definitions
+OSO_REQUIREMENTS: List[OSORequirement] = [
+    OSORequirement(
+        oso_id="OSO#01",
+        title="Procedures for flight crew training, currency and recency",
+        description="Establish procedures to ensure that flight crew training, currency and recency are commensurate with the operation.",
+        category="Competency",
+        robustness_levels={
+            SAILLevel.I: RobustnessLevel.LOW,
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.MEDIUM,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.HIGH,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#02",
+        title="Procedures for flight crew qualifications",
+        description="Establish procedures to ensure that the flight crew qualifications are commensurate with the operation.",
+        category="Competency",
+        robustness_levels={
+            SAILLevel.I: RobustnessLevel.LOW,
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.MEDIUM,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.HIGH,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#03",
+        title="Training procedures for remote crew to competently handle foreseeable emergencies",
+        description="Establish training procedures for remote crew to ensure they can competently handle foreseeable emergencies and abnormal situations.",
+        category="Competency",
+        robustness_levels={
+            SAILLevel.I: RobustnessLevel.LOW,
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.MEDIUM,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.HIGH,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#04",
+        title="Operating procedures designed to minimise risks to third parties",
+        description="Design operating procedures to minimise risks to third parties (persons and property) on the ground and in the air.",
+        category="Procedures",
+        robustness_levels={
+            SAILLevel.I: RobustnessLevel.LOW,
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.MEDIUM,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.HIGH,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#05",
+        title="Ground crew procedures and training",
+        description="Develop procedures to ensure ground crew training and competency are commensurate with the operation.",
+        category="Competency",
+        robustness_levels={
+            SAILLevel.I: RobustnessLevel.LOW,
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.MEDIUM,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.HIGH,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#06",
+        title="Procedures to ensure flight crew knowledge of airspace constraints",
+        description="Establish procedures to ensure that flight crew have knowledge of the operational environment and airspace constraints.",
+        category="Procedures",
+        robustness_levels={
+            SAILLevel.I: RobustnessLevel.LOW,
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.MEDIUM,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.HIGH,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#07",
+        title="Procedures for air traffic control coordination",
+        description="Establish procedures for coordination with relevant air traffic control units.",
+        category="Procedures",
+        robustness_levels={
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#08",
+        title="Procedures for management of hazards and risks to third parties",
+        description="Define procedures for identification, assessment and management of hazards and associated risks to third parties.",
+        category="Risk Management",
+        robustness_levels={
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#09",
+        title="Inspection of the UAS to ensure airworthiness",
+        description="Establish procedures for inspection of the UAS to ensure continuing airworthiness.",
+        category="Technical",
+        robustness_levels={
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#10",
+        title="Maintenance procedures",
+        description="Establish maintenance procedures for the UAS to ensure continuing airworthiness.",
+        category="Technical",
+        robustness_levels={
+            SAILLevel.II: RobustnessLevel.LOW,
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.MEDIUM,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#11",
+        title="Procedures for safe recovery from emergency and abnormal situations",
+        description="Define procedures for safe recovery of the UAS from emergency and abnormal situations including manual takeover.",
+        category="Emergency Procedures",
+        robustness_levels={
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.LOW,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#12",
+        title="Compliance with aviation regulations and procedures",
+        description="Ensure compliance with relevant aviation regulations and procedures for the intended operation.",
+        category="Regulatory",
+        robustness_levels={
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.LOW,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#13",
+        title="External services supporting UAS operations",
+        description="Ensure that external services supporting UAS operations are adequate for the intended operation.",
+        category="External Services",
+        robustness_levels={
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.LOW,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#14",
+        title="Procedures to handle degraded external systems",
+        description="Define procedures to handle the degradation or loss of external systems supporting UAS operations.",
+        category="External Services",
+        robustness_levels={
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.LOW,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#15",
+        title="Procedures for information exchange with ATC and other airspace users",
+        description="Establish procedures for information exchange between the remote crew, ATC and other airspace users.",
+        category="Communication",
+        robustness_levels={
+            SAILLevel.III: RobustnessLevel.LOW,
+            SAILLevel.IV: RobustnessLevel.LOW,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#16",
+        title="Multi crew coordination procedures",
+        description="Establish multi crew coordination procedures and training when multiple crew members are involved.",
+        category="Crew Coordination",
+        robustness_levels={
+            SAILLevel.IV: RobustnessLevel.LOW,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#17",
+        title="Procedures for deterministic response to loss of control",
+        description="Define procedures to ensure a deterministic response of the UAS to a set of credible control link loss scenarios.",
+        category="Technical",
+        robustness_levels={
+            SAILLevel.IV: RobustnessLevel.LOW,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#18",
+        title="Procedures for autonomous operation contingency management",
+        description="Define procedures for handling contingencies during autonomous operations including system degradations.",
+        category="Autonomous Operations",
+        robustness_levels={
+            SAILLevel.IV: RobustnessLevel.LOW,
+            SAILLevel.V: RobustnessLevel.MEDIUM,
+            SAILLevel.VI: RobustnessLevel.HIGH
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#19",
+        title="Safe recovery capability during adverse meteorological conditions",
+        description="Ensure safe recovery capability of the UAS during operations in adverse meteorological conditions.",
+        category="Weather",
+        robustness_levels={
+            SAILLevel.V: RobustnessLevel.LOW,
+            SAILLevel.VI: RobustnessLevel.MEDIUM
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#20",
+        title="Operational control of the UAS",
+        description="Ensure that operational control of the UAS is maintained throughout the flight.",
+        category="Control",
+        robustness_levels={
+            SAILLevel.V: RobustnessLevel.LOW,
+            SAILLevel.VI: RobustnessLevel.MEDIUM
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#21",
+        title="Procedures for management of deteriorating operating conditions",
+        description="Define procedures for management of deteriorating operating conditions that may affect UAS operations.",
+        category="Risk Management",
+        robustness_levels={
+            SAILLevel.V: RobustnessLevel.LOW,
+            SAILLevel.VI: RobustnessLevel.MEDIUM
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#22",
+        title="Capability to keep the UAS within designated airspace",
+        description="Ensure the capability to keep the UAS within the designated airspace and volumes.",
+        category="Navigation",
+        robustness_levels={
+            SAILLevel.VI: RobustnessLevel.LOW
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#23",
+        title="Capability to monitor traffic and avoid collisions",
+        description="Ensure the capability to monitor traffic and avoid collisions with other aircraft.",
+        category="Collision Avoidance",
+        robustness_levels={
+            SAILLevel.VI: RobustnessLevel.LOW
+        }
+    ),
+    OSORequirement(
+        oso_id="OSO#24",
+        title="Capability to avoid controlled flight into terrain",
+        description="Ensure the capability to avoid controlled flight into terrain or obstacles.",
+        category="Terrain Avoidance",
+        robustness_levels={
+            SAILLevel.VI: RobustnessLevel.LOW
+        }
+    )
+]
+
+
+# SAIL level to required OSO count mapping
+SAIL_OSO_COUNT: Dict[SAILLevel, int] = {
+    SAILLevel.I: 6,
+    SAILLevel.II: 10,
+    SAILLevel.III: 15,
+    SAILLevel.IV: 18,
+    SAILLevel.V: 21,
+    SAILLevel.VI: 24
+}
+
+
+# SAIL level to applicable OSO requirements mapping
+SAIL_OSO_REQUIREMENTS: Dict[SAILLevel, List[str]] = {
+    SAILLevel.I: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06"
+    ],
+    SAILLevel.II: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10"
+    ],
+    SAILLevel.III: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15"
+    ],
+    SAILLevel.IV: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18"
+    ],
+    SAILLevel.V: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18",
+        "OSO#19", "OSO#20", "OSO#21"
+    ],
+    SAILLevel.VI: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18",
+        "OSO#19", "OSO#20", "OSO#21", "OSO#22", "OSO#23", "OSO#24"
+    ]
+}
+
+
+def get_oso_requirements_for_sail(sail_level: SAILLevel) -> List[OSORequirement]:
+    """
+    Get OSO requirements for a specific SAIL level.
+    
+    Args:
+        sail_level: The SAIL level
+        
+    Returns:
+        List of applicable OSO requirements
+        
+    Raises:
+        ValueError: If SAIL level is invalid
+    """
+    if sail_level not in SAIL_OSO_REQUIREMENTS:
+        raise ValueError(f"Invalid SAIL level: {sail_level}")
+        
+    oso_ids = SAIL_OSO_REQUIREMENTS[sail_level]
+    oso_map = {req.oso_id: req for req in OSO_REQUIREMENTS}
+    
+    return [oso_map[oso_id] for oso_id in oso_ids if oso_id in oso_map]
+
+
+def get_oso_count_for_sail(sail_level: SAILLevel) -> int:
+    """
+    Get the number of required OSOs for a SAIL level.
+    
+    Args:
+        sail_level: The SAIL level
+        
+    Returns:
+        Number of required OSOs
+        
+    Raises:
+        ValueError: If SAIL level is invalid
+    """
+    if sail_level not in SAIL_OSO_COUNT:
+        raise ValueError(f"Invalid SAIL level: {sail_level}")
+        
+    return SAIL_OSO_COUNT[sail_level]
+
+
+def validate_oso_completeness():
+    """
+    Validate that OSO requirements and mappings are complete and consistent.
+    
+    Raises:
+        ValueError: If validation fails
+    """
+    # Check OSO count consistency
+    for sail_level in SAILLevel:
+        expected_count = SAIL_OSO_COUNT[sail_level]
+        actual_count = len(SAIL_OSO_REQUIREMENTS[sail_level])
+        
+        if expected_count != actual_count:
+            raise ValueError(
+                f"OSO count mismatch for {sail_level}: expected {expected_count}, got {actual_count}"
+            )
+    
+    # Check all referenced OSOs exist
+    all_oso_ids = {req.oso_id for req in OSO_REQUIREMENTS}
+    for sail_level, oso_ids in SAIL_OSO_REQUIREMENTS.items():
+        for oso_id in oso_ids:
+            if oso_id not in all_oso_ids:
+                raise ValueError(f"Referenced OSO {oso_id} not found in requirements")
+    
+    # Validate incremental OSO requirements (higher SAIL includes all lower SAIL OSOs)
+    sail_levels = [SAILLevel.I, SAILLevel.II, SAILLevel.III, SAILLevel.IV, SAILLevel.V, SAILLevel.VI]
+    for i in range(1, len(sail_levels)):
+        current_olos = set(SAIL_OSO_REQUIREMENTS[sail_levels[i]])
+        previous_olos = set(SAIL_OSO_REQUIREMENTS[sail_levels[i-1]])
+        
+        if not previous_olos.issubset(current_olos):
+            raise ValueError(
+                f"SAIL {sail_levels[i]} requirements do not include all {sail_levels[i-1]} requirements"
+            )
+
+
+# Differences between SORA 2.0 and 2.5
+SORA_VERSION_DIFFERENCES = {
+    "2.0_to_2.5": {
+        "description": "Key differences between SORA 2.0 (EASA AMC/GM) and SORA 2.5 (JARUS)",
+        "sail_mapping_changes": {
+            "GRC_6": {
+                "2.0": {"a": "III", "b": "III", "c": "IV", "d": "V"},
+                "2.5": {"a": "IV", "b": "IV", "c": "V", "d": "VI"}
+            },
+            "GRC_7": {
+                "2.0": {"a": "IV", "b": "IV", "c": "V", "d": "VI"},
+                "2.5": {"a": "V", "b": "V", "c": "VI", "d": "VI"}
+            },
+            "GRC_8": {
+                "2.0": {"a": "IV", "b": "IV", "c": "V", "d": "VI"},
+                "2.5": {"a": "V", "b": "V", "c": "VI", "d": "VI"}
+            }
+        },
+        "rationale": "SORA 2.5 introduces more stringent SAIL requirements for higher ground risk classes (GRC 6-8) based on operational experience and safety analysis."
+    }
+}
+
+=== FILE: sail/api/sail_api.py ===
+
+"""
+FastAPI endpoints for SAIL (Specific Assurance and Integrity Level) calculations.
+
+This module provides REST API endpoints for:
+- SAIL calculations based on GRC and ARC inputs
+- OSO requirements retrieval
+- Support for both SORA 2.0 and SORA 2.5 standards
+"""
+
+from typing import List, Optional
+from fastapi import FastAPI, HTTPException, Query, Path
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ConfigDict, Field, validator
+from sail.models.sail_models import (
+    GRCLevel, ARCLevel, SAILLevel, SORAVersion,
+    SAILCalculationRequest, SAILCalculationResponse
+)
+from sail.calculators.sail_calculator import SAILCalculator
+from sail.calculators.oso_mapper import OSOMapper
+from sail.data.oso_requirements import (
+    OSORequirement, get_oso_requirements_for_sail, get_oso_count_for_sail
+)
+from sail.validators.sail_validator import SAILValidator
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="SAIL Calculator API",
+    description="API for calculating SAIL levels and OSO requirements according to SORA standards",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
+)
+
+# Initialize components
+sail_calculator = SAILCalculator()
+oso_mapper = OSOMapper()
+validator = SAILValidator()
+
+
+class SAILCalculationAPIRequest(BaseModel):
+    """API request model for SAIL calculations."""
+    model_config = ConfigDict(
+        use_enum_values=True,
+        validate_assignment=True,
+        str_strip_whitespace=True
+    )
+    
+    grc_level: GRCLevel = Field(
+        ...,
+        description="Ground Risk Class level (1-8)"
+    )
+    arc_level: ARCLevel = Field(
+        ...,
+        description="Air Risk Class level (a-d)"
+    )
+    sora_version: SORAVersion = Field(
+        SORAVersion.SORA_2_5,
+        description="SORA version to use for calculation"
+    )
+
+
+class SAILCalculationAPIResponse(BaseModel):
+    """API response model for SAIL calculations."""
+    model_config = ConfigDict(
+        use_enum_values=True,
+        validate_assignment=True
+    )
+    
+    sail_level: SAILLevel = Field(
+        ...,
+        description="Calculated SAIL level"
+    )
+    oso_count: int = Field(
+        ...,
+        description="Number of required OSOs for this SAIL level"
+    )
+    grc_level: GRCLevel = Field(
+        ...,
+        description="Input Ground Risk Class level"
+    )
+    arc_level: ARCLevel = Field(
+        ...,
+        description="Input Air Risk Class level"
+    )
+    sora_version: SORAVersion = Field(
+        ...,
+        description="SORA version used for calculation"
+    )
+
+
+class OSORequirementsResponse(BaseModel):
+    """API response model for OSO requirements."""
+    model_config = ConfigDict(
+        use_enum_values=True,
+        validate_assignment=True
+    )
+    
+    sail_level: SAILLevel
+    oso_count: int
+    requirements: List[OSORequirement]
+
+
+class ErrorResponse(BaseModel):
+    """Standard error response model."""
+    model_config = ConfigDict(validate_assignment=True)
+    
+    error: str
+    detail: str
+    status_code: int
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request, exc):
+    """Handle ValueError exceptions."""
+    return JSONResponse(
+        status_code=400,
+        content=ErrorResponse(
+            error="Validation Error",
+            detail=str(exc),
+            status_code=400
+        ).model_dump()
+    )
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request, exc):
+    """Handle general exceptions."""
+    return JSONResponse(
+        status_code=500,
+        content=ErrorResponse(
+            error="Internal Server Error",
+            detail=str(exc),
+            status_code=500
+        ).model_dump()
+    )
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {"status": "healthy", "service": "SAIL Calculator API"}
+
+
+@app.post("/sail/calculate", response_model=SAILCalculationAPIResponse)
+async def calculate_sail(request: SAILCalculationAPIRequest):
+    """
+    Calculate SAIL level based on GRC and ARC inputs.
+    
+    Args:
+        request: SAIL calculation request with GRC, ARC, and SORA version
+        
+    Returns:
+        SAIL calculation response with level and OSO count
+        
+    Raises:
+        HTTPException: If validation fails or calculation error occurs
+    """
+    try:
+        # Validate inputs
+        validator.validate_grc_level(request.grc_level)
+        validator.validate_arc_level(request.arc_level)
+        validator.validate_sora_version(request.sora_version)
+        
+        # Create internal request model
+        calc_request = SAILCalculationRequest(
+            grc_level=request.grc_level,
+            arc_level=request.arc_level,
+            sora_version=request.sora_version
+        )
+        
+        # Calculate SAIL
+        calc_response = sail_calculator.calculate_sail(calc_request)
+        
+        # Get OSO count
+        oso_count = oso_mapper.get_oso_count(calc_response.sail_level)
+        
+        # Return API response
+        return SAILCalculationAPIResponse(
+            sail_level=calc_response.sail_level,
+            oso_count=oso_count,
+            grc_level=request.grc_level,
+            arc_level=request.arc_level,
+            sora_version=request.sora_version
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Calculation failed: {str(e)}")
+
+
+@app.get("/sail/calculate", response_model=SAILCalculationAPIResponse)
+async def calculate_sail_get(
+    grc_level: int = Query(..., ge=1, le=8, description="Ground Risk Class level (1-8)"),
+    arc_level: str = Query(..., regex="^[a-d]$", description="Air Risk Class level (a-d)"),
+    sora_version: str = Query("2.5", regex="^(2\.0|2\.5)$", description="SORA version (2.0 or 2.5)")
+):
+    """
+    Calculate SAIL level using GET request with query parameters.
+    
+    Args:
+        grc_level: Ground Risk Class level (1-8)
+        arc_level: Air Risk Class level (a-d)
+        sora_version: SORA version (2.0 or 2.5)
+        
+    Returns:
+        SAIL calculation response with level and OSO count
+    """
+    try:
+        # Convert string inputs to enums
+        grc_enum = GRCLevel(grc_level)
+        arc_enum = ARCLevel(arc_level)
+        sora_enum = SORAVersion(f"2.{sora_version.split('.')[1]}")
+        
+        # Create request and delegate to POST handler
+        request = SAILCalculationAPIRequest(
+            grc_level=grc_enum,
+            arc_level=arc_enum,
+            sora_version=sora_enum
+        )
+        
+        return await calculate_sail(request)
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/sail/oso-requirements/{sail_level}", response_model=OSORequirementsResponse)
+async def get_oso_requirements(
+    sail_level: str = Path(..., regex="^(I|II|III|IV|V|VI)$", description="SAIL level (I-VI)")
+):
+    """
+    Get OSO requirements for a specific SAIL level.
+    
+    Args:
+        sail_level: SAIL level (I-VI)
+        
+    Returns:
+        OSO requirements for the specified SAIL level
+        
+    Raises:
+        HTTPException: If SAIL level is invalid
+    """
+    try:
+        # Convert to SAIL enum
+        sail_enum = SAILLevel(sail_level)
+        
+        # Get requirements
+        requirements = get_oso_requirements_for_sail(sail_enum)
+        oso_count = get_oso_count_for_sail(sail_enum)
+        
+        return OSORequirementsResponse(
+            sail_level=sail_enum,
+            oso_count=oso_count,
+            requirements=requirements
+        )
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid SAIL level: {sail_level}")
+
+
+@app.get("/sail/oso-requirements", response_model=List[OSORequirementsResponse])
+async def get_all_oso_requirements():
+    """
+    Get OSO requirements for all SAIL levels.
+    
+    Returns:
+        List of OSO requirements for all SAIL levels
+    """
+    try:
+        responses = []
+        
+        for sail_level in SAILLevel:
+            requirements = get_oso_requirements_for_sail(sail_level)
+            oso_count = get_oso_count_for_sail(sail_level)
+            
+            responses.append(OSORequirementsResponse(
+                sail_level=sail_level,
+                oso_count=oso_count,
+                requirements=requirements
+            ))
+        
+        return responses
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get OSO requirements: {str(e)}")
+
+
+@app.post("/sail/calculate/sora20", response_model=SAILCalculationAPIResponse)
+async def calculate_sail_sora20(request: SAILCalculationAPIRequest):
+    """
+    Calculate SAIL level using SORA 2.0 (EASA AMC/GM) standard.
+    
+    Args:
+        request: SAIL calculation request (sora_version will be overridden)
+        
+    Returns:
+        SAIL calculation response using SORA 2.0
+    """
+    # Override SORA version
+    request.sora_version = SORAVersion.SORA_2_0
+    return await calculate_sail(request)
+
+
+@app.post("/sail/calculate/sora25", response_model=SAILCalculationAPIResponse)
+async def calculate_sail_sora25(request: SAILCalculationAPIRequest):
+    """
+    Calculate SAIL level using SORA 2.5 (JARUS) standard.
+    
+    Args:
+        request: SAIL calculation request (sora_version will be overridden)
+        
+    Returns:
+        SAIL calculation response using SORA 2.5
+    """
+    # Override SORA version
+    request.sora_version = SORAVersion.SORA_2_5
+    return await calculate_sail(request)
+
+
+@app.get("/sail/calculate/sora20", response_model=SAILCalculationAPIResponse)
+async def calculate_sail_sora20_get(
+    grc_level: int = Query(..., ge=1, le=8, description="Ground Risk Class level (1-8)"),
+    arc_level: str = Query(..., regex="^[a-d]$", description="Air Risk Class level (a-d)")
+):
+    """
+    Calculate SAIL level using SORA 2.0 with GET request.
+    
+    Args:
+        grc_level: Ground Risk Class level (1-8)
+        arc_level: Air Risk Class level (a-d)
+        
+    Returns:
+        SAIL calculation response using SORA 2.0
+    """
+    return await calculate_sail_get(grc_level, arc_level, "2.0")
+
+
+@app.get("/sail/calculate/sora25", response_model=SAILCalculationAPIResponse)
+async def calculate_sail_sora25_get(
+    grc_level: int = Query(..., ge=1, le=8, description="Ground Risk Class level (1-8)"),
+    arc_level: str = Query(..., regex="^[a-d]$", description="Air Risk Class level (a-d)")
+):
+    """
+    Calculate SAIL level using SORA 2.5 with GET request.
+    
+    Args:
+        grc_level: Ground Risk Class level (1-8)
+        arc_level: Air Risk Class level (a-d)
+        
+    Returns:
+        SAIL calculation response using SORA 2.5
+    """
+    return await calculate_sail_get(grc_level, arc_level, "2.5")
+
+
+@app.get("/sail/versions")
+async def get_supported_versions():
+    """
+    Get supported SORA versions and their differences.
+    
+    Returns:
+        Information about supported SORA versions
+    """
+    return {
+        "supported_versions": ["2.0", "2.5"],
+        "default_version": "2.5",
+        "version_info": {
+            "2.0": {
+                "name": "SORA 2.0",
+                "standard": "EASA AMC/GM",
+                "description": "European Union Aviation Safety Agency Acceptable Means of Compliance and Guidance Material"
+            },
+            "2.5": {
+                "name": "SORA 2.5", 
+                "standard": "JARUS",
+                "description": "Joint Authorities for Rulemaking on Unmanned Systems latest revision"
+            }
+        },
+        "key_differences": {
+            "GRC_6_8": "SORA 2.5 has more stringent SAIL requirements for Ground Risk Classes 6-8",
+            "affected_combinations": [
+                "GRC 6: All ARC levels result in higher SAIL",
+                "GRC 7-8: ARC a,b result in SAIL V instead of IV"
+            ]
+        }
+    }
+
+
+@app.get("/sail/mapping-table")
+async def get_sail_mapping_table(
+    sora_version: str = Query("2.5", regex="^(2\.0|2\.5)$", description="SORA version")
+):
+    """
+    Get the complete SAIL mapping table for a SORA version.
+    
+    Args:
+        sora_version: SORA version (2.0 or 2.5)
+        
+    Returns:
+        Complete SAIL mapping table
+    """
+    try:
+        version_enum = SORAVersion(f"2.{sora_version.split('.')[1]}")
+        
+        # Get mapping table from calculator
+        mapping_table = {}
+        
+        for grc in GRCLevel:
+            mapping_table[f"GRC_{grc.value}"] = {}
+            for arc in ARCLevel:
+                request = SAILCalculationRequest(
+                    grc_level=grc,
+                    arc_level=arc,
+                    sora_version=version_enum
+                )
+                response = sail_calculator.calculate_sail(request)
+                oso_count = oso_mapper.get_oso_count(response.sail_level)
+                
+                mapping_table[f"GRC_{grc.value}"][arc.value] = {
+                    "sail_level": response.sail_level.value,
+                    "oso_count": oso_count
+                }
+        
+        return {
+            "sora_version": sora_version,
+            "mapping_table": mapping_table,
+            "legend": {
+                "GRC": "Ground Risk Class (1-8)",
+                "ARC": "Air Risk Class (a-d)",
+                "SAIL": "Specific Assurance and Integrity Level (I-VI)",
+                "OSO": "Operational Safety Objectives count"
+            }
+        }
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid SORA version: {sora_version}")
+
+=== FILE: sail/tests/test_sail_calculator_20.py ===
+
+"""
+Test suite for SAIL calculator using SORA 2.0 (EASA AMC/GM) standard.
+
+Tests all 32 combinations of GRC (1-8) × ARC (a-d) to verify correct SAIL levels
+and OSO counts according to SORA 2.0 specifications.
+
+Doc References:
+- EASA AMC/GM to Commission Implementing Regulation (EU) 2019/947
+- SAIL_FORMULAS_AUTHORITATIVE.md: SORA 2.0 mapping tables
+"""
+
+import pytest
+from sail.models.sail_models import (
+    GRCLevel, ARCLevel, SAILLevel, SORAVersion,
+    SAILCalculationRequest, SAILCalculationResponse
+)
+from sail.calculators.sail_calculator import SAILCalculator
+from sail.calculators.oso_mapper import OSOMapper
+
+
+class TestSAILCalculatorSORA20:
+    """Test SAIL calculations for SORA 2.0 standard."""
+    
+    def setup_method(self):
+        """Setup test fixtures."""
+        self.calculator = SAILCalculator()
+        self.oso_mapper = OSOMapper()
+        self.sora_version = SORAVersion.SORA_2_0
+    
+    def _calculate_and_verify(self, grc: GRCLevel, arc: ARCLevel, expected_sail: SAILLevel, expected_oso: int):
+        """Helper method to calculate and verify SAIL and OSO values."""
+        request = SAILCalculationRequest(
+            grc_level=grc,
+            arc_level=arc,
+            sora_version=self.sora_version
+        )
+        
+        response = self.calculator.calculate_sail(request)
+        oso_count = self.oso_mapper.get_oso_count(response.sail_level)
+        
+        assert response.sail_level == expected_sail, f"GRC{grc.value}×ARC{arc.value}: expected SAIL {expected_sail.value}, got {response.sail_level.value}"
+        assert oso_count == expected_oso, f"GRC{grc.value}×ARC{arc.value}: expected {expected_oso} OSOs, got {oso_count}"
+        assert response.sora_version == self.sora_version
+        
+        return response
+    
+    # GRC 1 tests (all combinations should yield SAIL I, I, II, III)
+    def test_grc1_arca_sora20(self):
+        """Test GRC 1 × ARC a = SAIL I (6 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_1, ARCLevel.ARC_A, SAILLevel.I, 6)
+    
+    def test_grc1_arcb_sora20(self):
+        """Test GRC 1 × ARC b = SAIL I (6 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_1, ARCLevel.ARC_B, SAILLevel.I, 6)
+    
+    def test_grc1_arcc_sora20(self):
+        """Test GRC 1 × ARC c = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_1, ARCLevel.ARC_C, SAILLevel.II, 10)
+    
+    def test_grc1_arcd_sora20(self):
+        """Test GRC 1 × ARC d = SAIL III (15 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_1, ARCLevel.ARC_D, SAILLevel.III, 15)
+    
+    # GRC 2 tests (same as GRC 1 in SORA 2.0)
+    def test_grc2_arca_sora20(self):
+        """Test GRC 2 × ARC a = SAIL I (6 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_2, ARCLevel.ARC_A, SAILLevel.I, 6)
+    
+    def test_grc2_arcb_sora20(self):
+        """Test GRC 2 × ARC b = SAIL I (6 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_2, ARCLevel.ARC_B, SAILLevel.I, 6)
+    
+    def test_grc2_arcc_sora20(self):
+        """Test GRC 2 × ARC c = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_2, ARCLevel.ARC_C, SAILLevel.II, 10)
+    
+    def test_grc2_arcd_sora20(self):
+        """Test GRC 2 × ARC d = SAIL III (15 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_2, ARCLevel.ARC_D, SAILLevel.III, 15)
+    
+    # GRC 3 tests (all combinations should yield SAIL II, II, III, IV)
+    def test_grc3_arca_sora20(self):
+        """Test GRC 3 × ARC a = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_3, ARCLevel.ARC_A, SAILLevel.II, 10)
+    
+    def test_grc3_arcb_sora20(self):
+        """Test GRC 3 × ARC b = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_3, ARCLevel.ARC_B, SAILLevel.II, 10)
+    
+    def test_grc3_arcc_sora20(self):
+        """Test GRC 3 × ARC c = SAIL III (15 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_3, ARCLevel.ARC_C, SAILLevel.III, 15)
+    
+    def test_grc3_arcd_sora20(self):
+        """Test GRC 3 × ARC d = SAIL IV (18 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_3, ARCLevel.ARC_D, SAILLevel.IV, 18)
+    
+    # GRC 4 tests (same as GRC 3 in SORA 2.0)
+    def test_grc4_arca_sora20(self):
+        """Test GRC 4 × ARC a = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_4, ARCLevel.ARC_A, SAILLevel.II, 10)
+    
+    def test_grc4_arcb_sora20(self):
+        """Test GRC 4 × ARC b = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_4, ARCLevel.ARC_B, SAILLevel.II, 10)
+    
+    def test_grc4_arcc_sora20(self):
+        """Test GRC 4 × ARC c = SAIL III (15 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_4, ARCLevel.ARC_C, SAILLevel.III, 15)
+    
+    def test_grc4_arcd_sora20(self):
+        """Test GRC 4 × ARC d = SAIL IV (18 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_4, ARCLevel.ARC_D, SAILLevel.IV, 18)
+    
+    # GRC 5 tests (all combinations should yield SAIL III, III, IV, V)
+    def test_grc5_arca_sora20(self):
+        """Test GRC 5 × ARC a = SAIL III (15 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_5, ARCLevel.ARC_A, SAILLevel.III, 15)
+    
+    def test_grc5_arcb_sora20(self):
+        """Test GRC 5 × ARC b = SAIL III (15 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_5, ARCLevel.ARC_B, SAILLevel.III, 15)
+    
+    def test_grc5_arcc_sora20(self):
+        """Test GRC 5 × ARC c = SAIL IV (18 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_5, ARCLevel.ARC_C, SAILLevel.IV, 18)
+    
+    def test_grc5_arcd_sora20(self):
+        """Test GRC 5 × ARC d = SAIL V (21 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_5, ARCLevel.ARC_D, SAILLevel.V, 21)
+    
+    # GRC 6 tests (SORA 2.0: III, III, IV, V)
+    def test_grc6_arca_sora20(self):
+        """Test GRC 6 × ARC a = SAIL III (15 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_6, ARCLevel.ARC_A, SAILLevel.III, 15)
+    
+    def test_grc6_arcb_sora20(self):
+        """Test GRC 6 × ARC b = SAIL III (15 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_6, ARCLevel.ARC_B, SAILLevel.III, 15)
+    
+    def test_grc6_arcc_sora20(self):
+        """Test GRC 6 × ARC c = SAIL IV (18 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_6, ARCLevel.ARC_C, SAILLevel.IV, 18)
+    
+    def test_grc6_arcd_sora20(self):
+        """Test GRC 6 × ARC d = SAIL V (21 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_6, ARCLevel.ARC_D, SAILLevel.V, 21)
+    
+    # GRC 7 tests (SORA 2.0: IV, IV, V, VI)
+    def test_grc7_arca_sora20(self):
+        """Test GRC 7 × ARC a = SAIL IV (18 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_7, ARCLevel.ARC_A, SAILLevel.IV, 18)
+    
+    def test_grc7_arcb_sora20(self):
+        """Test GRC 7 × ARC b = SAIL IV (18 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_7, ARCLevel.ARC_B, SAILLevel.IV, 18)
+    
+    def test_grc7_arcc_sora20(self):
+        """Test GRC 7 × ARC c = SAIL V (21 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_7, ARCLevel.ARC_C, SAILLevel.V, 21)
+    
+    def test_grc7_arcd_sora20(self):
+        """Test GRC 7 × ARC d = SAIL VI (24 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_7, ARCLevel.ARC_D, SAILLevel.VI, 24)
+    
+    # GRC 8 tests (SORA 2.0: IV, IV, V, VI - same as GRC 7)
+    def test_grc8_arca_sora20(self):
+        """Test GRC 8 × ARC a = SAIL IV (18 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_8, ARCLevel.ARC_A, SAILLevel.IV, 18)
+    
+    def test_grc8_arcb_sora20(self):
+        """Test GRC 8 × ARC b = SAIL IV (18 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_8, ARCLevel.ARC_B, SAILLevel.IV, 18)
+    
+    def test_grc8_arcc_sora20(self):
+        """Test GRC 8 × ARC c = SAIL V (21 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_8, ARCLevel.ARC_C, SAILLevel.V, 21)
+    
+    def test_grc8_arcd_sora20(self):
+        """Test GRC 8 × ARC d = SAIL VI (24 OSOs) in SORA 2.0."""
+        self._calculate_and_verify(GRCLevel.GRC_8, ARCLevel.ARC_D, SAILLevel.VI, 24)
+    
+    def test_sail_oso_count_consistency_sora20(self):
+        """Test that all SAIL levels have correct OSO counts in SORA 2.0."""
+        expected_oso_counts = {
+            SAILLevel.I: 6,
+            SAILLevel.II: 10,
+            SAILLevel.III: 15,
+            SAILLevel.IV: 18,
+            SAILLevel.V: 21,
+            SAILLevel.VI: 24
+        }
+        
+        for sail_level, expected_count in expected_oso_counts.items():
+            actual_count = self.oso_mapper.get_oso_count(sail_level)
+            assert actual_count == expected_count, f"SAIL {sail_level.value}: expected {expected_count} OSOs, got {actual_count}"
+    
+    def test_sora20_version_consistency(self):
+        """Test that all calculations consistently return SORA 2.0 version."""
+        test_cases = [
+            (GRCLevel.GRC_1, ARCLevel.ARC_A),
+            (GRCLevel.GRC_4, ARCLevel.ARC_C),
+            (GRCLevel.GRC_6, ARCLevel.ARC_A),  # Key difference case
+            (GRCLevel.GRC_8, ARCLevel.ARC_D)
+        ]
+        
+        for grc, arc in test_cases:
+            request = SAILCalculationRequest(
+                grc_level=grc,
+                arc_level=arc,
+                sora_version=self.sora_version
+            )
+            response = self.calculator.calculate_sail(request)
+            assert response.sora_version == SORAVersion.SORA_2_0
+
+
+class TestSAILCalculatorSORA20EdgeCases:
+    """Test edge cases and boundary conditions for SORA 2.0."""
+    
+    def setup_method(self):
+        """Setup test fixtures."""
+        self.calculator = SAILCalculator()
+        self.oso_mapper = OSOMapper()
+    
+    def test_lowest_risk_combination_sora20(self):
+        """Test lowest risk combination (GRC 1 × ARC a) = SAIL I."""
+        request = SAILCalculationRequest(
+            grc_level=GRCLevel.GRC_1,
+            arc_level=ARCLevel.ARC_A,
+            sora_version=SORAVersion.SORA_2_0
+        )
+        response = self.calculator.calculate_sail(request)
+        
+        assert response.sail_level == SAILLevel.I
+        assert self.oso_mapper.get_oso_count(response.sail_level) == 6
+    
+    def test_highest_risk_combination_sora20(self):
+        """Test highest risk combination (GRC 8 × ARC d) = SAIL VI."""
+        request = SAILCalculationRequest(
+            grc_level=GRCLevel.GRC_8,
+            arc_level=ARCLevel.ARC_D,
+            sora_version=SORAVersion.SORA_2_0
+        )
+        response = self.calculator.calculate_sail(request)
+        
+        assert response.sail_level == SAILLevel.VI
+        assert self.oso_mapper.get_oso_count(response.sail_level) == 24
+    
+    def test_sail_progression_consistency_sora20(self):
+        """Test that SAIL levels progress logically with increased risk."""
+        # Test GRC progression with fixed ARC
+        arc = ARCLevel.ARC_C
+        previous_sail_value = 0
+        
+        for grc in [GRCLevel.GRC_1, GRCLevel.GRC_3, GRCLevel.GRC_5, GRCLevel.GRC_7]:
+            request = SAILCalculationRequest(
+                grc_level=grc,
+                arc_level=arc,
+                sora_version=SORAVersion.SORA_2_0
+            )
+            response = self.calculator.calculate_sail(request)
+            
+            # Convert SAIL to numeric for comparison
+            sail_numeric = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6}[response.sail_level.value]
+            assert sail_numeric >= previous_sail_value, f"SAIL should not decrease with higher GRC"
+            previous_sail_value = sail_numeric
+
+=== FILE: sail/tests/test_sail_calculator_25.py ===
+
+"""
+Test suite for SAIL calculator using SORA 2.5 (JARUS) standard.
+
+Tests all 32 combinations of GRC (1-8) × ARC (a-d) to verify correct SAIL levels
+and OSO counts according to SORA 2.5 specifications, with emphasis on differences
+from SORA 2.0 at GRC levels 6-8.
+
+Doc References:
+- JARUS SORA 2.5 Guidelines
+- SAIL_FORMULAS_AUTHORITATIVE.md: SORA 2.5 mapping tables and differences
+"""
+
+import pytest
+from sail.models.sail_models import (
+    GRCLevel, ARCLevel, SAILLevel, SORAVersion,
+    SAILCalculationRequest, SAILCalculationResponse
+)
+from sail.calculators.sail_calculator import SAILCalculator
+from sail.calculators.oso_mapper import OSOMapper
+
+
+class TestSAILCalculatorSORA25:
+    """Test SAIL calculations for SORA 2.5 standard."""
+    
+    def setup_method(self):
+        """Setup test fixtures."""
+        self.calculator = SAILCalculator()
+        self.oso_mapper = OSOMapper()
+        self.sora_version = SORAVersion.SORA_2_5
+    
+    def _calculate_and_verify(self, grc: GRCLevel, arc: ARCLevel, expected_sail: SAILLevel, expected_oso: int):
+        """Helper method to calculate and verify SAIL and OSO values."""
+        request = SAILCalculationRequest(
+            grc_level=grc,
+            arc_level=arc,
+            sora_version=self.sora_version
+        )
+        
+        response = self.calculator.calculate_sail(request)
+        oso_count = self.oso_mapper.get_oso_count(response.sail_level)
+        
+        assert response.sail_level == expected_sail, f"GRC{grc.value}×ARC{arc.value}: expected SAIL {expected_sail.value}, got {response.sail_level.value}"
+        assert oso_count == expected_oso, f"GRC{grc.value}×ARC{arc.value}: expected {expected_oso} OSOs, got {oso_count}"
+        assert response.sora_version == self.sora_version
+        
+        return response
+    
+    # GRC 1 tests (identical to SORA 2.0: I, I, II, III)
+    def test_grc1_arca_sora25(self):
+        """Test GRC 1 × ARC a = SAIL I (6 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_1, ARCLevel.ARC_A, SAILLevel.I, 6)
+    
+    def test_grc1_arcb_sora25(self):
+        """Test GRC 1 × ARC b = SAIL I (6 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_1, ARCLevel.ARC_B, SAILLevel.I, 6)
+    
+    def test_grc1_arcc_sora25(self):
+        """Test GRC 1 × ARC c = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_1, ARCLevel.ARC_C, SAILLevel.II, 10)
+    
+    def test_grc1_arcd_sora25(self):
+        """Test GRC 1 × ARC d = SAIL III (15 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_1, ARCLevel.ARC_D, SAILLevel.III, 15)
+    
+    # GRC 2 tests (identical to SORA 2.0: I, I, II, III)
+    def test_grc2_arca_sora25(self):
+        """Test GRC 2 × ARC a = SAIL I (6 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_2, ARCLevel.ARC_A, SAILLevel.I, 6)
+    
+    def test_grc2_arcb_sora25(self):
+        """Test GRC 2 × ARC b = SAIL I (6 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_2, ARCLevel.ARC_B, SAILLevel.I, 6)
+    
+    def test_grc2_arcc_sora25(self):
+        """Test GRC 2 × ARC c = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_2, ARCLevel.ARC_C, SAILLevel.II, 10)
+    
+    def test_grc2_arcd_sora25(self):
+        """Test GRC 2 × ARC d = SAIL III (15 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_2, ARCLevel.ARC_D, SAILLevel.III, 15)
+    
+    # GRC 3 tests (identical to SORA 2.0: II, II, III, IV)
+    def test_grc3_arca_sora25(self):
+        """Test GRC 3 × ARC a = SAIL II (10 OSOs)."""
+        self._calculate_and_verify(GRCLevel.GRC_3, ARCLevel.ARC_A, SA

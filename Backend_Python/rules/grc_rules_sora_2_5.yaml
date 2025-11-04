@@ -1,0 +1,65 @@
+# GRC SORA 2.5 - Quantitative (Annex F intent) with qualitative fallback
+# Config-driven governance: tune thresholds without code changes
+version: "2.5"
+
+quantitative:
+  # Optional quantitative model parameters (used only if calculator enables them)
+  # Risk score = factor * (dimension_m ** dimension_exponent) * (speed_ms ** speed_exponent) * (population_density * population_factor)
+  enabled: false  # default off; current implementation uses authoritative table below
+  dimension_exponent: 1.0
+  speed_exponent: 1.0
+  population_factor: 0.0001
+  factor: 1.0
+  # Map continuous score to iGRC bins (1..7); keep internal cap at 8 for stress tests
+  risk_score_mapping:
+    - { maxScore: 1.0, igrc: 1 }
+    - { maxScore: 2.0, igrc: 2 }
+    - { maxScore: 3.0, igrc: 3 }
+    - { maxScore: 4.0, igrc: 4 }
+    - { maxScore: 5.0, igrc: 5 }
+    - { maxScore: 6.0, igrc: 6 }
+    - { maxScore: 7.0, igrc: 7 }
+
+fallback:
+  # Authoritative unified iGRC table per SORA 2.5 Annex A Table A-1
+  # Rows: 0 Controlled, 1 <5, 2 <50, 3 <500, 4 <5000, 5 <50000, 6 ≥50000
+  # Cols: 0 <1m/≤25m/s, 1 <3m/≤35m/s, 2 <8m/≤75m/s, 3 <20m/≤120m/s, 4 ≥20m/>120m/s
+  igrc_table:
+    - [1, 1, 2, 3, 3]
+    - [2, 3, 4, 5, 6]
+    - [3, 4, 5, 6, 7]
+    - [4, 5, 6, 7, 8]
+    - [5, 6, 7, 8, 9]
+    - [6, 7, 8, 9, 10]
+    - [7, 8, -1, -1, -1]
+  # Floor equals the controlled row per column
+  min_grc_floor_by_column: [1, 1, 2, 3, 3]
+
+mitigations:
+  # Bridge to SORA 2.5 categories (M1A/M1B/M1C/M2)
+  M1A:
+    None: 0
+    Low: -1
+    Medium: -2
+    High: 0  # not allowed
+  M1B:
+    None: 0
+    Low: 0  # not allowed
+    Medium: -1
+    High: -2
+  M1C:
+    None: 0
+    Low: -1  # only low allowed
+    Medium: 0
+    High: 0
+  M2:
+    None: 0
+    Low: 0  # not allowed
+    Medium: -1
+    High: -2
+
+notes:
+  source: "EASA AMC/GM to Part-UAS (EU 2019/947) — Annex A (GRC), Annex F (quantitative intent)"
+  comments:
+    - "Quantitative block disabled by default; table is authoritative and matches tests."
+    - "Tune exponents/factors and mapping only if enabling quantitative path."

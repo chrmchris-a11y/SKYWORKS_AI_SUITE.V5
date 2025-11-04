@@ -1,0 +1,7 @@
+Keys to ensure for full translation coverage:
+- dropdown.explicitARC.* (auto, a, b, c, d)
+- dropdown.airspaceControl.* (controlled, uncontrolled)
+- dropdown.locationType.* (airport, nonAirport)
+- dropdown.environment.* (urban, suburban, rural, industrial, remote, coastal, mountain, forest)
+- dropdown.typicality.* (typical, atypical)
+- help.* for each of above + populationDensity.* (controlled, 5, 50, 500, 5000, 50000, 50001)

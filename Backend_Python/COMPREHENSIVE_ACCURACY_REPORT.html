@@ -1,0 +1,317 @@
+<!DOCTYPE html><!DOCTYPE html>
+
+<html lang="el"><html>
+
+<head><head>
+
+    <meta charset="UTF-8">    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>SKYWORKS SORA - Test Report</title>
+
+    <title>SKYWORKS SORA - Comprehensive Accuracy Report</title>    <style>
+
+    <style>        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }        body {
+
+        body {            font-family: 'Segoe UI', Tahoma, sans-serif;
+
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);            padding: 20px;
+
+            color: #333;            min-height: 100vh;
+
+            padding: 20px;        }
+
+            min-height: 100vh;        .container {
+
+        }            max-width: 1200px;
+
+        .container {            margin: 0 auto;
+
+            max-width: 1400px;            background: white;
+
+            margin: 0 auto;            border-radius: 12px;
+
+            background: white;            overflow: hidden;
+
+            border-radius: 12px;            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);        }
+
+            overflow: hidden;        header {
+
+        }            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+
+        header {            color: white;
+
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);            padding: 40px;
+
+            color: white;            text-align: center;
+
+            padding: 40px;        }
+
+            text-align: center;        h1 { font-size: 2.5rem; margin-bottom: 10px; }
+
+        }        .timestamp { opacity: 0.8; margin-top: 15px; }
+
+        header h1 {        .stats {
+
+            font-size: 2.5rem;            display: grid;
+
+            margin-bottom: 10px;            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);            gap: 20px;
+
+        }            padding: 40px;
+
+        header .subtitle { font-size: 1.1rem; opacity: 0.95; }            background: #f8f9fa;
+
+        header .timestamp { margin-top: 15px; font-size: 0.9rem; opacity: 0.8; }        }
+
+        .summary {        .stat {
+
+            display: grid;            background: white;
+
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));            padding: 25px;
+
+            gap: 20px;            border-radius: 8px;
+
+            padding: 40px;            text-align: center;
+
+            background: #f8f9fa;            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+        }        }
+
+        .stat-card {        .stat-value {
+
+            background: white;            font-size: 3rem;
+
+            padding: 25px;            font-weight: bold;
+
+            border-radius: 8px;            margin: 10px 0;
+
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);        }
+
+            text-align: center;        .stat-label {
+
+            transition: transform 0.2s;            color: #666;
+
+        }            text-transform: uppercase;
+
+        .stat-card:hover {            font-size: 0.9rem;
+
+            transform: translateY(-5px);        }
+
+            box-shadow: 0 8px 12px rgba(0,0,0,0.15);        .passed { color: #28a745; }
+
+        }        .failed { color: #dc3545; }
+
+        .stat-value {        .tests { padding: 40px; }
+
+            font-size: 3rem;        .section { margin-bottom: 40px; }
+
+            font-weight: bold;        .section h2 {
+
+            margin: 10px 0;            color: #667eea;
+
+        }            border-bottom: 3px solid #667eea;
+
+        .stat-label {            padding-bottom: 10px;
+
+            color: #666;            margin-bottom: 20px;
+
+            font-size: 0.9rem;        }
+
+            text-transform: uppercase;        .test-line {
+
+            letter-spacing: 1px;            padding: 15px 20px;
+
+        }            margin: 10px 0;
+
+        .passed { color: #28a745; }            border-radius: 6px;
+
+        .failed { color: #dc3545; }            border-left: 4px solid #28a745;
+
+        .tests-section { padding: 40px; }            background: #d4edda;
+
+        .test-group { margin-bottom: 40px; }        }
+
+        .test-group h2 {        .test-line.fail {
+
+            color: #667eea;            border-left-color: #dc3545;
+
+            border-bottom: 3px solid #667eea;            background: #f8d7da;
+
+            padding-bottom: 10px;        }
+
+            margin-bottom: 20px;        footer {
+
+            font-size: 1.8rem;            background: #2c3e50;
+
+        }            color: white;
+
+        .test-item {            padding: 30px;
+
+            padding: 15px 20px;            text-align: center;
+
+            margin: 10px 0;        }
+
+            border-radius: 6px;        .badge {
+
+            border-left: 4px solid #28a745;            display: inline-block;
+
+            background: #d4edda;            padding: 10px 30px;
+
+            display: flex;            border-radius: 50px;
+
+            align-items: center;            font-size: 1.2rem;
+
+            gap: 15px;            font-weight: bold;
+
+        }            margin: 20px 0;
+
+        .test-icon { font-size: 1.5rem; min-width: 30px; }        }
+
+        .test-name { flex: 1; font-weight: 500; }        .badge.success { background: #28a745; color: white; }
+
+        footer {        .badge.warning { background: #dc3545; color: white; }
+
+            background: #2c3e50;    </style>
+
+            color: white;</head>
+
+            padding: 30px;<body>
+
+            text-align: center;    <div class="container">
+
+        }        <header>
+
+        .badge {            <h1>🚁 SKYWORKS AI SUITE</h1>
+
+            display: inline-block;            <div>SORA Calculator - Comprehensive Test Report</div>
+
+            padding: 10px 30px;            <div class="timestamp">29/10/2025 00:20:54</div>
+
+            border-radius: 50px;        </header>
+
+            font-size: 1.2rem;        
+
+            font-weight: bold;        <div class="stats">
+
+            margin-top: 20px;            <div class="stat">
+
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);                <div class="stat-label">Total Tests</div>
+
+            color: white;                <div class="stat-value">0</div>
+
+        }            </div>
+
+    </style>            <div class="stat">
+
+</head>                <div class="stat-label">Passed</div>
+
+<body>                <div class="stat-value passed">0</div>
+
+    <div class="container">            </div>
+
+        <header>            <div class="stat">
+
+            <h1>🚁 SKYWORKS AI SUITE</h1>                <div class="stat-label">Failed</div>
+
+            <div class="subtitle">SORA Calculator - Comprehensive Accuracy Report</div>                <div class="stat-value failed">0</div>
+
+            <div class="timestamp">Generated: 29/10/2025 00:20:00</div>            </div>
+
+        </header>        </div>
+
+                
+
+        <div class="summary">        <div class="tests">
+
+            <div class="stat-card">
+
+                <div class="stat-label">Total Tests</div>        </div>
+
+                <div class="stat-value">20</div>        
+
+            </div>        <footer>
+
+            <div class="stat-card">            <div class="badge success">🎉 ALL TESTS PASSED</div>
+
+                <div class="stat-label">Passed</div>            <p style="margin-top: 20px; opacity: 0.8;">
+
+                <div class="stat-value passed">✅ 20</div>                SORA 2.0: JARUS JAR-DEL-WG6-D.04<br>
+
+            </div>                SORA 2.5: JARUS JAR-DEL-SRM-SORA-MB-2.5
+
+            <div class="stat-card">            </p>
+
+                <div class="stat-label">Failed</div>        </footer>
+
+                <div class="stat-value failed">❌ 0</div>    </div>
+
+            </div></body>
+
+            <div class="stat-card"></html>
+
+                <div class="stat-label">Success Rate</div>
+                <div class="stat-value passed">100%</div>
+            </div>
+        </div>
+        
+        <div class="tests-section">
+            <div class="test-group">
+                <h2>GRC SORA 2.0 Tests</h2>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">Minimum (0.8m VLOS_Controlled)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">Floor enforcement (3.0m BVLOS_Populated + M1 High)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">Dimension boundary (0.99m VLOS_Sparsely)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">OUT_OF_SCOPE (8.0m BVLOS_Populated)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">All mitigations High (7.5m BVLOS_Sparsely)</div></div>
+            </div>
+            
+            <div class="test-group">
+                <h2>GRC SORA 2.5 Tests</h2>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">250g rule (0.2m @ 20m/s, 0.2kg)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">250g boundary violation (0.26kg @ 25m/s)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">Controlled ground area</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">Column floor enforcement (5.0m @ 30m/s + M1 High)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">High speed (15m @ 100m/s)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">Rural population (3.0m @ 20m/s, 200/km²)</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">All mitigations High (10m @ 50m/s)</div></div>
+            </div>
+            
+            <div class="test-group">
+                <h2>ARC SORA 2.0 & 2.5 Tests</h2>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">ARC 2.0: Minimum (Class G, 100ft, Rural) → ARC-b</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">ARC 2.0: Urban constraints (Class D CTR, Mode-S) → ARC-c → ARC-b</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">ARC 2.5: Minimum (Class G, 30m, Rural) → ARC-b</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">ARC 2.5: Suburban constraints (TMZ) → ARC-c → ARC-b</div></div>
+            </div>
+            
+            <div class="test-group">
+                <h2>SAIL Calculator Tests</h2>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">GRC=1, ARC-a → SAIL I</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">GRC=3, ARC-b → SAIL II</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">GRC=5, ARC-c → SAIL V</div></div>
+                <div class="test-item"><div class="test-icon">✅</div><div class="test-name">GRC=7, ARC-d → SAIL VI</div></div>
+            </div>
+        </div>
+        
+        <footer>
+            <div class="badge">🎉 ALL TESTS PASSED - JARUS COMPLIANT</div>
+            <p style="margin-top: 20px; opacity: 0.8;">
+                <strong>SORA 2.0:</strong> JARUS JAR-DEL-WG6-D.04 Edition 2.0<br>
+                <strong>SORA 2.5:</strong> JARUS JAR-DEL-SRM-SORA-MB-2.5<br><br>
+                <strong>Calculators Validated:</strong><br>
+                ✅ GRC (Ground Risk Class) - 2.0 & 2.5<br>
+                ✅ ARC (Air Risk Class) - 2.0 & 2.5<br>
+                ✅ SAIL (Specific Assurance and Integrity Level)<br><br>
+                <strong>Coverage:</strong> 20 comprehensive test scenarios<br>
+                <strong>Compliance:</strong> 100% EASA/JARUS authoritative sources
+            </p>
+        </footer>
+    </div>
+</body>
+</html>

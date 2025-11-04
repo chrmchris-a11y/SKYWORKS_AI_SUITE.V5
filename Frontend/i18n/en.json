@@ -1,0 +1,570 @@
+{
+  "app": {
+    "title": "Skyworks Mission Planner",
+    "subtitle": "SORA / PDRA / STS Assessment Pipeline"
+  },
+  "navigation": {
+    "home": "Home",
+    "missions": "Missions",
+    "compliance": "Compliance",
+    "knowledge": "Knowledge Base",
+    "drones": "Drone Catalog"
+  },
+  "missionPlanner": {
+    "title": "Mission Planner (SORA / PDRA / STS)",
+    "description": "Submit SORA 2.0/2.5, PDRA or STS operation details and inspect the assessment result (GRC → ARC → SAIL → TMPR → OSO → Risk).",
+    "mission": {
+      "title": "Mission",
+      "soraVersion": "SORA Version",
+      "operationCategory": "Operation Category",
+      "missionId": "Mission ID",
+      "missionIdPlaceholder": "M-001",
+      "missionName": "Mission Name",
+      "missionNamePlaceholder": "Urban Inspection",
+      "description": "Mission Description",
+      "descriptionPlaceholder": "Routine infrastructure inspection"
+    },
+    "drone": {
+      "selection": "Drone Selection",
+      "model": "Drone Model",
+      "loading": "Loading drones...",
+      "manual": "⚙️ Manual Input (Other)",
+      "specs": "Drone Specifications"
+    },
+    "groundRisk": {
+      "title": "Ground Risk",
+      "populationDensity": "Population Density (people/km²)",
+      "controlledGroundArea": "Controlled Ground Area",
+      "maxDimension": "Max Characteristic Dimension (m)",
+      "maxSpeed": "Max Speed (m/s)",
+      "mitigations25": "Mitigations (2.5): CSV (e.g., M1A:Medium,M2:High)",
+      "scenario20": "Scenario (2.0)",
+      "mitigations20": "Mitigations (2.0): CSV (e.g., M1:Medium,M2:High)"
+    },
+    "maxDimension": "Max Characteristic Dimension (m)",
+    "kineticEnergy": "Kinetic Energy (optional, J)",
+    "mitigations": "Mitigations (2.0): CSV (e.g., M1:Medium,M2:Medium)",
+    "mitigationsPlaceholder": "M1:Medium,M2:Medium",
+    "airRisk": "Air Risk",
+    "explicitARC": "Explicit ARC (optional)",
+    "airspaceControl": "Airspace Control",
+    "locationType": "Location Type",
+    "environment": "Environment",
+    "typicality": "Typicality",
+    "maxHeightAGL": "Max Height AGL (m)",
+    "strategicMitigations": "Strategic Mitigations (CSV, e.g., S1,S2)",
+    "strategicMitigationsPlaceholder": "S1,S2",
+    "atypicalSegregated": "Atypical Segregated?",
+    "osos": "OSOs",
+    "implementedOSOs": "Implemented OSOs (CSV pairs, e.g., 1:Medium,2:High)",
+    "ososPlaceholder": "1:Medium,2:High",
+    "runButton": "Run SORA Complete",
+    "result": "Result",
+    "running": "Running…",
+    "badRequest": "BadRequest",
+    "requestFailed": "Request failed",
+    "oso": {
+      "title": "OSO Implementations",
+      "description": "Operational Safety Objectives (CSV format: ID:Robustness)",
+      "placeholder": "1:Medium,2:High,3:Low"
+    },
+    "actions": {
+      "execute": "Execute SORA Assessment",
+      "clear": "Clear Form",
+      "loadExample": "Load Example"
+    },
+    "results": {
+      "title": "Result",
+      "success": "Success",
+      "errors": "Errors",
+      "warnings": "Warnings",
+      "summary": "Summary",
+      "rawJson": "Raw JSON Response",
+      "noResult": "No result yet. Submit a SORA assessment above.",
+      "grc": "Ground Risk Class",
+      "arc": "Air Risk Class",
+      "sail": "SAIL",
+      "tmpr": "TMPR",
+      "oso": "OSO Requirements",
+      "compliance": "Compliance",
+      "riskScore": "Risk Score",
+      "initialAssessment": "📋 Initial Assessment",
+      "finalAssessment": "✅ Final Assessment (Post-Mitigations)",
+      "iGRC": "iGRC",
+      "initialARC": "Initial ARC",
+      "initialSAIL": "Initial SAIL",
+      "finalGRC": "Final GRC",
+      "residualARC": "Residual ARC",
+      "finalSAIL": "Final SAIL"
+    },
+    "initial": {
+      "title": "Initial Assessment",
+      "intrinsicGRC": "Intrinsic GRC (Initial)",
+      "initialARC": "Initial ARC",
+      "initialSAIL": "Initial SAIL"
+    },
+    "final": {
+      "title": "Final Assessment",
+      "finalGRC": "Final GRC",
+      "residualARC": "Residual (Final) ARC",
+      "sail": "SAIL"
+    },
+    "validation": {
+      "required": "This field is required",
+      "invalidNumber": "Please enter a valid number",
+      "invalidFormat": "Invalid format"
+    },
+    "category": {
+      "SORA-2.5": "SORA 2.5 (JARUS Latest Version)",
+      "SORA-2.0": "SORA 2.0 (Legacy AMC)",
+      "STS-01": "STS-01 - VLOS over controlled ground",
+      "STS-02": "STS-02 - BVLOS with airspace observers",
+      "PDRA-S01": "PDRA-S01 - VLOS (custom UAS)",
+      "PDRA-S02": "PDRA-S02 - BVLOS (custom UAS)",
+      "PDRA-G01": "PDRA-G01 - Aerial survey BVLOS",
+      "PDRA-G02": "PDRA-G02 - Aerial survey BVLOS extended",
+      "PDRA-G03": "PDRA-G03 - BVLOS low altitude"
+    },
+    "categoryFields": {
+      "title": "Category Specific Fields",
+      "uasClass": "UAS Class",
+      "maxDimension": "Max Characteristic Dimension",
+      "mtom": "MTOM",
+      "maxSpeed": "Max Speed",
+      "maxHeight": "Max Height (AGL)",
+      "populationDensity": "Population Density",
+      "controlledGroundArea": "Controlled Ground Area",
+      "groundRiskBuffer": "Ground Risk Buffer",
+      "vlos": "VLOS",
+      "tetheredOperation": "Tethered Operation",
+      "tetherLength": "Tether Length",
+      "remotePilotCertified": "Remote Pilot Certified",
+      "operationsManual": "Operations Manual",
+      "emergencyResponsePlan": "Emergency Response Plan",
+      "directRemoteID": "Direct Remote ID",
+      "meteorologicalVisibility": "Meteorological Visibility (km)",
+      "airspaceObservers": "Airspace Observers",
+      "launchRecoveryVlos": "Launch/Recovery in VLOS",
+      "bvlos": "BVLOS",
+      "preprogrammedRoute": "Preprogrammed Route",
+      "geoFencing": "Geo-fencing",
+      "controlledAirspace": "Controlled Airspace",
+      "atcCoordination": "ATC Coordination",
+      "automaticMode": "Automatic Mode",
+      "surveyType": "Survey Type",
+      "operationalArea": "Operational Area",
+      "sparselyPopulated": "Sparsely Populated",
+      "flightRange": "Flight Range (m)",
+      "initialGRC": "Initial GRC",
+      "finalGRC": "Final GRC",
+      "initialARC": "Initial ARC",
+      "finalARC": "Final ARC",
+      "sail": "SAIL"
+    },
+    "categoryNotes": {
+      "STS-01": "STS-01 provides only final values: GRC_3, ARC_b, SAIL II",
+      "STS-02": "STS-02: Final equals Initial GRC (3). ARC_b. SAIL II",
+      "PDRA-S01": "Per PDRA-S01 table: Final GRC_3, ARC_b, SAIL II",
+      "PDRA-S02": "Per PDRA-S02 table: Final GRC_3, ARC_b, SAIL II",
+      "PDRA-G01": "Per PDRA-G01 table: Final GRC_3, ARC_b, SAIL II",
+      "PDRA-G02": "Reserved/segregated airspace: ARC_a. Final GRC_3, SAIL II",
+      "PDRA-G03": "Linear inspections near obstacles: ARC_a. Final GRC_3, SAIL II"
+    },
+    "aerodromeProximity": {
+      "title": "Aerodrome Proximity (Advisory)",
+      "isCtr": "CTR / Terminal Control Area",
+      "isNear": "Near Aerodrome",
+      "distanceKm": "Distance to Aerodrome (km)",
+      "distancePlaceholder": "e.g. 3.5"
+    }
+  },
+  "help": {
+    "explicitARC": "Choose ARC if you know it; otherwise keep Auto to derive per SORA rules.",
+    "airspaceControl": {
+      "title": "Select whether the airspace is controlled (ATC) or uncontrolled.",
+      "controlled": "Controlled airspace with ATC services (Class A-E). Reduces collision risk.",
+      "uncontrolled": "Uncontrolled airspace (Class G). Higher air risk - requires more mitigations."
+    },
+    "locationType": {
+      "title": "Airport or other location.",
+      "airport": "Near or at airport - High air traffic risk. Requires coordination.",
+      "nonAirport": "Away from airports - Lower air traffic."
+    },
+    "environment": {
+      "title": "Select the operating environment per SORA 2.5 Step #4.",
+      "urban": "Urban - High population density (>1,500 people/km²). High traffic. Requires GRC mitigation.",
+      "suburban": "Suburban - Medium population (500-1,500 people/km²). Moderate traffic density.",
+      "rural": "Rural - Low population (<500 people/km²). Low traffic. Easier GRC compliance.",
+      "industrial": "Industrial - Controlled area with restricted access. May reduce ground risk.",
+      "remote": "Remote/Desert - Very low population (<5 people/km²). Minimal ground/air risk.",
+      "coastal": "Coastal/Maritime - Over water or coastline. Reduced ground risk if over water.",
+      "mountain": "Mountain - Low traffic, terrain obstacles. Weather and emergency landing challenges.",
+      "forest": "Forest - Low traffic, natural obstacles. Limited emergency landing options."
+    },
+    "typicality": "Is the flight typical or atypical for the area?",
+    "maxHeightAGL": "Maximum height above ground level in meters.",
+    "strategicMitigations": "Enter strategic mitigations (e.g., SM1,SM2).",
+    "isAtypicalSegregated": "Is the area atypically segregated for this flight (NOTAM/TFR)?",
+    "populationDensity": {
+      "controlled": "Controlled ground area with access management.",
+      "5": "Very remote area: < 5 people per km².",
+      "50": "Lightly populated: < 50 people per km².",
+      "500": "Sparsely populated / light residential: < 500 people per km².",
+      "5000": "Suburban / low density metro: < 5,000 people per km².",
+      "50000": "High density metropolitan: < 50,000 people per km².",
+      "50001": "Assemblies of people: > 50,000 people per km²."
+    },
+    "aerodromeProximity": {
+      "note": "For SORA 2.5 we use kilometers (km) for aerodrome proximity."
+    }
+  },
+  "dropdown": {
+    "explicitARC": {
+      "auto": "Auto (derive)",
+      "a": "ARC-a",
+      "b": "ARC-b",
+      "c": "ARC-c",
+      "d": "ARC-d"
+    },
+    "airspaceControl": {
+      "uncontrolled": "Uncontrolled",
+      "controlled": "Controlled"
+    },
+    "locationType": {
+      "nonAirport": "Non-Airport",
+      "airport": "Airport"
+    },
+    "environment": {
+      "urban": "Urban (>1,500 people/km² - JARUS SORA Table 3)",
+      "rural": "Rural (<500 people/km² - Lower GRC)",
+      "suburban": "Suburban (500-1,500 people/km²)",
+      "industrial": "Industrial (Controlled access area)",
+      "remote": "Remote/Desert (<5 people/km² - Minimal risk)",
+      "coastal": "Coastal/Maritime (Over water - Reduced ground risk)",
+      "mountain": "Mountain (Low traffic, terrain obstacles)",
+      "forest": "Forest (Low traffic, natural obstacles)"
+    },
+    "typicality": {
+      "typical": "Typical",
+      "atypical": "Atypical"
+    },
+    "isAtypicalSegregated": {
+      "true": "True",
+      "false": "False"
+    }
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "true": "True",
+    "false": "False",
+    "loading": "Loading...",
+    "ok": "OK",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "reset": "Reset",
+    "none": "(none)"
+  },
+  "airRisk": {
+    "uncontrolled": "Uncontrolled",
+    "controlled": "Controlled",
+    "nonAirport": "Non-Airport",
+    "airport": "Airport",
+    "urban": "Urban",
+    "rural": "Rural",
+    "suburban": "Suburban",
+    "industrial": "Industrial",
+    "typical": "Typical",
+    "atypical": "Atypical",
+    "arc_a": "ARC-a (Atypical - No TMPR)",
+    "arc_b": "ARC-b (Low collision risk)",
+    "arc_c": "ARC-c (Medium collision risk)",
+    "arc_d": "ARC-d (High collision risk)"
+  },
+  "groundRisk": {
+    "controlledGroundArea": "VLOS/BVLOS over controlled ground area",
+    "vlosSparselyPopulated": "VLOS in sparsely populated environment",
+    "bvlosSparselyPopulated": "BVLOS in sparsely populated environment",
+    "vlosPopulated": "VLOS in populated environment",
+    "bvlosPopulated": "BVLOS in populated environment",
+    "vlosAssemblyOfPeople": "VLOS over assembly of people",
+    "bvlosAssemblyOfPeople": "BVLOS over assembly of people"
+  },
+  "soraTerms": {
+    "grc": "GRC (Ground Risk Class)",
+    "arc": "ARC (Air Risk Class)",
+    "sail": "SAIL (Specific Assurance and Integrity Level)",
+    "tmpr": "TMPR (Tactical Mitigation Performance Requirements)",
+    "oso": "OSO (Operational Safety Objectives)",
+    "intrinsicGRC": "Intrinsic GRC",
+    "finalGRC": "Final GRC",
+    "initialARC": "Initial ARC",
+    "residualARC": "Residual ARC"
+  },
+  "homePage": {
+    "title": "Skyworks Portal",
+    "subtitle": "SORA / PDRA / STS Compliance Platform",
+    "login": {
+      "title": "Login",
+      "username": "Username",
+      "password": "Password",
+      "button": "Login",
+      "token": "Token",
+      "failed": "Login failed"
+    },
+    "health": {
+      "title": "Health & Info",
+      "checkHealth": "Check /health",
+      "checkInfo": "Check /info"
+    }
+  },
+  "compliancePage": {
+    "title": "Compliance",
+    "osoMatrix": {
+      "title": "OSO Matrix (raw)",
+      "load": "Load"
+    },
+    "binders": {
+      "title": "Binders",
+      "list": "List",
+      "name": "Name",
+      "size": "Size",
+      "date": "Date"
+    },
+    "reports": {
+      "title": "Reports",
+      "list": "List",
+      "name": "Name",
+      "size": "Size",
+      "date": "Date"
+    }
+  },
+  "knowledgePage": {
+    "title": "Knowledge Base",
+    "search": {
+      "title": "Search",
+      "placeholder": "e.g. SORA Annex",
+      "button": "Search"
+    },
+    "documents": {
+      "title": "Documents",
+      "load": "Load list",
+      "total": "Total",
+      "tableHeaders": {
+        "title": "Title",
+        "category": "Category",
+        "size": "Size",
+        "lastModified": "Last Modified"
+      }
+    }
+  },
+  "dronesPage": {
+    "title": "Drones Catalog",
+    "manufacturers": {
+      "title": "Manufacturers",
+      "load": "Load",
+      "manufacturer": "Manufacturer",
+      "search": "Search",
+      "stats": "Statistics",
+      "count": "Manufacturers"
+    },
+    "results": {
+      "title": "Results",
+      "count": "Results",
+      "tableHeaders": {
+        "manufacturer": "Manufacturer",
+        "model": "Model",
+        "class": "C-Class",
+        "mtom": "MTOM (kg)",
+        "remoteId": "RemoteID"
+      }
+    },
+    "output": {
+      "title": "Raw Output"
+    },
+    "stats": {
+      "total": "Total",
+      "bvlos": "BVLOS",
+      "remoteId": "RemoteID"
+    }
+  },
+  "streamingPage": {
+    "title": "Streaming ARC (SignalR) — Demo",
+    "connection": {
+      "title": "Connection",
+      "hubUrl": "Hub URL",
+      "connect": "Connect",
+      "sessionId": "Session Id",
+      "subscribe": "Subscribe",
+      "status": {
+        "connected": "connected",
+        "disconnected": "disconnected"
+      }
+    },
+    "telemetry": {
+      "title": "Telemetry",
+      "droneId": "Drone Id",
+      "latitude": "Latitude",
+      "longitude": "Longitude",
+      "altitude": "Altitude (m)",
+      "speed": "Speed (m/s)",
+      "send": "Send Telemetry",
+      "burst": "Burst x5"
+    },
+    "events": {
+      "title": "Events"
+    }
+  }
+  ,
+  "ui.editManually": "Edit manually",
+  "oso.level.NR": "Not Required",
+  "oso.level.L": "Low",
+  "oso.level.M": "Medium",
+  "oso.level.H": "High",
+
+  "oso_1_name": "Operator competent/proven",
+  "oso_1_desc": "The UAS operator is competent and has demonstrated capability. Ref: JARUS SORA v2.5 Table 14.",
+  "oso_2_name": "UAS manufactured by competent entity",
+  "oso_2_desc": "UAS manufactured by an entity with appropriate competence and quality assurance.",
+  "oso_3_name": "UAS maintained by competent entity",
+  "oso_3_desc": "Maintenance performed by competent entity following documented procedures.",
+  "oso_4_name": "Components designed to ADS",
+  "oso_4_desc": "Critical components designed according to applicable aviation design standards (ADS).",
+  "oso_5_name": "UAS designed with system safety",
+  "oso_5_desc": "System safety assessment performed and risks mitigated appropriately.",
+  "oso_6_name": "C3 link appropriate",
+  "oso_6_desc": "Command, Control and Communications (C3) link robust and appropriate for operation.",
+  "oso_7_name": "Conformity check of configuration",
+  "oso_7_desc": "Configuration conformity verification prior to flight.",
+  "oso_8_name": "Operational procedures defined",
+  "oso_8_desc": "Documented operational procedures, normal/abnormal/emergency, aligned with the CONOPS.",
+  "oso_9_name": "Remote crew trained/current",
+  "oso_9_desc": "Remote pilots and observers trained, qualified and current for the operation.",
+  "oso_13_name": "External services adequate",
+  "oso_13_desc": "External services (e.g., GNSS, telecom, MET) identified and performance adequate.",
+  "oso_16_name": "Multi crew coordination",
+  "oso_16_desc": "Crew resource management and coordination practices implemented.",
+  "oso_17_name": "Remote crew fit to operate",
+  "oso_17_desc": "Fitness for duty checks (fatigue, alcohol, medical) and duty time limits in place.",
+  "oso_18_name": "Automatic protection from errors",
+  "oso_18_desc": "Design features protect against common operator errors and mode confusion.",
+  "oso_19_name": "Safe recovery from error",
+  "oso_19_desc": "Procedures and design ensure safe recovery from foreseeable errors and failures.",
+  "oso_20_name": "HMI appropriate for mission",
+  "oso_20_desc": "Human–Machine Interface suitable for task load and provides clear feedback/alerts.",
+  "oso_23_name": "Environmental conditions defined",
+  "oso_23_desc": "Operating envelope and environmental limits defined, briefed and respected.",
+  "oso_24_name": "UAS qualified for adverse conditions",
+  "oso_24_desc": "UAS equipment and procedures qualified for foreseeable adverse environmental conditions.",
+
+  "guides": {
+    "title": "📚 Dropdown & Field Guide",
+    "droneSelection": {
+      "help": "💡 Select your drone model. MTOM, Max Speed, and Kinetic Energy fields will be automatically populated."
+    },
+    "mitigations": {
+      "title": "🔧 Mitigations (Risk Mitigations) - HOW TO CHOOSE?",
+      "m1_strategic": {
+        "title": "M1 - Strategic (reduce people at risk)",
+        "guide": "📌 Select based on ground area control level"
+      },
+      "m2_impact": {
+        "title": "M2 - Impact dynamics reduced (e.g., parachute)",
+        "guide": "📌 Select if the drone has safety systems (parachute, etc.)"
+      },
+      "m3_response": {
+        "title": "M3 - Emergency Response Plan",
+        "guide": "📌 Select based on your preparedness and plan"
+      },
+      "m1a_sheltering": {
+        "title": "M1(A) - Sheltering",
+        "guide": "📌 Select based on the number of shelters in the area"
+      },
+      "m1b_restrictions": {
+        "title": "M1(B) - Operational restrictions",
+        "guide": "📌 Select based on operational restrictions applied"
+      },
+      "m1c_observers": {
+        "title": "M1(C) - Ground observation",
+        "guide": "📌 Select if you have ground observers or cameras"
+      },
+      "m2_dynamics": {
+        "title": "M2 - Impact dynamics reduced",
+        "guide": "📌 Select based on drone safety systems"
+      }
+    },
+    "strategicMitigations": {
+      "title": "🛡️ Strategic Mitigations (for Air Risk) - HOW TO SELECT?",
+      "sm1": {
+        "title": "SM1 - Controlled ground area",
+        "guide": "📌 Select if: Area is physically controlled (fencing, guards)"
+      },
+      "sm2": {
+        "title": "SM2 - Operational restrictions",
+        "guide": "📌 Select if: Restrictions applied (hours, altitude, speed)"
+      }
+    },
+    "typicality": {
+      "title": "🔍 Typicality - HOW TO SELECT?",
+      "typical": {
+        "title": "Typical",
+        "guide": "📌 Select if: The activity is known and expected"
+      },
+      "atypical": {
+        "title": "Atypical",
+        "guide": "📌 Select if: The activity is new or unexpected for the area"
+      }
+    },
+    "environment": {
+      "title": "🏢 Environment - HOW TO SELECT?",
+      "explanation": "The operating environment affects both GRC and ARC determination (SORA 2.5 Step #4)."
+    },
+    "controlledGroundArea": {
+      "title": "🔒 Controlled Ground Area - HOW TO SELECT?",
+      "controlled": {
+        "title": "Controlled",
+        "guide": "📌 Select if: You have full control of the area"
+      },
+      "uncontrolled": {
+        "title": "Uncontrolled",
+        "guide": "📌 Select if: The area is accessible to others"
+      }
+    },
+    "atypicalSegregated": {
+      "title": "✈️ Atypical Segregated? - HOW TO SELECT?",
+      "segregated": {
+        "title": "Segregated",
+        "guide": "📌 Select if: You have special permit/NOTAM for segregation"
+      },
+      "nonSegregated": {
+        "title": "Non-Segregated",
+        "guide": "📌 Select if: Normal flight without special segregation"
+      }
+    },
+    "airspaceControl": {
+      "title": "🌐 Airspace Control - HOW TO SELECT?",
+      "controlled": {
+        "title": "Controlled",
+        "guide": "📌 Select if: Requires ATC clearance"
+      },
+      "uncontrolled": {
+        "title": "Uncontrolled",
+        "guide": "📌 Select if: No ATC clearance required"
+      }
+    },
+    "resultPresentation": {
+      "sources": {
+        "title": "📚 Source: JARUS SORA 2.5 Main Body, Table 3 - Qualitative descriptors for population density estimation"
+      }
+    }
+  }
+}
+

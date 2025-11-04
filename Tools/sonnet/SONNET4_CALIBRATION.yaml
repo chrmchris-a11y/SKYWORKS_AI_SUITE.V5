@@ -1,0 +1,117 @@
+# SORA Orchestration Service - Sonnet 4.5 Calibration
+# Apply these fixes to SORAOrchestrationService.cs
+
+critical_fixes:
+  grc_2_0:
+    - Remove: "Population density inference from Scenario"
+    - Action: "Pass Scenario enum directly to Python engine"
+    - Validation: "input.Scenario_V2_0 required, no PD mapping"
+    
+  grc_2_5:
+    - Remove: "MTOM_kg fallback to MaxCharacteristicDimension"
+    - Action: "Require explicit MTOM_kg and MaxSpeed - reject if missing"
+    - Sub250g: "Apply iGRC=1 only if MTOM ≤ 0.25kg AND speed within bin"
+    - Validation: "Fail early with clear error if MTOM or MaxSpeed missing"
+  
+  arc_inputs:
+    - Add: "IsNearAerodrome, DistanceToAerodrome_km, IsInCTR to ARCEnvironmentInput"
+    - Units: "2.0 uses feet (convert), 2.5 uses meters (direct)"
+    - Normalization: "Suburban → Urban, Industrial → Urban before API call"
+    - Remove: "Default MaxHeightAGL=120m (let it be explicit 0 if not set)"
+  
+  explicit_arc:
+    - Restrict: "Only allow in test mode (_allowExplicitARC flag)"
+    - Production: "Always derive from AEC decision tree"
+    - Flag: "Add constructor parameter allowExplicitARC=false"
+  
+  mitigation_filtering:
+    - Evidence: "Filter U-space, Geofencing tokens from StrategicMitigations"
+    - Method: "FilterMitigations() removes evidence-only tokens"
+    - Apply: "Before OSO compliance check"
+  
+  scope_validation:
+    - Add: "ReasonCode to ValidateOperationScope return tuple"
+    - Codes: "OOS.SAIL_VI, OOS.GRC_GE_6, OOS.GRC5_PLUS_ARCd"
+    - Field: "result.OutOfScopeReason for HTTP 400 response"
+  
+  async_pattern:
+    - Remove: "All .Result blocking calls"
+    - Pattern: "async/await throughout, keep sync wrapper for compatibility"
+    - Method: "ExecuteCompleteAsync() with ExecuteComplete() wrapper"
+
+required_model_changes:
+  PythonGRCRequest_2_0:
+    - Add: "string Scenario (e.g. 'VLOS_SparselyPopulated')"
+    - Remove: "int PopulationDensity, double MTOM_kg, string EnvironmentType"
+  
+  PythonGRCRequest_2_5:
+    - Add: "double MaxSpeed_mps"
+    - Ensure: "double MTOM_kg is mandatory"
+  
+  PythonARCRequest_2_0:
+    - Add: "double? DistanceToAerodrome_nm"
+    - Add: "bool IsInCTR"
+  
+  PythonARCRequest_2_5:
+    - Add: "double? DistanceToAerodrome_km"
+    - Add: "bool IsInCTR"
+    - Add: "bool IsNearAerodrome"
+  
+  ARCEnvironmentInput:
+    - Add: "bool IsNearAerodrome"
+    - Add: "double? DistanceToAerodrome_km"
+    - Add: "bool IsInCTR"
+  
+  AirRiskInput:
+    - Add: "bool? IsNearAerodrome"
+    - Add: "double? DistanceToAerodrome_km"
+    - Add: "bool? IsInCTR"
+    - Add: "double? MaxSpeed (for 2.5)"
+  
+  SORACompleteResult:
+    - Add: "string? OutOfScopeReason"
+
+test_expectations:
+  sora_2_0:
+    low_risk_rural_vlos:
+      inputs: "Class G, ~300ft AGL, rural, no SM"
+      expected: "iGRC=3, ARC=b, SAIL=III"
+    
+    high_altitude_controlled:
+      inputs: "Class D, 800ft AGL, urban"
+      expected: "ARC=d, iGRC=5, SAIL=V"
+  
+  sora_2_5:
+    sub_250g:
+      inputs: "MTOM ≤ 0.25kg, speed within bin"
+      expected: "iGRC=1, SAIL=I"
+    
+    urban_sheltering:
+      inputs: "Urban + documented M1A sheltering"
+      expected: "iGRC reduced by 1"
+  
+  sail_matrix:
+    grc5_arc_c:
+      inputs: "FinalGRC=5, ResidualARC=ARC_c"
+      expected: "SAIL=IV (verify matrix cell)"
+  
+  out_of_scope:
+    grc_ge_6:
+      inputs: "FinalGRC ≥ 6"
+      expected: "HTTP 400, reason='OOS.GRC_GE_6'"
+    
+    grc5_plus_arcd:
+      inputs: "FinalGRC=5, ResidualARC=ARC_d"
+      expected: "HTTP 400, reason='OOS.GRC5_PLUS_ARCd'"
+
+controller_changes:
+  BadRequestMapping:
+    code: |
+      if (!result.IsSuccessful && !string.IsNullOrEmpty(result.OutOfScopeReason))
+      {
+          return BadRequest(new { 
+              reason = result.OutOfScopeReason,
+              message = result.Errors.FirstOrDefault(),
+              errors = result.Errors 
+          });
+      }

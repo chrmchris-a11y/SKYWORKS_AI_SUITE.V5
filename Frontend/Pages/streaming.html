@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <title data-i18n="streamingPage.title">Skyworks Streaming ARC Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@7.0.5/dist/browser/signalr.min.js"></script>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 20px; }
+    fieldset { margin-bottom: 16px; }
+    label { display: inline-block; min-width: 130px; }
+    input[type=text], input[type=number] { width: 200px; }
+    #events { white-space: pre-wrap; background: #0b1020; color: #d2f4ff; padding: 12px; border-radius: 8px; height: 260px; overflow: auto; }
+    .row { margin: 6px 0; }
+    button { margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h2 data-i18n="streamingPage.title">Streaming ARC (SignalR) — Demo</h2>
+
+  <fieldset>
+    <legend data-i18n="streamingPage.connection.title">Σύνδεση</legend>
+    <div class="row">
+      <label data-i18n="streamingPage.connection.hubUrl">Hub URL</label>
+      <input id="hubUrl" type="text" value="http://localhost:5000/hubs/arc" />
+      <button id="btnConnect" data-i18n="streamingPage.connection.connect">Connect</button>
+      <span id="status">disconnected</span>
+    </div>
+    <div class="row">
+      <label data-i18n="streamingPage.connection.sessionId">Session Id</label>
+      <input id="sessionId" type="text" value="session-123" />
+      <button id="btnSubscribe" data-i18n="streamingPage.connection.subscribe">Subscribe</button>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend data-i18n="streamingPage.telemetry.title">Telemetry</legend>
+    <div class="row"><label data-i18n="streamingPage.telemetry.droneId">Drone Id</label><input id="droneId" type="text" value="drone-001" /></div>
+    <div class="row"><label data-i18n="streamingPage.telemetry.latitude">Latitude</label><input id="lat" type="number" step="0.000001" value="34.899" /></div>
+    <div class="row"><label data-i18n="streamingPage.telemetry.longitude">Longitude</label><input id="lon" type="number" step="0.000001" value="33.624" /></div>
+    <div class="row"><label data-i18n="streamingPage.telemetry.altitude">Altitude (m)</label><input id="alt" type="number" step="1" value="60" /></div>
+    <div class="row"><label data-i18n="streamingPage.telemetry.speed">Speed (m/s)</label><input id="spd" type="number" step="0.1" value="12" /></div>
+    <div class="row">
+      <button id="btnSend" data-i18n="streamingPage.telemetry.send">Send Telemetry</button>
+      <button id="btnBurst" data-i18n="streamingPage.telemetry.burst">Burst x5</button>
+    </div>
+  </fieldset>
+
+  <h3 data-i18n="streamingPage.events.title">Events</h3>
+  <div id="events"></div>
+
+  <script src="/app/i18n/i18n-loader.js"></script>
+  <script src="/app/i18n/language-switcher.js"></script>
+  <script>
+    const log = (msg) => {
+      const box = document.getElementById('events');
+      box.textContent += `\n${new Date().toISOString()} ${msg}`;
+      box.scrollTop = box.scrollHeight;
+    };
+
+    let connection = null;
+
+    document.getElementById('btnConnect').onclick = async () => {
+      const url = document.getElementById('hubUrl').value;
+      connection = new signalR.HubConnectionBuilder()
+        .withUrl(url)
+        .withAutomaticReconnect()
+        .build();
+
+      connection.on('riskEvent', (ev) => {
+        log(`riskEvent: ARC=${ev.initialARC}, ctrl=${ev.isControlled}, airspaces=${ev.airspacesCount}`);
+      });
+
+      connection.onclose(() => {
+        document.getElementById('status').textContent = 'disconnected';
+      });
+      connection.onreconnected(() => {
+        document.getElementById('status').textContent = 'connected';
+      });
+
+      try {
+        await connection.start();
+        document.getElementById('status').textContent = 'connected';
+        log('Connected');
+      } catch (err) {
+        log('Connect error: ' + err);
+      }
+    };
+
+    document.getElementById('btnSubscribe').onclick = async () => {
+      if (!connection) return alert('Connect first');
+      const sessionId = document.getElementById('sessionId').value;
+      await connection.invoke('Subscribe', sessionId);
+      log('Subscribed to ' + sessionId);
+    };
+
+    async function sendOnce() {
+      if (!connection) return alert('Connect first');
+      const sessionId = document.getElementById('sessionId').value;
+      const droneId = document.getElementById('droneId').value;
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lon = parseFloat(document.getElementById('lon').value);
+      const alt = parseFloat(document.getElementById('alt').value);
+      const spd = parseFloat(document.getElementById('spd').value);
+
+      const update = {
+        droneId,
+        sessionId,
+        position: { latitude: lat, longitude: lon, altitudeMeters: alt },
+        speedMps: spd,
+        timestampUtc: new Date().toISOString()
+      };
+      await connection.invoke('Telemetry', update);
+      log('Telemetry sent');
+    }
+
+    document.getElementById('btnSend').onclick = sendOnce;
+
+    document.getElementById('btnBurst').onclick = async () => {
+      for (let i = 0; i < 5; i++) {
+        await sendOnce();
+        await new Promise(r => setTimeout(r, 150));
+      }
+    };
+  </script>
+</body>
+</html>

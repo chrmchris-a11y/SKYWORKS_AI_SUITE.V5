@@ -1,0 +1,131 @@
+{
+  "description": "Authoritative SORA 2.0 and 2.5 Test Cases (subset) - JARUS-based",
+  "generated": "2025-10-26",
+  "source": "JARUS SORA 2.0/2.5",
+  "testCases": [
+    {
+      "testId": "SORA20_001",
+      "name": "Low Risk Rural VLOS - SAIL III",
+      "version": "2.0",
+      "description": "Basic rural operation with minimal risk",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 1.0,
+        "maxSpeed": 15.0,
+        "environment": "Rural",
+        "populationDensity": 10.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 300,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_3",
+        "finalGRC": "GRC_3",
+        "initialARC": "ARC_b",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_III",
+        "tmpr": "Medium"
+      },
+      "rationale": "Rural 10 ppl/km² → iGRC=3; ARC-b; SAIL III"
+    },
+    {
+      "testId": "SORA20_006",
+      "name": "High Altitude >500ft Controlled - SAIL V",
+      "version": "2.0",
+      "description": "Above AEC threshold (500ft) in controlled airspace",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 20.0,
+        "environment": "Urban",
+        "populationDensity": 1000.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 800,
+        "airspaceClass": "D",
+        "controlledAirspace": true,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_5",
+        "finalGRC": "GRC_5",
+        "initialARC": "ARC_d",
+        "residualARC": "ARC_d",
+        "sail": "SAIL_V",
+        "tmpr": "VeryHigh"
+      },
+      "rationale": ">500ft + controlled → ARC-d; GRC_5×ARC_d = SAIL V"
+    },
+    {
+      "testId": "SORA25_002",
+      "name": "SORA 2.5 Urban with Sheltering - SAIL IV",
+      "version": "2.5",
+      "description": "2.5 ground risk buffer and sheltering",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 20.0,
+        "environment": "Urban",
+        "populationDensity": 3000.0,
+        "controlledArea": false,
+        "sheltering": true,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 350,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_6",
+        "finalGRC": "GRC_5",
+        "initialARC": "ARC_c",
+        "residualARC": "ARC_c",
+        "sail": "SAIL_IV",
+        "tmpr": "High"
+      },
+      "rationale": "iGRC=6; Sheltering -1 → fGRC=5; ARC-c; SAIL IV"
+    },
+    {
+      "testId": "SORA25_007",
+      "name": "SORA 2.5 Controlled Airspace >500ft - SAIL V",
+      "version": "2.5",
+      "description": "Above AEC threshold in controlled airspace",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 22.0,
+        "environment": "Rural",
+        "populationDensity": 250.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 750,
+        "airspaceClass": "D",
+        "controlledAirspace": true,
+        "urbanAir": false,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_5",
+        "finalGRC": "GRC_5",
+        "initialARC": "ARC_d",
+        "residualARC": "ARC_d",
+        "sail": "SAIL_V",
+        "tmpr": "VeryHigh"
+      },
+      "rationale": ">500ft + controlled → ARC-d; GRC_5×ARC_d = SAIL V"
+    }
+  ]
+}

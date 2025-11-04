@@ -1,0 +1,743 @@
+# 🎯 ΟΡΙΣΤΙΚΗ ΛΥΣΗ - COMPLETE ANALYSIS & FIXES
+
+Αφού ανάλυσα προσεκτικά όλες τις προηγούμενες προσπάθειες και τα logs, εντόπισα το **πραγματικό πρόβλημα**:
+
+## 🔍 ROOT CAUSE ANALYSIS
+
+Το πρόβλημα είναι στο **.NET serialization layer** που στέλνει:
+1. **Extra fields** που η Python δεν περιμένει (`environment_type`)
+2. **Null handling** που δημιουργεί invalid payloads
+3. **Missing validation** πριν το HTTP call
+4. **Poor error handling** για 422 responses
+
+## 📄 COMPLETE FIXED FILES
+
+### 1. **PythonCalculationClient.cs** (COMPLETE)
+
+```csharp
+using System;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using System.Net;
+using Skyworks.Core.Models.SORA.Requests;
+using Skyworks.Core.Models.SORA.Responses;
+
+namespace Skyworks.Core.Services.Python
+{
+    public class PythonCalculationClient
+    {
+        private readonly HttpClient _httpClient;
+        private readonly ILogger<PythonCalculationClient> _logger;
+        private readonly string _pythonApiBaseUrl;
+
+        public PythonCalculationClient(HttpClient httpClient, ILogger<PythonCalculationClient> logger, IConfiguration configuration)
+        {
+            _httpClient = httpClient;
+            _logger = logger;
+            _pythonApiBaseUrl = configuration.GetConnectionString("PythonAPI") ?? "http://localhost:8001";
+            
+            // Configure HttpClient
+            _httpClient.BaseAddress = new Uri(_pythonApiBaseUrl);
+            _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+        }
+
+        public async Task<GRCCalculationResponse> CalculateGRC_2_0(GRCCalculationRequest request)
+        {
+            try
+            {
+                // CRITICAL: Validate required fields BEFORE sending to Python
+                if (!request.MTOM_kg.HasValue || request.MTOM_kg.Value <= 0)
+                {
+                    _logger.LogError("[PYTHON GRC 2.0] MTOM_kg validation failed: {MTOM}", request.MTOM_kg);
+                    throw new ArgumentException("MTOM_kg is required and must be greater than 0");
+                }
+
+                if (!request.PopulationDensity.HasValue)
+                {
+                    _logger.LogError("[PYTHON GRC 2.0] PopulationDensity is null");
+                    throw new ArgumentException("PopulationDensity is required for SORA 2.0");
+                }
+
+                // Create payload with ONLY the fields Python API expects
+                var payload = new
+                {
+                    mtom_kg = request.MTOM_kg.Value, // Use .Value since we validated it's not null
+                    population_density = request.PopulationDensity.Value,
+                    m1_strategic = NormalizeMitigationLevel(request.M1Strategic),
+                    m2_impact = NormalizeMitigationLevel(request.M2Impact),
+                    m3_erp = NormalizeMitigationLevel(request.M3ERP)
+                    // NOTE: Removed environment_type - not needed for GRC 2.0
+                };
+
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = true
+                });
+
+                _logger.LogInformation("[PYTHON GRC 2.0] Sending payload: {Payload}", json);
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("/api/v1/calculate/grc/2.0", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("[PYTHON GRC 2.0] HTTP {StatusCode}: {Error}", response.StatusCode, errorContent);
+                    
+                    if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+                    {
+                        throw new InvalidOperationException($"Python API validation failed (422): {errorContent}. Payload was: {json}");
+                    }
+                    
+                    throw new HttpRequestException($"Python API call failed with status {response.StatusCode}: {errorContent}");
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation("[PYTHON GRC 2.0] Success response: {Response}", responseJson);
+
+                var pythonResponse = JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                });
+
+                if (pythonResponse == null)
+                {
+                    throw new InvalidOperationException("Failed to deserialize Python API response");
+                }
+
+                return new GRCCalculationResponse
+                {
+                    IsSuccessful = true,
+                    IntrinsicGRC = pythonResponse.InitialGrc,
+                    FinalGRC = pythonResponse.FinalGrc,
+                    Version = pythonResponse.Version ?? "SORA_2.0",
+                    MitigationDetails = new GRCMitigationDetails
+                    {
+                        M1Strategic = request.M1Strategic,
+                        M2Impact = request.M2Impact,
+                        M3ERP = request.M3ERP,
+                        TotalReduction = pythonResponse.MitigationTotal ?? 0
+                    }
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PYTHON GRC 2.0] Exception occurred");
+                return new GRCCalculationResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = $"GRC 2.0 calculation failed: {ex.Message}",
+                    IntrinsicGRC = 0,
+                    FinalGRC = 0
+                };
+            }
+        }
+
+        public async Task<GRCCalculationResponse> CalculateGRC_2_5(GRCCalculationRequest request)
+        {
+            try
+            {
+                // CRITICAL: Validate required fields
+                if (!request.MTOM_kg.HasValue || request.MTOM_kg.Value <= 0)
+                {
+                    throw new ArgumentException("MTOM_kg is required and must be greater than 0");
+                }
+
+                if (!request.CharacteristicDimension.HasValue || request.CharacteristicDimension.Value <= 0)
+                {
+                    throw new ArgumentException("CharacteristicDimension is required for SORA 2.5");
+                }
+
+                if (!request.MaxSpeed.HasValue || request.MaxSpeed.Value <= 0)
+                {
+                    throw new ArgumentException("MaxSpeed is required for SORA 2.5");
+                }
+
+                if (!request.PopulationDensity.HasValue)
+                {
+                    throw new ArgumentException("PopulationDensity is required for SORA 2.5");
+                }
+
+                var payload = new
+                {
+                    characteristic_dimension = request.CharacteristicDimension.Value,
+                    max_speed = request.MaxSpeed.Value,
+                    population_density = request.PopulationDensity.Value,
+                    m1a_sheltering = NormalizeMitigationLevel(request.M1ASheltering),
+                    m1b_operational = NormalizeMitigationLevel(request.M1BOperational),
+                    m1c_ground_observation = NormalizeMitigationLevel(request.M1CGroundObservation),
+                    m2_impact = NormalizeMitigationLevel(request.M2Impact)
+                };
+
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = true
+                });
+
+                _logger.LogInformation("[PYTHON GRC 2.5] Sending payload: {Payload}", json);
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("/api/v1/calculate/grc/2.5", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("[PYTHON GRC 2.5] HTTP {StatusCode}: {Error}", response.StatusCode, errorContent);
+                    
+                    if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+                    {
+                        throw new InvalidOperationException($"Python API validation failed (422): {errorContent}. Payload was: {json}");
+                    }
+                    
+                    throw new HttpRequestException($"Python API call failed with status {response.StatusCode}: {errorContent}");
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var pythonResponse = JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                });
+
+                return new GRCCalculationResponse
+                {
+                    IsSuccessful = true,
+                    IntrinsicGRC = pythonResponse?.InitialGrc ?? 0,
+                    FinalGRC = pythonResponse?.FinalGrc ?? 0,
+                    Version = pythonResponse?.Version ?? "SORA_2.5"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PYTHON GRC 2.5] Exception occurred");
+                return new GRCCalculationResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = $"GRC 2.5 calculation failed: {ex.Message}",
+                    IntrinsicGRC = 0,
+                    FinalGRC = 0
+                };
+            }
+        }
+
+        public async Task<ARCCalculationResponse> CalculateARC(ARCCalculationRequest request)
+        {
+            try
+            {
+                // Validate required fields
+                if (string.IsNullOrWhiteSpace(request.AirspaceType))
+                {
+                    throw new ArgumentException("AirspaceType is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.OperationLocation))
+                {
+                    throw new ArgumentException("OperationLocation is required");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.EnvironmentType))
+                {
+                    throw new ArgumentException("EnvironmentType is required");
+                }
+
+                var payload = new
+                {
+                    airspace_type = NormalizeEnumValue(request.AirspaceType),
+                    operation_location = NormalizeEnumValue(request.OperationLocation),
+                    environment_type = NormalizeEnumValue(request.EnvironmentType),
+                    operational_category = NormalizeEnumValue(request.OperationalCategory),
+                    strategic_mitigations = request.StrategicMitigations ?? 0
+                };
+
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = true
+                });
+
+                _logger.LogInformation("[PYTHON ARC] Sending payload: {Payload}", json);
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("/api/v1/calculate/arc", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("[PYTHON ARC] HTTP {StatusCode}: {Error}", response.StatusCode, errorContent);
+                    
+                    if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
+                    {
+                        throw new InvalidOperationException($"Python API validation failed (422): {errorContent}. Payload was: {json}");
+                    }
+                    
+                    throw new HttpRequestException($"Python API call failed with status {response.StatusCode}: {errorContent}");
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var pythonResponse = JsonSerializer.Deserialize<PythonARCResponse>(responseJson, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                });
+
+                return new ARCCalculationResponse
+                {
+                    IsSuccessful = true,
+                    InitialARC = pythonResponse?.InitialArc ?? "a",
+                    ResidualARC = pythonResponse?.ResidualArc ?? "a"
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PYTHON ARC] Exception occurred");
+                return new ARCCalculationResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = $"ARC calculation failed: {ex.Message}",
+                    InitialARC = "a",
+                    ResidualARC = "a"
+                };
+            }
+        }
+
+        public async Task<SAILCalculationResponse> CalculateSAIL(SAILCalculationRequest request)
+        {
+            try
+            {
+                if (request.FinalGRC <= 0 || request.FinalGRC > 7)
+                {
+                    throw new ArgumentException("FinalGRC must be between 1 and 7");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.ResidualARC))
+                {
+                    throw new ArgumentException("ResidualARC is required");
+                }
+
+                var payload = new
+                {
+                    final_grc = request.FinalGRC,
+                    residual_arc = request.ResidualARC.ToLower()
+                };
+
+                var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = true
+                });
+
+                _logger.LogInformation("[PYTHON SAIL] Sending payload: {Payload}", json);
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("/api/v1/calculate/sail", content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("[PYTHON SAIL] HTTP {StatusCode}: {Error}", response.StatusCode, errorContent);
+                    throw new HttpRequestException($"Python API call failed with status {response.StatusCode}: {errorContent}");
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                var pythonResponse = JsonSerializer.Deserialize<PythonSAILResponse>(responseJson, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    PropertyNameCaseInsensitive = true
+                });
+
+                return new SAILCalculationResponse
+                {
+                    IsSuccessful = true,
+                    SAIL = pythonResponse?.Sail ?? "I",
+                    IsOutOfScope = pythonResponse?.IsOutOfScope ?? false
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PYTHON SAIL] Exception occurred");
+                return new SAILCalculationResponse
+                {
+                    IsSuccessful = false,
+                    ErrorMessage = $"SAIL calculation failed: {ex.Message}",
+                    SAIL = "I",
+                    IsOutOfScope = false
+                };
+            }
+        }
+
+        /// <summary>
+        /// Normalizes mitigation level strings to proper case
+        /// Returns null for null/empty inputs (which Python treats as no mitigation)
+        /// </summary>
+        private string? NormalizeMitigationLevel(string? level)
+        {
+            if (string.IsNullOrWhiteSpace(level)) return null;
+            
+            var lower = level.Trim().ToLowerInvariant();
+            return lower switch
+            {
+                "low" => "Low",
+                "medium" => "Medium", 
+                "high" => "High",
+                _ => level // Return as-is if not recognized
+            };
+        }
+
+        /// <summary>
+        /// Normalizes enum values to proper case
+        /// </summary>
+        private string NormalizeEnumValue(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            
+            // Convert to title case
+            var words = value.Split('_', ' ', '-');
+            var result = new StringBuilder();
+            
+            for (int i = 0; i < words.Length; i++)
+            {
+                if (i > 0) result.Append('_');
+                if (words[i].Length > 0)
+                {
+                    result.Append(char.ToUpper(words[i][0]));
+                    if (words[i].Length > 1)
+                    {
+                        result.Append(words[i].Substring(1).ToLower());
+                    }
+                }
+            }
+            
+            return result.ToString();
+        }
+    }
+
+    // Response models for Python API deserialization
+    public class PythonGRCResponse
+    {
+        public string? Version { get; set; }
+        public int InitialGrc { get; set; }
+        public int FinalGrc { get; set; }
+        public int? MitigationTotal { get; set; }
+    }
+
+    public class PythonARCResponse
+    {
+        public string InitialArc { get; set; } = "a";
+        public string ResidualArc { get; set; } = "a";
+    }
+
+    public class PythonSAILResponse
+    {
+        public string Sail { get; set; } = "I";
+        public bool IsOutOfScope { get; set; }
+    }
+}
+```
+
+---
+
+### 2. **SORAOrchestrationService.cs** (COMPLETE)
+
+```csharp
+using System;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Skyworks.Core.Models.SORA.Requests;
+using Skyworks.Core.Models.SORA.Responses;
+using Skyworks.Core.Models.SORA.Enums;
+using Skyworks.Core.Services.Python;
+using Skyworks.Core.Repositories;
+
+namespace Skyworks.Core.Services.Orchestration
+{
+    public class SORAOrchestrationService
+    {
+        private readonly PythonCalculationClient _pythonClient;
+        private readonly IDroneSpecificationRepository _droneSpecRepository;
+        private readonly ILogger<SORAOrchestrationService> _logger;
+
+        public SORAOrchestrationService(
+            PythonCalculationClient pythonClient,
+            IDroneSpecificationRepository droneSpecRepository,
+            ILogger<SORAOrchestrationService> logger)
+        {
+            _pythonClient = pythonClient;
+            _droneSpecRepository = droneSpecRepository;
+            _logger = logger;
+        }
+
+        public async Task<SORACalculationResult> PerformSORAAssessment(SORAAssessmentRequest request)
+        {
+            var result = new SORACalculationResult
+            {
+                IsSuccessful = false,
+                Errors = new List<string>(),
+                CalculationTimestamp = DateTime.UtcNow
+            };
+
+            try
+            {
+                _logger.LogInformation("[SORA ORCHESTRATION] Starting assessment for DroneId={DroneId}, Version={Version}", 
+                    request.DroneId, request.SoraVersion);
+
+                // STEP 1: Load and validate drone specifications
+                var droneSpec = await LoadAndValidateDroneSpec(request.DroneId);
+                if (droneSpec == null)
+                {
+                    result.Errors.Add($"Failed to load drone specifications for DroneId: {request.DroneId}");
+                    return result;
+                }
+
+                // STEP 2: Prepare GRC calculation input with drone specs
+                var grcInput = PrepareGRCInput(request, droneSpec);
+                
+                // Validate GRC input
+                var grcValidation = ValidateGRCInput(grcInput, request.SoraVersion);
+                if (!grcValidation.IsValid)
+                {
+                    result.Errors.AddRange(grcValidation.Errors);
+                    return result;
+                }
+
+                // STEP 3: Calculate GRC
+                GRCCalculationResponse grcResult;
+                if (request.SoraVersion == "2.0")
+                {
+                    grcResult = await _pythonClient.CalculateGRC_2_0(grcInput);
+                }
+                else if (request.SoraVersion == "2.5")
+                {
+                    grcResult = await _pythonClient.CalculateGRC_2_5(grcInput);
+                }
+                else
+                {
+                    result.Errors.Add($"Unsupported SORA version: {request.SoraVersion}");
+                    return result;
+                }
+
+                if (!grcResult.IsSuccessful)
+                {
+                    result.Errors.Add($"GRC calculation failed: {grcResult.ErrorMessage}");
+                    return result;
+                }
+
+                result.GroundRisk = grcResult;
+
+                // STEP 4: Calculate ARC
+                var arcInput = PrepareARCInput(request);
+                var arcValidation = ValidateARCInput(arcInput);
+                if (!arcValidation.IsValid)
+                {
+                    result.Errors.AddRange(arcValidation.Errors);
+                    return result;
+                }
+
+                var arcResult = await _pythonClient.CalculateARC(arcInput);
+                if (!arcResult.IsSuccessful)
+                {
+                    result.Errors.Add($"ARC calculation failed: {arcResult.ErrorMessage}");
+                    return result;
+                }
+
+                result.AirRisk = arcResult;
+
+                // STEP 5: Calculate SAIL
+                var sailInput = new SAILCalculationRequest
+                {
+                    FinalGRC = grcResult.FinalGRC,
+                    ResidualARC = arcResult.ResidualARC
+                };
+
+                var sailResult = await _pythonClient.CalculateSAIL(sailInput);
+                if (!sailResult.IsSuccessful)
+                {
+                    result.Errors.Add($"SAIL calculation failed: {sailResult.ErrorMessage}");
+                    return result;
+                }
+
+                result.SAIL = sailResult;
+
+                // STEP 6: Generate OSO requirements
+                result.OSORequirements = GenerateOSORequirements(sailResult.SAIL, request.SoraVersion);
+
+                result.IsSuccessful = true;
+                _logger.LogInformation("[SORA ORCHESTRATION] Assessment completed successfully - SAIL: {SAIL}, Final GRC: {GRC}, Residual ARC: {ARC}",
+                    sailResult.SAIL, grcResult.FinalGRC, arcResult.ResidualARC);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[SORA ORCHESTRATION] Assessment failed");
+                result.Errors.Add($"Assessment failed: {ex.Message}");
+                return result;
+            }
+        }
+
+        private async Task<DroneSpecification?> LoadAndValidateDroneSpec(int droneId)
+        {
+            try
+            {
+                var droneSpec = await _droneSpecRepository.GetByIdAsync(droneId);
+                
+                if (droneSpec == null)
+                {
+                    _logger.LogWarning("[DRONE SPEC] Drone not found: {DroneId}", droneId);
+                    return null;
+                }
+
+                // Validate critical specifications
+                if (droneSpec.MTOM_kg <= 0)
+                {
+                    _logger.LogError("[DRONE SPEC] Invalid MTOM for DroneId {DroneId}: {MTOM}", droneId, droneSpec.MTOM_kg);
+                    return null;
+                }
+
+                if (droneSpec.MaxSpeed_ms <= 0)
+                {
+                    _logger.LogError("[DRONE SPEC] Invalid MaxSpeed for DroneId {DroneId}: {Speed}", droneId, droneSpec.MaxSpeed_ms);
+                    return null;
+                }
+
+                if (droneSpec.CharacteristicDimension_m <= 0)
+                {
+                    _logger.LogError("[DRONE SPEC] Invalid CharacteristicDimension for DroneId {DroneId}: {Dimension}", 
+                        droneId, droneSpec.CharacteristicDimension_m);
+                    return null;
+                }
+
+                _logger.LogInformation("[DRONE SPEC] Loaded: {Name} - MTOM: {MTOM}kg, Speed: {Speed}m/s, Dim: {Dimension}m",
+                    droneSpec.Name, droneSpec.MTOM_kg, droneSpec.MaxSpeed_ms, droneSpec.CharacteristicDimension_m);
+
+                return droneSpec;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[DRONE SPEC] Failed to load drone {DroneId}", droneId);
+                return null;
+            }
+        }
+
+        private GRCCalculationRequest PrepareGRCInput(SORAAssessmentRequest request, DroneSpecification droneSpec)
+        {
+            var grcInput = new GRCCalculationRequest
+            {
+                // Set from drone specification (CRITICAL)
+                MTOM_kg = droneSpec.MTOM_kg,
+                CharacteristicDimension = droneSpec.CharacteristicDimension_m,
+                MaxSpeed = droneSpec.MaxSpeed_ms,
+                
+                // Set from user input
+                PopulationDensity = request.GroundRisk.PopulationDensity,
+                
+                // SORA 2.0 mitigations
+                M1Strategic = request.GroundRisk.M1Strategic,
+                M2Impact = request.GroundRisk.M2Impact,
+                M3ERP = request.GroundRisk.M3ERP,
+                
+                // SORA 2.5 mitigations
+                M1ASheltering = request.GroundRisk.M1ASheltering,
+                M1BOperational = request.GroundRisk.M1BOperational,
+                M1CGroundObservation = request.GroundRisk.M1CGroundObservation
+            };
+
+            // Handle scenario-based population density mapping for SORA 2.0
+            if (request.SoraVersion == "2.0" && request.GroundRisk.Scenario_V2_0.HasValue && 
+                (!grcInput.PopulationDensity.HasValue || grcInput.PopulationDensity.Value == 0))
+            {
+                grcInput.PopulationDensity = MapScenarioToPopulationDensity(request.GroundRisk.Scenario_V2_0.Value);
+                
+                _logger.LogInformation("[GRC MAPPING] Mapped scenario {Scenario} to population density {Density}",
+                    request.GroundRisk.Scenario_V2_0.Value, grcInput.PopulationDensity);
+            }
+
+            return grcInput;
+        }
+
+        private int MapScenarioToPopulationDensity(OperationalScenario scenario)
+        {
+            return scenario switch
+            {
+                OperationalScenario.ControlledGroundArea => 0,
+                OperationalScenario.VLOS_SparselyPopulated => 250,
+                OperationalScenario.BVLOS_SparselyPopulated => 250,
+                OperationalScenario.VLOS_Populated => 5000,
+                OperationalScenario.BVLOS_Populated => 5000,
+                OperationalScenario.VLOS_GatheringOfPeople => 15000,
+                OperationalScenario.BVLOS_GatheringOfPeople => 15000,
+                _ => 1000 // Default fallback
+            };
+        }
+
+        private ValidationResult ValidateGRCInput(GRCCalculationRequest input, string soraVersion)
+        {
+            var result = new ValidationResult { IsValid = true, Errors = new List<string>() };
+
+            // Critical validations
+            if (!input.MTOM_kg.HasValue || input.MTOM_kg.Value <= 0)
+            {
+                result.Errors.Add("MTOM_kg is required and must be greater than 0. Please ensure drone specifications are loaded correctly.");
+                result.IsValid = false;
+            }
+
+            if (!input.PopulationDensity.HasValue)
+            {
+                result.Errors.Add("PopulationDensity is required. Please select an operational scenario or enter population density manually.");
+                result.IsValid = false;
+            }
+
+            // SORA version specific validations
+            if (soraVersion == "2.5")
+            {
+                if (!input.CharacteristicDimension.HasValue || input.CharacteristicDimension.Value <= 0)
+                {
+                    result.Errors.Add("CharacteristicDimension is required for SORA 2.5 and must be greater than 0.");
+                    result.IsValid = false;
+                }
+
+                if (!input.MaxSpeed.HasValue || input.MaxSpeed.Value <= 0)
+                {
+                    result.Errors.Add("MaxSpeed is required for SORA 2.5 and must be greater than 0.");
+                    result.IsValid = false;
+                }
+            }
+
+            return result;
+        }
+
+        private ARCCalculationRequest PrepareARCInput(SORAAssessmentRequest request)
+        {
+            return new ARCCalculationRequest
+            {
+                AirspaceType = request.AirRisk.AirspaceType,
+                OperationLocation = request.AirRisk.OperationLocation,
+                EnvironmentType = request.AirRisk.EnvironmentType,
+                OperationalCategory = request.AirRisk.OperationalCategory,
+                StrategicMitigations = request.AirRisk.StrategicMitigations ?? 0
+            };
+        }
+
+        private ValidationResult ValidateARCInput(ARCCalculationRequest input)
+        {
+            var result = new ValidationResult { IsValid = true, Errors = new List<string>() };
+
+            if (string.IsNullOrWhiteSpace(input.AirspaceType))
+            {
+                result.Errors.Add("AirspaceType is required for ARC calculation.");
+                result.IsValid = false;
+            }
+
+            if (string.IsNullOrWhiteSpace(input.OperationLocation))
+            {
+                result.Errors.Add("OperationLocation is required for ARC calculation.");
+                result.IsValid = false;
+            }
+
+            if (string.IsNullOrWh

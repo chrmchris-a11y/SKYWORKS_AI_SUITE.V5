@@ -1,0 +1,8 @@
+[ΠΡΟΣΩΡΙΝΟ] Επικολλήστε εδώ το ελληνικό training prompt για το SORA.
+
+Οδηγίες:
+- Περιγράψτε το pipeline SORA (iGRC → Final GRC → Initial ARC → Residual ARC → SAIL → OSO → TMPR)
+- Συμπεριλάβετε ειδικές περιπτώσεις SORA 2.0 (π.χ. GRC5 + ARC-c ⇒ SAIL IV, ποινή M3 όταν δεν υπάρχει ERP)
+- Συμπεριλάβετε κανόνες SORA 2.5 (≤250g & ≤25m/s ⇒ iGRC 1, grey cells για πολύ πυκνές συναθροίσεις)
+- Ορίστε ξεκάθαρα το output (JSON: iGRC, finalGRC, initialARC, residualARC, sail, steps[], warnings[])
+- Ζητήστε από το μοντέλο να αναφέρει πίνακες/παραπομπές (π.χ. «SORA 2.5 Table 2») και να προσθέτει αιτιολόγηση στα steps

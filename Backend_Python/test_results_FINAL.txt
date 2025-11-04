@@ -1,0 +1,78 @@
+====================================================================================================
+SKYWORKS SORA CALCULATOR COMPREHENSIVE TEST REPORT
+Generated: 2025-10-29 11:24:23
+====================================================================================================
+
+====================================================================================================
+GRC SORA 2.0 TESTS
+====================================================================================================
+Ô£à GRC 2.0.1: Minimum (0.8m VLOS_Controlled)
+Ô£à GRC 2.0.2: Floor enforcement (3.0m BVLOS_Populated + M1 High)
+Ô£à GRC 2.0.3: Dimension boundary (0.99m VLOS_Sparsely)
+Ô£à GRC 2.0.4: OUT_OF_SCOPE (8.0m BVLOS_Populated) (error response as expected)
+Ô£à GRC 2.0.5: All mitigations High (7.5m BVLOS_Sparsely)
+
+====================================================================================================
+GRC SORA 2.5 TESTS
+====================================================================================================
+Ô£à GRC 2.5.1: 250g rule (0.2m @ 20m/s, 0.2kg)
+Ô£à GRC 2.5.2: 250g boundary violation (0.26kg @ 25m/s)
+Ô£à GRC 2.5.3: Controlled ground area
+Ô£à GRC 2.5.4: Column floor enforcement (5.0m @ 30m/s + M1 High)
+ÔØî GRC 2.5.5: High speed (15m @ 100m/s): Expected HTTP 200, got 400
+ÔØî GRC 2.5.6: Rural population (3.0m @ 20m/s, 200/km┬▓): intrinsic_grc=6 (expected 5), final_grc=6 (expected 5)
+Ô£à GRC 2.5.7: All mitigations High (10m @ 50m/s)
+
+====================================================================================================
+ARC SORA 2.0 & 2.5 TESTS
+====================================================================================================
+Ô£à ARC 2.0.1: Minimum (Class G, 100ft, Rural)
+Ô£à ARC 2.0.2: Typical urban constraints (Class D CTR)
+Ô£à ARC 2.5.1: Minimum (Class G, 30m, Rural)
+Ô£à ARC 2.5.2: Typical suburban constraints
+
+====================================================================================================
+SAIL CALCULATOR TESTS
+====================================================================================================
+Ô£à SAIL 1: GRC=1, ARC-a ÔåÆ SAIL I
+Ô£à SAIL 2: GRC=3, ARC-b ÔåÆ SAIL II
+Ô£à SAIL 3: GRC=5, ARC-c ÔåÆ SAIL V
+Ô£à SAIL 4: GRC=7, ARC-d ÔåÆ SAIL VI
+
+====================================================================================================
+FINAL SUMMARY
+====================================================================================================
+
+Ô£à PASSED:  18/20
+ÔØî FAILED:  2/20
+ÔÜá´©Å ERRORS:  0/20
+
+====================================================================================================
+FAILED/ERROR TESTS DETAILS
+====================================================================================================
+
+ÔØî GRC 2.5.5: High speed (15m @ 100m/s)
+   Issue: Expected HTTP 200, got 400
+   Response: "{\"detail\":\"OUT_OF_SCOPE|fGRC=8|reason=Final GRC 8 exceeds SORA scope (max 7) even with mitigations\"}"
+
+ÔØî GRC 2.5.6: Rural population (3.0m @ 20m/s, 200/km┬▓)
+   Issue: intrinsic_grc=6 (expected 5), final_grc=6 (expected 5)
+   Response: {
+  "intrinsic_grc": 6,
+  "final_grc": 6,
+  "m1_effect": 0,
+  "m2_effect": 0,
+  "m3_effect": 0,
+  "dimension_category": "3-8m",
+  "notes": "SORA 2.5 GRC Calculation:\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\
+
+====================================================================================================
+ÔÜá´©Å ATTENTION REQUIRED: Some tests failed or errored.
+====================================================================================================
+Starting FastAPI service...
+
+Running comprehensive tests...
+
+
+
+Stopping service...

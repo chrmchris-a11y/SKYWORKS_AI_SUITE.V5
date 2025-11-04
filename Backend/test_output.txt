@@ -1,0 +1,115 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Skyworks.Core -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Core\bin\Debug\net8.0\Skyworks.Core.dll
+  Skyworks.Infrastructure -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Infrastructure\bin\Debug\net8.0\Skyworks.Infrastructure.dll
+  Skyworks.AgentComm -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.AgentComm\bin\Debug\net8.0\Skyworks.AgentComm.dll
+  Skyworks.Api -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Api\bin\Debug\net8.0\Skyworks.Api.dll
+  Skyworks.Api.Tests -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\bin\Debug\net8.0\Skyworks.Api.Tests.dll
+Test run for C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\bin\Debug\net8.0\Skyworks.Api.Tests.dll (.NETCoreApp,Version=v8.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.82]     Skyworks.Api.Tests.AuthAndKbTests.Login_Returns_Token [SKIP]
+[xUnit.net 00:00:00.83]     Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC5_ARCc_Returns_SAIL_IV [FAIL]
+[xUnit.net 00:00:00.83]     Skyworks.Api.Tests.ARC_SAIL.ARC_SAIL_Tests.SAIL_V20_Table5_Mapping(finalGrc: 3, arc: ARC_b, expected: II) [FAIL]
+[xUnit.net 00:00:00.84]     Skyworks.Api.Tests.SAIL.SAILCompliance_Tests.Compliance_SORA25_SAIL_III_All_High_Passes [FAIL]
+  Skipped Skyworks.Api.Tests.AuthAndKbTests.Login_Returns_Token [1 ms]
+  Failed Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC5_ARCc_Returns_SAIL_IV [4 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: IV
+Actual:   V
+  Stack Trace:
+     at Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC5_ARCc_Returns_SAIL_IV() in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\SAIL\SAILService_Tests.cs:line 130
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Skyworks.Api.Tests.ARC_SAIL.ARC_SAIL_Tests.SAIL_V20_Table5_Mapping(finalGrc: 3, arc: ARC_b, expected: II) [1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: II
+Actual:   III
+  Stack Trace:
+     at Skyworks.Api.Tests.ARC_SAIL.ARC_SAIL_Tests.SAIL_V20_Table5_Mapping(Int32 finalGrc, ARCRating arc, SAILLevel expected) in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\ARC_SAIL\ARC_SAIL_Tests.cs:line 35
+   at InvokeStub_ARC_SAIL_Tests.SAIL_V20_Table5_Mapping(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+  Failed Skyworks.Api.Tests.SAIL.SAILCompliance_Tests.Compliance_SORA25_SAIL_III_All_High_Passes [2 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: III
+Actual:   I
+  Stack Trace:
+     at Skyworks.Api.Tests.SAIL.SAILCompliance_Tests.Compliance_SORA25_SAIL_III_All_High_Passes() in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\SAIL\SAILCompliance_Tests.cs:line 62
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.84]     Skyworks.Api.Tests.ARC_SAIL.ARC_SAIL_Tests.SAIL_V20_Table5_Mapping(finalGrc: 5, arc: ARC_d, expected: VI) [FAIL]
+  Failed Skyworks.Api.Tests.ARC_SAIL.ARC_SAIL_Tests.SAIL_V20_Table5_Mapping(finalGrc: 5, arc: ARC_d, expected: VI) [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: VI
+Actual:   V
+  Stack Trace:
+     at Skyworks.Api.Tests.ARC_SAIL.ARC_SAIL_Tests.SAIL_V20_Table5_Mapping(Int32 finalGrc, ARCRating arc, SAILLevel expected) in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\ARC_SAIL\ARC_SAIL_Tests.cs:line 35
+   at InvokeStub_ARC_SAIL_Tests.SAIL_V20_Table5_Mapping(Object, Span`1)
+   at System.Reflection.MethodBaseInvoker.InvokeWithFewArgs(Object obj, BindingFlags invokeAttr, Binder binder, Object[] parameters, CultureInfo culture)
+[xUnit.net 00:00:00.84]     Skyworks.Api.Tests.SAIL.SAILService_Tests.Golden_Test04_Coastal_BVLOS_Larnaca [FAIL]
+[xUnit.net 00:00:00.85]     Skyworks.Api.Tests.SAIL.SAILService_Tests.Composite_SAIL_Exposure_Notes_In_Explanation [FAIL]
+  Failed Skyworks.Api.Tests.SAIL.SAILService_Tests.Golden_Test04_Coastal_BVLOS_Larnaca [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: III
+Actual:   I
+  Stack Trace:
+     at Skyworks.Api.Tests.SAIL.SAILService_Tests.Golden_Test04_Coastal_BVLOS_Larnaca() in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\SAIL\SAILService_Tests.cs:line 496
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Skyworks.Api.Tests.SAIL.SAILService_Tests.Composite_SAIL_Exposure_Notes_In_Explanation [2 ms]
+  Error Message:
+   Assert.Contains() Failure: Sub-string not found
+String:    "Composite SAIL determination for multi-se"┬À┬À┬À
+Not found: "SAIL I: 10 min"
+  Stack Trace:
+     at Skyworks.Api.Tests.SAIL.SAILService_Tests.Composite_SAIL_Exposure_Notes_In_Explanation() in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\SAIL\SAILService_Tests.cs:line 407
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.85]     Skyworks.Api.Tests.SAIL.SAILService_Tests.Golden_Test01_Urban_VLOS_Nicosia [FAIL]
+[xUnit.net 00:00:00.85]     Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC4_ARCa_Returns_SAIL_III [FAIL]
+  Failed Skyworks.Api.Tests.SAIL.SAILService_Tests.Golden_Test01_Urban_VLOS_Nicosia [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: V
+Actual:   IV
+  Stack Trace:
+     at Skyworks.Api.Tests.SAIL.SAILService_Tests.Golden_Test01_Urban_VLOS_Nicosia() in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\SAIL\SAILService_Tests.cs:line 443
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC4_ARCa_Returns_SAIL_III [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: III
+Actual:   I
+  Stack Trace:
+     at Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC4_ARCa_Returns_SAIL_III() in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\SAIL\SAILService_Tests.cs:line 112
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.85]     Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC6_ARCa_Returns_SAIL_V [FAIL]
+  Failed Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC6_ARCa_Returns_SAIL_V [< 1 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: V
+Actual:   III
+  Stack Trace:
+     at Skyworks.Api.Tests.SAIL.SAILService_Tests.SAIL_GRC6_ARCa_Returns_SAIL_V() in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\SAIL\SAILService_Tests.cs:line 148
+   at System.RuntimeMethodHandle.InvokeMethod(Object target, Void** arguments, Signature sig, Boolean isConstructor)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:01.08]     Skyworks.Api.Tests.Drones.DroneCatalog_Tests.SearchDrones_ByCClassC1_ReturnsSubKilogram [FAIL]
+  Failed Skyworks.Api.Tests.Drones.DroneCatalog_Tests.SearchDrones_ByCClassC1_ReturnsSubKilogram [28 ms]
+  Error Message:
+   Assert.All() Failure: 1 out of 4 items in the collection did not pass.
+[1]: Item:  DroneSpecification { CClass = C1, CharacteristicDimension_m = 0.28899999999999998, CruiseSpeed_mps = 15, EmptyWeight_kg = 1.3799999999999999, HasGeoFencing = True, ┬À┬À┬À }
+     Error: Assert.True() Failure
+            Expected: True
+            Actual:   False
+  Stack Trace:
+     at Skyworks.Api.Tests.Drones.DroneCatalog_Tests.SearchDrones_ByCClassC1_ReturnsSubKilogram() in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\Drones\DroneCatalog_Tests.cs:line 82
+--- End of stack trace from previous location ---
+Results File: C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\TestResults\TestResults.trx
+
+Failed!  - Failed:    10, Passed:   260, Skipped:     1, Total:   271, Duration: 4 s - Skyworks.Api.Tests.dll (net8.0)

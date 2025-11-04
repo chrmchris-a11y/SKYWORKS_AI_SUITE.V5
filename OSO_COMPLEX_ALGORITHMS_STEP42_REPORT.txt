@@ -1,0 +1,485 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# PHASE 5 - STEP 42: COMPLEX OSO ALGORITHMS
+# Implementation Report
+# ═══════════════════════════════════════════════════════════════════════════
+
+**Date**: 2025-10-25
+**Status**: ✅ COMPLETE
+**SORA Versions**: SORA 2.0 + SORA 2.5
+**Authoritative Sources**: JARUS SORA v2.0 Table 6, SORA v2.5 Table 14 + Annex E
+
+---
+
+## 📋 OVERVIEW
+
+Step 42 extends the OSO Basic Framework (Step 41) with 5 advanced algorithms that 
+provide intelligent assistance for OSO selection, validation, and compliance.
+
+**Key Feature**: All algorithms are **version-agnostic** - they work seamlessly with 
+both SORA 2.0 (24 OSOs) and SORA 2.5 (17 OSOs).
+
+---
+
+## 🧠 IMPLEMENTED ALGORITHMS
+
+### **Algorithm 1: Dependency Resolution**
+
+**Purpose**: Identifies missing OSO dependencies to prevent DCA rejection
+
+**Function**: `OSOManager.validateDependencies(selectedOSOs, soraVersion)`
+
+**Returns**: 
+```javascript
+{
+  missing: [
+    {
+      osoId: 5,
+      osoNumber: 'OSO#05',
+      dependency: 'Containment',
+      reason: 'OSO#05 must be considered in conjunction with Containment (Step #8)',
+      critical: true
+    }
+  ],
+  warnings: [...]
+}
+```
+
+**SORA 2.0 Dependencies**:
+- OSO#10 → requires OSO#05 (System Safety foundation)
+- OSO#12 → requires OSO#05 (UAS design for external systems)
+- OSO#13 → requires OSO#09 (Crew training on services)
+- OSO#11 → requires OSO#08 (Operational procedures)
+
+**SORA 2.5 Dependencies**:
+- OSO#05 → requires Containment + M2 (CRITICAL per Annex E)
+- OSO#09 → requires OSO#13 (External services for training)
+- OSO#08 → requires External Systems check
+
+---
+
+### **Algorithm 2: Auto-Recommendation Engine**
+
+**Purpose**: Suggests OSOs based on operation characteristics
+
+**Function**: `OSOManager.recommendOSOs(operationType, environment, sail, soraVersion)`
+
+**Parameters**:
+- `operationType`: 'VLOS', 'BVLOS', 'EVLOS'
+- `environment`: 'Urban', 'Rural', 'Maritime', 'Controlled'
+- `sail`: 'I', 'II', 'III', 'IV', 'V', 'VI'
+- `soraVersion`: 'SORA-2.0' or 'SORA-2.5'
+
+**Returns**:
+```javascript
+[
+  {
+    id: 6,
+    number: 'OSO#06',
+    name: 'C3 link characteristics appropriate for operation',
+    reason: 'C3 link performance critical for BVLOS operations',
+    minRobustness: 'M',
+    priority: 'HIGH',
+    category: 'Technical'
+  },
+  ...
+]
+```
+
+**Recommendation Logic**:
+
+**BVLOS Operations**:
+- SORA 2.0: OSO#06 (C3), OSO#10 (Recovery), OSO#11 (External systems)
+- SORA 2.5: OSO#06 (C3), OSO#05 (System safety - includes recovery)
+
+**Urban Operations**:
+- Both versions: OSO#05 (System safety), OSO#18 (Envelope protection), OSO#19 (Human error recovery)
+- SORA 2.0 only: OSO#21 (Environmental procedures) for SAIL III+
+
+**External Services**:
+- Both versions: OSO#13 (External services), OSO#09 (Crew training)
+
+**High SAIL (V-VI)**:
+- Both versions: OSO#02 (Manufacturing), OSO#04 (ADS)
+
+---
+
+### **Algorithm 3: Evidence Templates Library**
+
+**Purpose**: Provides detailed evidence requirements per OSO and robustness level
+
+**Function**: `OSOManager.getEvidenceTemplate(osoId, robustness, soraVersion)`
+
+**Returns**:
+```javascript
+{
+  requiredDocuments: ['FHA', 'Safety assessment', 'SW/AEH development docs'],
+  sections: ['Failure rate objectives', 'Single failure analysis', 'SW/AEH development'],
+  selfDeclared: false,
+  thirdParty: 'Validation required',
+  standards: ['JARUS AMC RPAS.1309', 'DO-178', 'DO-254'],
+  failureRates: {
+    Major: '< Remote (10^-5/FH)',
+    Hazardous: '< Extremely Remote (10^-7/FH)',
+    Catastrophic: '< Extremely Improbable (10^-9/FH)'
+  }
+}
+```
+
+**Available Templates**:
+- **OSO#01**: Operator Competence (L/M/H)
+  - Low: Self-declared procedures
+  - Medium: Third-party audit
+  - High: SMS per ICAO Annex 19
+
+- **OSO#02**: Manufacturing (L/M/H)
+  - Low: Manufacturing procedures
+  - Medium: Conformity evidence
+  - High: Recurrent audit (AS9100)
+
+- **OSO#05**: System Safety (L/M/H)
+  - Low: FHA + design appraisal
+  - Medium: Safety assessment + detection strategy
+  - High: Third-party validation + SW/AEH development
+
+- **OSO#08**: Operational Procedures (L/M/H)
+  - Low: Self-declared procedures
+  - Medium: ERP + task distribution
+  - High: CRM training + flight tests + third-party validation
+
+- **OSO#09**: Remote Crew Training (L/M/H)
+  - Low: Self-declared training
+  - Medium: Training evidence
+  - High: Third-party competency verification
+
+**Standards Referenced**:
+- ICAO Annex 19 (SMS)
+- Eurocae ED-280 (UAS safety analysis)
+- JARUS AMC RPAS.1309 (Failure rates)
+- DO-178 (Software development)
+- DO-254 (Hardware development)
+- UK CAA CAP 722A (UAS operations)
+- JARUS RPC (Remote pilot competency)
+
+---
+
+### **Algorithm 4: Smart Cross-OSO Validation**
+
+**Purpose**: Validates complex cross-OSO rules beyond simple SAIL requirements
+
+**Function**: `OSOManager.validateCrossOSO(selectedOSOs, sail, soraVersion, context)`
+
+**Context Object**:
+```javascript
+{
+  operationType: 'BVLOS',
+  environment: 'Urban',
+  containmentSelected: true,
+  m2Selected: true,
+  usesExternalServices: true,
+  designerEvidence: true
+}
+```
+
+**Returns**:
+```javascript
+{
+  errors: [
+    {
+      rule: 'OSO#05_CONTAINMENT',
+      osoId: 5,
+      message: 'OSO#05 requires Containment (Step #8)',
+      severity: 'ERROR',
+      reference: 'SORA 2.5 Annex E OSO#05(a)'
+    }
+  ],
+  warnings: [...]
+}
+```
+
+**Validation Rules**:
+
+**Rule 1**: OSO#05 + Containment (SORA 2.5)
+- Error if OSO#05 selected without Containment
+- Error if Urban + OSO#05 without M2
+
+**Rule 2**: BVLOS Minimum Robustness
+- SORA 2.0: OSO#10 robustness >= M for SAIL III+
+- SORA 2.5: OSO#05 robustness >= M for SAIL IV+
+- Both: OSO#06 robustness >= M for SAIL IV+
+
+**Rule 3**: Training + External Services
+- Warning if OSO#09 selected but OSO#13 missing
+
+**Rule 4**: Evidence Provider Check
+- Warning if OSO#04 selected without designer evidence
+
+**Rule 5**: High SAIL Requirements
+- Error if SAIL V-VI but OSO#02/04/05 not High robustness
+
+---
+
+### **Algorithm 5: SAIL-Based Filtering**
+
+**Purpose**: Filters OSOs by SAIL to show only relevant ones
+
+**Function**: `OSOManager.filterOSOsBySAIL(sail, soraVersion)`
+
+**Returns**:
+```javascript
+{
+  required: [
+    {
+      id: 1,
+      number: 'OSO#01',
+      name: 'Ensure the Operator is competent',
+      category: 'Organizational',
+      minRobustness: 'M',
+      required: true
+    },
+    ...
+  ],
+  optional: [],
+  notRequired: [
+    {
+      id: 18,
+      number: 'OSO#18',
+      name: 'Automatic protection of flight envelope',
+      category: 'Human Error',
+      reason: 'Only required for SAIL IV+'
+    },
+    ...
+  ]
+}
+```
+
+**SAIL Progression**:
+
+| SAIL | SORA 2.0 Required | SORA 2.5 Required |
+|------|-------------------|-------------------|
+| I    | 16/24 OSOs        | 8/17 OSOs         |
+| II   | 20/24 OSOs        | 11/17 OSOs        |
+| III  | 23/24 OSOs        | 15/17 OSOs        |
+| IV   | 24/24 OSOs        | 17/17 OSOs        |
+| V    | 24/24 OSOs (High) | 17/17 OSOs (High) |
+| VI   | 24/24 OSOs (High) | 17/17 OSOs (High) |
+
+---
+
+## 🔗 DATA STRUCTURES
+
+### **SORA_20_DEPENDENCIES**
+```javascript
+{
+  10: { dependencies: [5], reason: '...', type: 'technical', critical: false },
+  12: { dependencies: [5], reason: '...', type: 'technical', critical: false },
+  13: { dependencies: [9], reason: '...', type: 'operational', critical: false },
+  11: { dependencies: [8], reason: '...', type: 'operational', critical: false }
+}
+```
+
+### **SORA_25_DEPENDENCIES**
+```javascript
+{
+  5: { dependencies: ['Containment', 'M2'], reason: '...', type: 'technical', critical: true },
+  9: { dependencies: [13], reason: '...', type: 'operational', critical: false },
+  8: { dependencies: ['External Systems'], reason: '...', type: 'operational', critical: false }
+}
+```
+
+### **EVIDENCE_PROVIDERS** (from Table 14)
+```javascript
+{
+  Operator: [1, 3, 7, 8, 13, 16, 17, 18, 19, 23],
+  Designer: [4, 6, 8, 20, 23],
+  Training_Org: [9, 17, 20]
+}
+```
+
+---
+
+## 🌐 PUBLIC API
+
+All algorithms are exported via `OSOManager.*`:
+
+```javascript
+// Algorithm 1
+OSOManager.validateDependencies(selectedOSOs, 'SORA-2.5')
+
+// Algorithm 2
+OSOManager.recommendOSOs('BVLOS', 'Urban', 'IV', 'SORA-2.5')
+
+// Algorithm 3
+OSOManager.getEvidenceTemplate(5, 'H', 'SORA-2.5')
+
+// Algorithm 4
+OSOManager.validateCrossOSO(selectedOSOs, 'IV', 'SORA-2.5', context)
+
+// Algorithm 5
+OSOManager.filterOSOsBySAIL('IV', 'SORA-2.5')
+
+// Utility functions
+OSOManager.getDependencies('SORA-2.5')
+OSOManager.getEvidenceProviders()
+```
+
+---
+
+## ✅ TESTING
+
+**Test Suite**: `test_step42_algorithms.ps1`
+
+**Test Coverage**:
+1. File existence & size
+2. Algorithm function definitions
+3. Data structure definitions
+4. Dependency definitions content
+5. Evidence template definitions
+6. Auto-recommendation logic
+7. Cross-OSO validation rules
+8. SAIL filtering logic
+9. Public API exports
+10. Console logging
+11. Version-specific logic
+12. Standards references
+
+**Expected Results**: 50+ tests, 100% pass rate
+
+**Run Tests**:
+```powershell
+cd C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5
+.\test_step42_algorithms.ps1
+```
+
+---
+
+## 🔄 VERSION DIFFERENCES HANDLED
+
+| Feature | SORA 2.0 | SORA 2.5 |
+|---------|----------|----------|
+| **Total OSOs** | 24 | 17 |
+| **OSO#10** | Safe recovery (standalone) | Merged into OSO#05 |
+| **OSO#11, #12** | External systems (separate) | Merged into OSO#08 |
+| **OSO#14, #15** | Procedures/training (duplicates) | Consolidated |
+| **OSO#21, #22** | Environmental (duplicates) | Consolidated |
+| **Dependencies** | 4 OSO dependencies | 3 dependencies + Containment/M2 |
+| **Containment** | Not explicit | Explicit requirement for OSO#05 |
+
+---
+
+## 📊 USAGE STATISTICS
+
+**Algorithm Invocations Logged**:
+- `[OSO Dependencies]` - Dependency validation results
+- `[OSO Recommendations]` - Generated recommendations count
+- `[Cross-OSO Validation]` - Errors/warnings found
+- `[SAIL Filtering]` - Required/optional/not-required counts
+
+**Console Output Example**:
+```
+[OSO Manager v2.0] ✅ Loaded - Authoritative JARUS SORA 2.0 + 2.5 Framework
+[OSO Manager v2.0] 📋 SORA 2.0: 24 OSOs | SORA 2.5: 17 OSOs
+[OSO Manager v2.0] 🧠 Step 42 Algorithms: Dependency Resolution, Auto-Recommendations, 
+                       Evidence Templates, Cross-OSO Validation, SAIL Filtering
+```
+
+---
+
+## 🚀 INTEGRATION
+
+### **Frontend Integration** (Automatic)
+- File: `Frontend/Pages/oso-manager-v2.js`
+- Loaded by: `mission.html` (already integrated in Step 41)
+- Available via: `window.OSOManager.*`
+
+### **UI Integration** (Next Step)
+Will be added to `oso-ui-v2.js` for visual display of:
+- Dependency warnings (red badges)
+- Auto-recommendations (blue panel)
+- Evidence checklists (dropdown)
+- Validation errors (error panel)
+- SAIL filter toggle
+
+---
+
+## 📚 AUTHORITATIVE SOURCES
+
+All algorithms based on:
+
+1. **JARUS SORA v2.0**
+   - JAR-DEL-WG6-D.04 (Main Body)
+   - Table 6: Recommended operational safety objectives
+
+2. **JARUS SORA v2.5**
+   - JAR-DEL-SRM-SORA-MB-2.5 (Main Body)
+   - JAR-DEL-SRM-SORA-E-2.5 (Annex E - Integrity & Assurance)
+   - Table 14: Recommended operational safety objectives
+
+3. **Standards Referenced**
+   - ICAO Annex 19 (Safety Management Systems)
+   - Eurocae ED-280 (UAS safety analysis)
+   - JARUS AMC RPAS.1309 (Airworthiness)
+   - DO-178C (Software)
+   - DO-254 (Hardware)
+   - UK CAA CAP 722A (UAS operations)
+
+---
+
+## 📝 DELIVERABLES
+
+✅ **oso-manager-v2.js** (Extended)
+- Added 5 algorithm functions
+- Added dependency data structures
+- Added evidence templates
+- Added validation rules
+- File size: ~70KB (increased from 49KB)
+
+✅ **test_step42_algorithms.ps1** (New)
+- 12 test categories
+- 50+ individual tests
+- Comprehensive validation
+
+✅ **OSO_COMPLEX_ALGORITHMS_STEP42_REPORT.txt** (This file)
+- Complete documentation
+- Usage examples
+- Integration guide
+
+---
+
+## 🎯 NEXT STEPS
+
+**Step 43**: OSO Compliance Validation (Backend)
+- C# implementation of algorithms
+- API endpoints for validation
+- Database integration
+
+**Immediate UI Enhancements** (Optional):
+- Update `oso-ui-v2.js` with visual components
+- Add dependency warning badges
+- Add recommendation panel
+- Add evidence checklist dropdowns
+
+---
+
+## ✅ SUCCESS CRITERIA
+
+- [x] All 5 algorithms implemented
+- [x] Both SORA 2.0 and 2.5 supported
+- [x] Dependencies defined from authoritative sources
+- [x] Evidence templates based on Annex E
+- [x] Cross-OSO validation rules implemented
+- [x] SAIL filtering functional
+- [x] Public API exported
+- [x] Test suite created
+- [x] Documentation complete
+- [x] Console logging added
+
+**STATUS**: ✅ STEP 42 COMPLETE
+
+---
+
+**Implementation Date**: 2025-10-25
+**Developer**: AI Assistant
+**Review Status**: Pending user testing
+**Production Ready**: After test validation
+
+═══════════════════════════════════════════════════════════════════════════

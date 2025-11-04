@@ -1,0 +1,10 @@
+{
+  "mcp.servers": {
+    "skyworks-sora": {
+      "command": "node",
+      "args": [
+        "C:/Users/chrmc/Desktop/SKYWORKS_AI_SUITE.V5/skyworks-sora-mcp-server/build/index.js"
+      ]
+    }
+  }
+}

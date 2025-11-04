@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="homePage.title">Skyworks Portal</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    
+    /* Sidebar Navigation */
+    .sidebar {
+      width: 260px;
+      background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 20px;
+      background: rgba(255,255,255,0.05);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .sidebar-header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    
+    .sidebar-header p {
+      font-size: 12px;
+      color: #94a3b8;
+    }
+    
+    .sidebar-nav {
+      flex: 1;
+      padding: 16px 0;
+    }
+    
+    .nav-section {
+      margin-bottom: 24px;
+    }
+    
+    .nav-section-title {
+      padding: 8px 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #64748b;
+    }
+    
+    .nav-item {
+      padding: 10px 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-left: 3px solid transparent;
+    }
+    
+    .nav-item:hover {
+      background: rgba(255,255,255,0.08);
+    }
+    
+    .nav-item.active {
+      background: rgba(59, 130, 246, 0.15);
+      border-left-color: #3b82f6;
+      color: #60a5fa;
+    }
+    
+    .nav-item-icon {
+      width: 20px;
+      text-align: center;
+      font-size: 16px;
+    }
+    
+    .nav-item-text {
+      font-size: 14px;
+      font-weight: 500;
+    }
+    
+    .nav-badge {
+      margin-left: auto;
+      background: #3b82f6;
+      color: white;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+    
+    .nav-badge.new {
+      background: #10b981;
+    }
+    
+    /* Main Content Area */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .top-bar {
+      height: 60px;
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .page-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    
+    .top-bar-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    
+    .language-switch {
+      padding: 6px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      background: #f8fafc;
+      padding: 24px;
+    }
+    
+    .page-view {
+      display: none;
+    }
+    
+    .page-view.active {
+      display: block;
+    }
+    
+    section {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    section h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    
+    input, button {
+      font-size: 14px;
+      padding: 10px 16px;
+      margin: 4px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+    }
+    
+    button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    
+    button:hover {
+      background: #2563eb;
+      box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+    }
+    
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    
+    code {
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #475569;
+    }
+    
+    pre {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 16px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    
+    .feature-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .feature-card:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+      transform: translateY(-2px);
+    }
+    
+    .feature-card h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+    
+    .feature-card p {
+      font-size: 14px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+    
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      border-radius: 8px;
+    }
+    
+    .phase-icon {
+      font-size: 32px;
+    }
+    
+    .phase-info h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0;
+      padding: 0;
+      border: none;
+      color: white;
+    }
+    
+    .phase-info p {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    
+    .status-badge.complete {
+      background: #dcfce7;
+      color: #166534;
+    }
+    
+    .status-badge.progress {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+    
+    @media (max-width: 768px) {
+      body { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; }
+      .feature-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Left Sidebar Navigation -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <h1>🚁 Skyworks</h1>
+      <p>SORA Compliance Platform</p>
+    </div>
+    
+    <div class="sidebar-nav">
+      <!-- Main Features (Phases 1-5) -->
+      <div class="nav-section">
+        <div class="nav-section-title">Core Features</div>
+        <div class="nav-item active" onclick="showPage('main')">
+          <span class="nav-item-icon">🏠</span>
+          <span class="nav-item-text">Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="window.open('/app/Pages/mission.html', '_blank')">
+          <span class="nav-item-icon">🧮</span>
+          <span class="nav-item-text">SORA Calculator</span>
+          <span class="nav-badge">Full</span>
+        </div>
+        <div class="nav-item" onclick="window.location='kb.html'">
+          <span class="nav-item-icon">📚</span>
+          <span class="nav-item-text">Knowledge Base</span>
+        </div>
+        <div class="nav-item" onclick="window.location='compliance.html'">
+          <span class="nav-item-icon">✅</span>
+          <span class="nav-item-text">Compliance</span>
+        </div>
+        <div class="nav-item" onclick="window.location='drones.html'">
+          <span class="nav-item-icon">🛩️</span>
+          <span class="nav-item-text">Drone Catalog</span>
+        </div>
+        <div class="nav-item" onclick="window.location='streaming.html'">
+          <span class="nav-item-icon">📡</span>
+          <span class="nav-item-text">Real-time ARC</span>
+        </div>
+      </div>
+      
+      <!-- Phase 6: Mission Planning -->
+      <div class="nav-section">
+        <div class="nav-section-title">Phase 6: Mission Planning</div>
+        <div class="nav-item" onclick="showPage('mission-planning')">
+          <span class="nav-item-icon">🗺️</span>
+          <span class="nav-item-text">Mission Planning</span>
+          <span class="nav-badge new">NEW</span>
+        </div>
+      </div>
+      
+      <!-- Quick Links -->
+      <div class="nav-section">
+        <div class="nav-section-title">Quick Links</div>
+        <div class="nav-item" onclick="window.location='test-step42-ui.html'">
+          <span class="nav-item-icon">🧪</span>
+          <span class="nav-item-text">OSO Framework</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Main Content Area -->
+  <div class="main-content">
+    <div class="top-bar">
+      <h1 class="page-title" id="pageTitle">Skyworks Dashboard</h1>
+      <div class="top-bar-actions">
+        <select class="language-switch" id="languageSelector">
+          <option value="el">🇬🇷 Ελληνικά</option>
+          <option value="en">🇬🇧 English</option>
+        </select>
+      </div>
+    </div>
+    
+    <div class="content-area">
+      <!-- PAGE 1: Main Dashboard (Phases 1-5) -->
+      <div id="page-main" class="page-view active">
+
+
+  <section>
+    <h2 data-i18n="homePage.login.title">Σύνδεση</h2>
+    <div class="row">
+      <input id="user" data-i18n-placeholder="homePage.login.username" placeholder="username" value="admin" />
+      <input id="pass" data-i18n-placeholder="homePage.login.password" placeholder="password" value="admin123" type="password" />
+      <button onclick="login()" data-i18n="homePage.login.button">Login</button>
+    </div>
+    <p><span data-i18n="homePage.login.token">Token</span>: <code id="tok"></code></p>
+  </section>
+
+  <section>
+    <h2 data-i18n="homePage.health.title">Health & Info</h2>
+    <div class="row">
+      <button onclick="probe('/api/v1/health')" data-i18n="homePage.health.checkHealth">/api/v1/health</button>
+      <button onclick="probe('/api/v1/info')" data-i18n="homePage.health.checkInfo">/api/v1/info</button>
+    </div>
+    <pre id="out"></pre>
+  </section>
+  
+  <!-- Phases 1-5 Features Overview -->
+  <section>
+    <h2>📊 Implemented Phases (1-5)</h2>
+    <div class="feature-grid">
+      <div class="feature-card" onclick="window.location='compliance.html'">
+        <h3>Phase 1: SORA Core <span class="status-badge complete">✓ Complete</span></h3>
+        <p>GRC/ARC calculation, SAIL determination, dual SORA 2.0 + 2.5 support</p>
+      </div>
+      
+      <div class="feature-card" onclick="window.location='kb.html'">
+        <h3>Phase 2: Data Providers <span class="status-badge complete">✓ Complete</span></h3>
+        <p>Population density, airspace, weather, traffic providers for Cyprus/Greece</p>
+      </div>
+      
+      <div class="feature-card" onclick="window.location='drones.html'">
+        <h3>Phase 3: Drone Catalog <span class="status-badge complete">✓ Complete</span></h3>
+        <p>25+ drone models, SORA hints, C-class compliance, manufacturer data</p>
+      </div>
+      
+      <div class="feature-card" onclick="window.location='test-step42-ui.html'">
+        <h3>Phase 4: PDRA/STS <span class="status-badge complete">✓ Complete</span></h3>
+        <p>STS-01, STS-02, PDRA-S01, PDRA-S02 evaluation with EU regulation compliance</p>
+      </div>
+      
+      <div class="feature-card" onclick="window.location='streaming.html'">
+        <h3>Phase 5: OSO Framework <span class="status-badge complete">✓ Complete</span></h3>
+        <p>24 OSOs, robustness levels, compliance validation, risk mitigation strategies</p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Quick Stats -->
+  <section>
+    <h2>📈 Platform Statistics</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:16px">
+      <div style="background:#dbeafe;padding:16px;border-radius:6px;">
+        <div style="font-size:28px;font-weight:700;color:#1e40af;">256/257</div>
+        <div style="font-size:14px;color:#1e40af;margin-top:4px;">Tests Passing</div>
+      </div>
+      <div style="background:#dcfce7;padding:16px;border-radius:6px;">
+        <div style="font-size:28px;font-weight:700;color:#166534;">5</div>
+        <div style="font-size:14px;color:#166534;margin-top:4px;">Phases Complete</div>
+      </div>
+      <div style="background:#fef3c7;padding:16px;border-radius:6px;">
+        <div style="font-size:28px;font-weight:700;color:#92400e;">25+</div>
+        <div style="font-size:14px;color:#92400e;margin-top:4px;">Drone Models</div>
+      </div>
+      <div style="background:#fce7f3;padding:16px;border-radius:6px;">
+        <div style="font-size:28px;font-weight:700;color:#831843;">Dual</div>
+        <div style="font-size:14px;color:#831843;margin-top:4px;">SORA 2.0 + 2.5</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- PAGE 2: Mission Planning (Phase 6) -->
+<div id="page-mission-planning" class="page-view">
+  <div class="phase-header">
+    <span class="phase-icon">🗺️</span>
+    <div class="phase-info">
+      <h2>Phase 6: Mission Planning & GIS Mapping</h2>
+      <p>Geographic Information System, Route Planning, Weather Integration & Real-time Tracking</p>
+    </div>
+  </div>
+  
+  <!-- Step 51: GIS Mapping System -->
+  <section>
+    <h2>🌍 Step 51: GIS Mapping System <span class="status-badge complete">✓ Complete</span></h2>
+    <p style="color:#64748b;margin-bottom:16px;">Operational volumes, population density zones, airspace classification, no-fly zones, terrain elevation</p>
+    
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>📍 Operational Volumes</h3>
+        <p>Create 3D operational volumes with safety margins, contingency zones, and OSO #17 compliance</p>
+        <button onclick="testGIS('operational-volume')" style="margin-top:12px;width:100%">Test API</button>
+      </div>
+      
+      <div class="feature-card">
+        <h3>👥 Population Density</h3>
+        <p>Query population density with dual SORA 2.0/2.5 support, calculate intrinsic GRC, M1 mitigation assessment</p>
+        <button onclick="testGIS('population-density')" style="margin-top:12px;width:100%">Test API</button>
+      </div>
+      
+      <div class="feature-card">
+        <h3>✈️ Airspace Classification</h3>
+        <p>12 AEC categories, airspace classes A-G, initial ARC calculation, manned aircraft density</p>
+        <button onclick="testGIS('airspace')" style="margin-top:12px;width:100%">Test API</button>
+      </div>
+      
+      <div class="feature-card">
+        <h3>🚫 No-Fly Zones</h3>
+        <p>Permanent/temporary/conditional restrictions, NOTAM integration, geofencing, OSO #18 compliance</p>
+        <button onclick="testGIS('no-fly-zones')" style="margin-top:12px;width:100%">Test API</button>
+      </div>
+      
+      <div class="feature-card">
+        <h3>⛰️ Terrain Elevation</h3>
+        <p>AGL/AMSL conversion, obstacle avoidance, terrain profiles, waypoint elevation queries</p>
+        <button onclick="testGIS('terrain-elevation')" style="margin-top:12px;width:100%">Test API</button>
+      </div>
+    </div>
+    
+    <div style="margin-top:20px;padding:16px;background:#f8fafc;border-radius:6px;">
+      <h4 style="font-size:14px;font-weight:600;margin-bottom:8px;">🔗 API Endpoints (13 total)</h4>
+      <div style="font-size:13px;color:#64748b;line-height:1.8;">
+        <code>POST /api/gis/operational-volume</code> - Create operational volume<br>
+        <code>GET /api/gis/population-density?lat=35.0&lon=33.3</code> - Get density at point<br>
+        <code>GET /api/gis/population-density/igrc?lat=35.0&lon=33.3&soraVersion=2.5</code> - Calculate iGRC<br>
+        <code>GET /api/gis/airspace?lat=34.87&lon=33.62&altitude=500</code> - Get airspace volumes<br>
+        <code>GET /api/gis/airspace/initial-arc?lat=35.0&lon=33.3&environment=Urban</code> - Calculate ARC<br>
+        <code>GET /api/gis/no-fly-zones?bounds=...</code> - Query no-fly zones<br>
+        <code>GET /api/gis/terrain-elevation?lat=35.0&lon=33.3</code> - Get terrain elevation
+      </div>
+    </div>
+    
+    <div id="gis-output" style="margin-top:16px;display:none;">
+      <h4 style="font-size:14px;font-weight:600;margin-bottom:8px;">Response:</h4>
+      <pre id="gis-result" style="max-height:300px;overflow-y:auto;"></pre>
+    </div>
+  </section>
+  
+  <!-- Upcoming Steps -->
+  <section>
+    <h2>🚀 Upcoming Steps (52-60)</h2>
+    <div class="feature-grid">
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>📋 Step 52: Mission Templates</h3>
+        <p>Pre-defined templates: inspection, survey, delivery, VLOS, BVLOS, STS-01, STS-02, PDRA operations</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+      
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>🛤️ Step 53: Route Optimization</h3>
+        <p>A* pathfinding, no-fly zone avoidance, altitude optimization, fuel efficiency, waypoint generation</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+      
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>🌦️ Step 54: Weather Integration</h3>
+        <p>Real-time weather data, VMC/IMC assessment, wind gates, precipitation alerts, flight safety checks</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+      
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>🗺️ Step 55: Map Visualization</h3>
+        <p>Interactive maps (Leaflet/Mapbox), operational volume display, population heatmaps, airspace overlays</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+      
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>✏️ Step 56: Flight Planning UI</h3>
+        <p>Drag-and-drop waypoints, altitude profiles, no-fly zone warnings, SORA compliance checks</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+      
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>🎮 Step 57: Mission Simulation</h3>
+        <p>Pre-flight simulation, risk assessment, contingency testing, OSO validation</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+      
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>📡 Step 58: Real-Time Tracking</h3>
+        <p>Live telemetry, position updates, geofence monitoring, emergency alerts</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+      
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>🔄 Step 59: Mission Replay</h3>
+        <p>Historical mission playback, performance analysis, incident investigation</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+      
+      <div class="feature-card" style="opacity:0.6;cursor:not-allowed;">
+        <h3>💾 Step 60: Export/Import</h3>
+        <p>Mission plan export (JSON/KML/CSV), data import, backup/restore, integration APIs</p>
+        <div class="status-badge" style="background:#e2e8f0;color:#64748b;margin-top:8px;">Planned</div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Phase 6 Progress -->
+  <section>
+    <h2>📊 Phase 6 Implementation Progress</h2>
+    <div style="margin-top:16px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-weight:600;">Overall Progress</span>
+        <span style="font-weight:600;color:#3b82f6;">10% (1/10 steps)</span>
+      </div>
+      <div style="width:100%;height:24px;background:#e2e8f0;border-radius:12px;overflow:hidden;">
+        <div style="width:10%;height:100%;background:linear-gradient(90deg,#3b82f6,#2563eb);"></div>
+      </div>
+      <div style="margin-top:16px;font-size:13px;color:#64748b;">
+        ✅ Step 51: GIS Mapping System (Complete)<br>
+        ⏳ Steps 52-60: Upcoming (9 steps remaining)
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- PAGE 3: SORA Calculator (Full Mission Planner) -->
+<div id="page-sora-calculator" class="page-view">
+  <!-- Embed the FULL mission.html page with complete SORA calculator -->
+  <iframe 
+    src="mission.html" 
+    style="width:100%;height:calc(100vh - 60px);border:none;background:white;"
+    title="Skyworks SORA Mission Planner">
+  </iframe>
+</div>
+</div>
+</div>
+
+  <!-- Use relative paths so the page works when opened from filesystem or static hosting without '/app' base -->
+  <script src="../i18n/i18n-loader.js" onerror="console.error('Failed to load i18n-loader.js')"></script>
+  <script src="../i18n/language-switcher.js" onerror="console.error('Failed to load language-switcher.js')"></script>
+  <script>
+    const apiBase = '';
+    function setToken(t){localStorage.setItem('jwt', t); document.getElementById('tok').textContent = t.slice(0,40) + (t.length>40?'...':'');}
+    function getToken(){return localStorage.getItem('jwt')||''}
+
+    async function login(){
+      const r = await fetch('/api/auth/login',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username:document.getElementById('user').value, password:document.getElementById('pass').value})
+      });
+      const j = await r.json(); if(r.ok){ setToken(j.access_token); } else { alert('Login failed: '+(j.error||r.status)); }
+    }
+
+    async function probe(path){
+      const r = await fetch(path, { headers: getToken()?{Authorization:'Bearer '+getToken()}:{} });
+      const txt = await r.text();
+      document.getElementById('out').textContent = (r.status+"\n\n"+txt);
+    }
+    
+    // Page navigation
+    function showPage(pageId) {
+      // Hide all pages
+      document.querySelectorAll('.page-view').forEach(p => p.classList.remove('active'));
+      // Show selected page
+      document.getElementById('page-' + pageId).classList.add('active');
+      
+      // Update nav items
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      event.currentTarget?.classList.add('active');
+      
+      // Update page title
+      const titles = {
+        'main': 'Skyworks Dashboard',
+        'mission-planning': 'Mission Planning & GIS Mapping',
+        'sora-calculator': 'SORA Calculator'
+      };
+      document.getElementById('pageTitle').textContent = titles[pageId] || 'Skyworks';
+    }
+    
+    // GIS API Testing
+    async function testGIS(endpoint) {
+      const outputDiv = document.getElementById('gis-output');
+      const resultPre = document.getElementById('gis-result');
+      
+      outputDiv.style.display = 'block';
+      resultPre.textContent = 'Loading...';
+      
+      try {
+        let url = '';
+        switch(endpoint) {
+          case 'operational-volume':
+            url = '/api/gis/operational-volume/mission/demo-mission-1';
+            break;
+          case 'population-density':
+            url = '/api/gis/population-density?lat=35.17&lon=33.36'; // Nicosia
+            break;
+          case 'airspace':
+            url = '/api/gis/airspace?lat=34.87&lon=33.62&altitude=500'; // Larnaca CTR
+            break;
+          case 'no-fly-zones':
+            url = '/api/gis/no-fly-zones?minLat=34.8&maxLat=35.2&minLon=33.5&maxLon=33.7';
+            break;
+          case 'terrain-elevation':
+            url = '/api/gis/terrain-elevation?lat=34.9&lon=32.9'; // Troodos area
+            break;
+        }
+        
+        const response = await fetch(url, {
+          headers: getToken() ? { Authorization: 'Bearer ' + getToken() } : {}
+        });
+        
+        const data = await response.json();
+        resultPre.textContent = JSON.stringify(data, null, 2);
+      } catch (error) {
+        resultPre.textContent = 'Error: ' + error.message + '\n\nMake sure the backend is running!';
+      }
+    }
+    
+    // SORA Calculation
+    async function calculateSORA() {
+      const resultsDiv = document.getElementById('soraResults');
+      resultsDiv.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px 20px;">Calculating...</p>';
+      
+      try {
+        const soraVersion = document.getElementById('soraVersion').value;
+        const popDensity = parseFloat(document.getElementById('popDensity').value);
+        const uaDimension = parseFloat(document.getElementById('uaDimension').value);
+        const uaSpeed = parseFloat(document.getElementById('uaSpeed').value);
+        const airspaceClass = document.getElementById('airspaceClass').value;
+        const altitudeAGL = parseFloat(document.getElementById('altitudeAGL').value);
+        
+        const payload = {
+          soraVersion: soraVersion,
+          groundRisk: {
+            populationDensity: popDensity,
+            maxCharacteristicDimension: uaDimension,
+            maxSpeed: uaSpeed,
+            isControlledGroundArea: false
+          },
+          airRisk: {
+            airspaceClass: airspaceClass,
+            environment: popDensity > 5000 ? 'Urban' : (popDensity > 500 ? 'Suburban' : 'Rural'),
+            maxHeightAGL: altitudeAGL,
+            typicality: 'Typical'
+          },
+          implementedOSOs: [],
+          missionId: 'quick-calc-' + Date.now(),
+          missionName: 'Quick SORA Calculation'
+        };
+        
+        const response = await fetch('/api/sora/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(getToken() ? { Authorization: 'Bearer ' + getToken() } : {})
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          resultsDiv.innerHTML = `
+            <div style="margin-bottom:20px;">
+              <h3 style="font-size:18px;font-weight:700;color:#1e293b;margin-bottom:12px;">✅ SORA Assessment Complete</h3>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div style="background:#dbeafe;padding:12px;border-radius:6px;">
+                  <div style="font-size:11px;color:#1e40af;font-weight:600;text-transform:uppercase;">Ground Risk</div>
+                  <div style="font-size:24px;font-weight:700;color:#1e40af;margin-top:4px;">${data.grc || 'N/A'}</div>
+                </div>
+                <div style="background:#dcfce7;padding:12px;border-radius:6px;">
+                  <div style="font-size:11px;color:#166534;font-weight:600;text-transform:uppercase;">Air Risk</div>
+                  <div style="font-size:24px;font-weight:700;color:#166534;margin-top:4px;">${data.arc || 'N/A'}</div>
+                </div>
+                <div style="background:#fef3c7;padding:12px;border-radius:6px;">
+                  <div style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;">SAIL Level</div>
+                  <div style="font-size:24px;font-weight:700;color:#92400e;margin-top:4px;">${data.sail || 'N/A'}</div>
+                </div>
+                <div style="background:#fce7f3;padding:12px;border-radius:6px;">
+                  <div style="font-size:11px;color:#831843;font-weight:600;text-transform:uppercase;">Required OSOs</div>
+                  <div style="font-size:24px;font-weight:700;color:#831843;margin-top:4px;">${data.requiredOSOsCount || 0}</div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-top:16px;padding:12px;background:#f1f5f9;border-radius:6px;border-left:4px solid #3b82f6;">
+              <div style="font-size:13px;font-weight:600;color:#1e293b;margin-bottom:4px;">SORA Version: ${soraVersion}</div>
+              <div style="font-size:12px;color:#64748b;">Environment: ${payload.airRisk.environment} • Airspace: Class ${airspaceClass} • Altitude: ${altitudeAGL}ft AGL</div>
+            </div>
+            
+            ${data.requiredOSOs && data.requiredOSOs.length > 0 ? `
+              <div style="margin-top:16px;">
+                <h4 style="font-size:14px;font-weight:600;margin-bottom:8px;">Required OSOs (${data.requiredOSOs.length})</h4>
+                <div style="max-height:200px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:6px;padding:8px;background:white;">
+                  ${data.requiredOSOs.map(oso => `
+                    <div style="padding:6px;border-bottom:1px solid #f1f5f9;font-size:13px;">
+                      <span style="font-weight:600;color:#3b82f6;">OSO #${oso.osoId}</span>: ${oso.title || 'N/A'}
+                      <span style="float:right;font-size:11px;color:#64748b;">${oso.requiredRobustness || 'N/A'}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+            
+            <button onclick="loadOSOs('${data.sail?.replace('SAIL_', '')}')" style="width:100%;margin-top:16px;padding:12px;background:#3b82f6;color:white;border:none;border-radius:6px;font-weight:600;cursor:pointer;">
+              📋 View ${data.sail || 'SAIL'} OSO Requirements
+            </button>
+          `;
+        } else {
+          resultsDiv.innerHTML = `
+            <div style="padding:20px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#991b1b;">
+              <strong>Error:</strong> ${data.error || data.message || 'Calculation failed'}
+            </div>
+          `;
+        }
+      } catch (error) {
+        resultsDiv.innerHTML = `
+          <div style="padding:20px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#991b1b;">
+            <strong>Error:</strong> ${error.message}<br><br>
+            Make sure the backend is running at http://localhost:5210
+          </div>
+        `;
+      }
+    }
+    
+    // Load OSOs for SAIL level
+    async function loadOSOs(sailLevel) {
+      const osoListDiv = document.getElementById('osoList');
+      osoListDiv.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px;">Loading OSOs...</p>';
+      
+      try {
+        const soraVersion = document.getElementById('soraVersion')?.value || '2.5';
+        const response = await fetch(`/api/oso/requirements?sail=SAIL_${sailLevel}&soraVersion=${soraVersion}`, {
+          headers: getToken() ? { Authorization: 'Bearer ' + getToken() } : {}
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.requiredOSOs) {
+          osoListDiv.innerHTML = data.requiredOSOs.map(oso => `
+            <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:16px;transition:all 0.2s;">
+              <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                <div style="font-weight:700;color:#1e293b;font-size:15px;">OSO #${oso.osoId}</div>
+                <div style="background:#dbeafe;color:#1e40af;font-size:11px;padding:4px 8px;border-radius:4px;font-weight:600;">
+                  ${oso.requiredRobustness}
+                </div>
+              </div>
+              <div style="font-size:14px;color:#1e293b;font-weight:600;margin-bottom:4px;">${oso.title || 'N/A'}</div>
+              <div style="font-size:13px;color:#64748b;line-height:1.4;">${oso.description || 'No description available'}</div>
+              ${oso.category ? `<div style="margin-top:8px;font-size:12px;color:#64748b;">Category: <strong>${oso.category}</strong></div>` : ''}
+            </div>
+          `).join('');
+        } else {
+          osoListDiv.innerHTML = '<p style="color:#64748b;text-align:center;padding:40px;">No OSOs found for SAIL ' + sailLevel + '</p>';
+        }
+      } catch (error) {
+        osoListDiv.innerHTML = `
+          <div style="padding:20px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#991b1b;">
+            Error loading OSOs: ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    // Load token on page load
+    setToken(getToken());
+  </script>
+</body>
+</html>

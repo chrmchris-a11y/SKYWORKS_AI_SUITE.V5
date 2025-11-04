@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSO Framework Test Suite - Step 41</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #667eea;
+            border-bottom: 3px solid #764ba2;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        .test-section h2 {
+            color: #764ba2;
+            margin-top: 0;
+        }
+        
+        .test-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: transform 0.2s;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .test-result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            background: #d4edda;
+            border: 2px solid #28a745;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da;
+            border: 2px solid #dc3545;
+            color: #721c24;
+        }
+        
+        .info {
+            background: #d1ecf1;
+            border: 2px solid #17a2b8;
+            color: #0c5460;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            color: #856404;
+        }
+        
+        #osoTestGrid {
+            margin: 20px 0;
+            min-height: 200px;
+        }
+        
+        .test-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .stat-card {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            color: white;
+        }
+        
+        .stat-card.total {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .stat-card.passed {
+            background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+        }
+        
+        .stat-card.failed {
+            background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
+        }
+        
+        .stat-card h3 {
+            margin: 0;
+            font-size: 32px;
+        }
+        
+        .stat-card p {
+            margin: 5px 0 0 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 OSO Framework Test Suite - Step 41</h1>
+        
+        <div class="test-stats">
+            <div class="stat-card total">
+                <h3 id="totalTests">0</h3>
+                <p>Total Tests</p>
+            </div>
+            <div class="stat-card passed">
+                <h3 id="passedTests">0</h3>
+                <p>Passed ✅</p>
+            </div>
+            <div class="stat-card failed">
+                <h3 id="failedTests">0</h3>
+                <p>Failed ❌</p>
+            </div>
+        </div>
+        
+        <!-- Test 1: File Loading -->
+        <div class="test-section">
+            <h2>📂 Test 1: File Loading & Dependencies</h2>
+            <button class="test-button" onclick="runTest1()">▶️ Run Test</button>
+            <div id="test1Result"></div>
+        </div>
+        
+        <!-- Test 2: OSO Definitions -->
+        <div class="test-section">
+            <h2>📋 Test 2: OSO Definitions Structure</h2>
+            <button class="test-button" onclick="runTest2()">▶️ Run Test</button>
+            <div id="test2Result"></div>
+        </div>
+        
+        <!-- Test 3: SAIL Requirements -->
+        <div class="test-section">
+            <h2>🎯 Test 3: SAIL-Based OSO Requirements</h2>
+            <button class="test-button" onclick="runTest3()">▶️ Run Test</button>
+            <div id="test3Result"></div>
+        </div>
+        
+        <!-- Test 4: Compliance Tracker -->
+        <div class="test-section">
+            <h2>📊 Test 4: OSOComplianceTracker Class</h2>
+            <button class="test-button" onclick="runTest4()">▶️ Run Test</button>
+            <div id="test4Result"></div>
+        </div>
+        
+        <!-- Test 5: UI Rendering -->
+        <div class="test-section">
+            <h2>🎨 Test 5: OSO UI Rendering</h2>
+            <button class="test-button" onclick="runTest5()">▶️ Run Test</button>
+            <div id="osoTestGrid"></div>
+            <div id="test5Result"></div>
+        </div>
+        
+        <!-- Test 6: Validation Logic -->
+        <div class="test-section">
+            <h2>✅ Test 6: Compliance Validation</h2>
+            <button class="test-button" onclick="runTest6()">▶️ Run Test</button>
+            <div id="test6Result"></div>
+        </div>
+        
+        <!-- Test 7: Export/Import -->
+        <div class="test-section">
+            <h2>💾 Test 7: Export & Import Compliance Report</h2>
+            <button class="test-button" onclick="runTest7()">▶️ Run Test</button>
+            <div id="test7Result"></div>
+        </div>
+        
+        <!-- Test 8: Integration -->
+        <div class="test-section">
+            <h2>🔗 Test 8: Mission.html Integration</h2>
+            <button class="test-button" onclick="runTest8()">▶️ Run Test</button>
+            <div id="test8Result"></div>
+        </div>
+        
+        <!-- Run All Tests -->
+        <div style="text-align: center; margin: 30px 0;">
+            <button class="test-button" style="font-size: 18px; padding: 15px 40px;" onclick="runAllTests()">
+                🚀 Run All Tests
+            </button>
+        </div>
+    </div>
+    
+    <!-- Load OSO Framework -->
+    <script src="oso-manager-v2.js"></script>
+    <script src="oso-ui-v2.js"></script>
+    
+    <script>
+        let testResults = {
+            total: 0,
+            passed: 0,
+            failed: 0
+        };
+        
+        function updateStats() {
+            document.getElementById('totalTests').textContent = testResults.total;
+            document.getElementById('passedTests').textContent = testResults.passed;
+            document.getElementById('failedTests').textContent = testResults.failed;
+        }
+        
+        function logResult(testId, success, message) {
+            const resultDiv = document.getElementById(testId + 'Result');
+            const className = success ? 'success' : 'error';
+            const icon = success ? '✅' : '❌';
+            resultDiv.innerHTML = `<div class="test-result ${className}">${icon} ${message}</div>`;
+            
+            testResults.total++;
+            if (success) {
+                testResults.passed++;
+            } else {
+                testResults.failed++;
+            }
+            updateStats();
+        }
+        
+        // Test 1: File Loading
+        function runTest1() {
+            try {
+                let report = '';
+                
+                // Check OSOManager exists
+                if (typeof OSOManager === 'undefined') {
+                    throw new Error('OSOManager not loaded!');
+                }
+                report += '✅ OSOManager loaded\n';
+                
+                // Check OSOUI exists
+                if (typeof OSOUI === 'undefined') {
+                    throw new Error('OSOUI not loaded!');
+                }
+                report += '✅ OSOUI loaded\n';
+                
+                // Check OSO_DEFINITIONS_V25 exists
+                if (!OSOManager.OSO_DEFINITIONS_V25) {
+                    throw new Error('OSO_DEFINITIONS_V25 not found!');
+                }
+                report += '✅ OSO_DEFINITIONS_V25 exists\n';
+                
+                // Check OSOComplianceTracker exists
+                if (!OSOManager.OSOComplianceTracker) {
+                    throw new Error('OSOComplianceTracker class not found!');
+                }
+                report += '✅ OSOComplianceTracker class exists\n';
+                
+                logResult('test1', true, report);
+            } catch (error) {
+                logResult('test1', false, 'ERROR: ' + error.message);
+            }
+        }
+        
+        // Test 2: OSO Definitions Structure
+        function runTest2() {
+            try {
+                let report = '';
+                const osoDefinitions = OSOManager.OSO_DEFINITIONS_V25;
+                
+                // Check we have 17 OSOs (SORA 2.5)
+                const osoCount = Object.keys(osoDefinitions).length;
+                if (osoCount !== 17) {
+                    throw new Error(`Expected 17 OSOs, found ${osoCount}`);
+                }
+                report += `✅ Correct count: 17 OSOs\n`;
+                
+                // Check OSO#01 structure
+                const oso1 = osoDefinitions[1];
+                if (!oso1.id || !oso1.number || !oso1.name || !oso1.category) {
+                    throw new Error('OSO#01 missing required fields');
+                }
+                report += `✅ OSO#01 structure valid:\n`;
+                report += `   - ID: ${oso1.id}\n`;
+                report += `   - Number: ${oso1.number}\n`;
+                report += `   - Name: ${oso1.name}\n`;
+                report += `   - Category: ${oso1.category}\n`;
+                
+                // Check robustness levels
+                if (!oso1.robustnessLevels || !oso1.robustnessLevels.NR || !oso1.robustnessLevels.L || !oso1.robustnessLevels.M || !oso1.robustnessLevels.H) {
+                    throw new Error('OSO#01 missing robustness levels');
+                }
+                report += `✅ Robustness levels (NR, L, M, H) defined\n`;
+                
+                // Check SAIL requirements
+                if (!oso1.sailRequirements || Object.keys(oso1.sailRequirements).length !== 6) {
+                    throw new Error('OSO#01 missing SAIL requirements');
+                }
+                report += `✅ SAIL I-VI requirements mapped\n`;
+                
+                // Check evidence types
+                if (!oso1.evidenceTypes || !Array.isArray(oso1.evidenceTypes)) {
+                    throw new Error('OSO#01 missing evidence types');
+                }
+                report += `✅ Evidence types: ${oso1.evidenceTypes.length} types\n`;
+                
+                // Check JARUS reference
+                if (!oso1.jarusRef || !oso1.jarusRef.includes('SORA 2.5')) {
+                    throw new Error('OSO#01 missing JARUS reference');
+                }
+                report += `✅ JARUS reference: ${oso1.jarusRef}\n`;
+                
+                logResult('test2', true, report);
+            } catch (error) {
+                logResult('test2', false, 'ERROR: ' + error.message);
+            }
+        }
+        
+        // Test 3: SAIL-Based Requirements
+        function runTest3() {
+            try {
+                let report = '';
+                
+                // Test SAIL I (should have minimal OSOs)
+                const trackerSAIL_I = OSOManager.createComplianceTracker('SORA-2.5', 'I');
+                const reqSAIL_I = trackerSAIL_I.getRequiredOSOs();
+                report += `✅ SAIL I: ${reqSAIL_I.length} required OSOs\n`;
+                
+                // Test SAIL IV (should have many OSOs)
+                const trackerSAIL_IV = OSOManager.createComplianceTracker('SORA-2.5', 'IV');
+                const reqSAIL_IV = trackerSAIL_IV.getRequiredOSOs();
+                report += `✅ SAIL IV: ${reqSAIL_IV.length} required OSOs\n`;
+                
+                // SAIL IV should have more OSOs than SAIL I
+                if (reqSAIL_IV.length <= reqSAIL_I.length) {
+                    throw new Error('SAIL IV should have more OSOs than SAIL I');
+                }
+                report += `✅ SAIL progression correct (IV > I)\n`;
+                
+                // Test SAIL VI (maximum OSOs)
+                const trackerSAIL_VI = OSOManager.createComplianceTracker('SORA-2.5', 'VI');
+                const reqSAIL_VI = trackerSAIL_VI.getRequiredOSOs();
+                report += `✅ SAIL VI: ${reqSAIL_VI.length} required OSOs\n`;
+                
+                // Check each required OSO has correct structure
+                reqSAIL_IV.forEach(req => {
+                    if (!req.id || !req.number || !req.name || !req.requiredRobustness) {
+                        throw new Error('Required OSO missing fields');
+                    }
+                });
+                report += `✅ All required OSOs have correct structure\n`;
+                
+                logResult('test3', true, report);
+            } catch (error) {
+                logResult('test3', false, 'ERROR: ' + error.message);
+            }
+        }
+        
+        // Test 4: Compliance Tracker
+        function runTest4() {
+            try {
+                let report = '';
+                
+                // Create tracker for SAIL IV
+                const tracker = OSOManager.createComplianceTracker('SORA-2.5', 'IV');
+                report += `✅ Tracker created for SORA 2.5 SAIL IV\n`;
+                
+                // Get required OSOs
+                const required = tracker.getRequiredOSOs();
+                report += `✅ Required OSOs: ${required.length}\n`;
+                
+                // Select first OSO with High robustness
+                const firstOSO = required[0];
+                tracker.selectOSO(firstOSO.id, 'H', 'Test_Evidence.pdf', 'Test notes');
+                report += `✅ Selected ${firstOSO.number} with High robustness\n`;
+                
+                // Validate compliance (should be incomplete)
+                let validation = tracker.validateCompliance();
+                if (validation.isCompliant) {
+                    throw new Error('Should not be compliant with only 1 OSO selected');
+                }
+                report += `✅ Compliance validation: ${validation.compliancePercentage}% (not compliant)\n`;
+                
+                // Select all required OSOs with sufficient robustness
+                required.forEach(req => {
+                    tracker.selectOSO(req.id, req.requiredRobustness, `Evidence_OSO${req.id}.pdf`, 'Test implementation');
+                });
+                report += `✅ Selected all ${required.length} required OSOs\n`;
+                
+                // Validate again (should be compliant now)
+                validation = tracker.validateCompliance();
+                if (!validation.isCompliant) {
+                    throw new Error('Should be compliant after selecting all OSOs');
+                }
+                report += `✅ Compliance validation: ${validation.compliancePercentage}% (COMPLIANT!)\n`;
+                
+                // Test insufficient robustness detection
+                tracker.selectOSO(required[0].id, 'L', 'Low_Evidence.pdf', 'Low robustness test');
+                validation = tracker.validateCompliance();
+                if (validation.insufficientOSOs.length === 0) {
+                    throw new Error('Should detect insufficient robustness');
+                }
+                report += `✅ Insufficient robustness detected: ${validation.insufficientOSOs.length} OSO(s)\n`;
+                
+                logResult('test4', true, report);
+            } catch (error) {
+                logResult('test4', false, 'ERROR: ' + error.message);
+            }
+        }
+        
+        // Test 5: UI Rendering
+        function runTest5() {
+            try {
+                let report = '';
+                
+                // Render OSO grid for SAIL III
+                OSOUI.renderOSOGrid('osoTestGrid', 'SORA-2.5', 'III', function() {
+                    console.log('OSO updated callback triggered');
+                });
+                report += `✅ OSO grid rendered for SAIL III\n`;
+                
+                // Check if grid has content
+                const gridDiv = document.getElementById('osoTestGrid');
+                if (!gridDiv.innerHTML || gridDiv.innerHTML.length < 100) {
+                    throw new Error('OSO grid appears empty');
+                }
+                report += `✅ Grid content generated (${gridDiv.innerHTML.length} chars)\n`;
+                
+                // Check if badges exist
+                const badges = gridDiv.querySelectorAll('.oso-badge');
+                if (badges.length === 0) {
+                    throw new Error('No OSO badges found in grid');
+                }
+                report += `✅ OSO badges rendered: ${badges.length} badges\n`;
+                
+                // Check if compliance header exists
+                const complianceHeader = gridDiv.querySelector('#osoCompliancePercentage');
+                if (complianceHeader) {
+                    report += `✅ Compliance percentage header found\n`;
+                }
+                
+                logResult('test5', true, report);
+            } catch (error) {
+                logResult('test5', false, 'ERROR: ' + error.message);
+            }
+        }
+        
+        // Test 6: Validation Logic
+        function runTest6() {
+            try {
+                let report = '';
+                
+                const tracker = OSOManager.createComplianceTracker('SORA-2.5', 'V');
+                const required = tracker.getRequiredOSOs();
+                
+                // Test 1: All missing
+                let validation = tracker.validateCompliance();
+                if (validation.missingOSOs.length !== required.length) {
+                    throw new Error('Should detect all OSOs as missing');
+                }
+                report += `✅ Missing OSOs detected: ${validation.missingOSOs.length}\n`;
+                
+                // Test 2: Some selected with correct robustness
+                required.slice(0, 5).forEach(req => {
+                    tracker.selectOSO(req.id, req.requiredRobustness, 'Evidence.pdf', 'Notes');
+                });
+                validation = tracker.validateCompliance();
+                report += `✅ Partial compliance: ${validation.compliancePercentage}%\n`;
+                
+                // Test 3: Some with insufficient robustness
+                tracker.selectOSO(required[5].id, 'L', 'Low.pdf', 'Insufficient');
+                validation = tracker.validateCompliance();
+                if (validation.insufficientOSOs.length === 0 && required[5].requiredRobustness !== 'L') {
+                    throw new Error('Should detect insufficient robustness');
+                }
+                report += `✅ Insufficient robustness check working\n`;
+                
+                // Test 4: Compliance percentage calculation
+                const percentExpected = Math.round((6 / required.length) * 100);
+                if (Math.abs(validation.compliancePercentage - percentExpected) > 5) {
+                    throw new Error(`Percentage calculation wrong: expected ~${percentExpected}, got ${validation.compliancePercentage}`);
+                }
+                report += `✅ Compliance percentage accurate: ${validation.compliancePercentage}%\n`;
+                
+                logResult('test6', true, report);
+            } catch (error) {
+                logResult('test6', false, 'ERROR: ' + error.message);
+            }
+        }
+        
+        // Test 7: Export/Import
+        function runTest7() {
+            try {
+                let report = '';
+                
+                // Create tracker and select some OSOs
+                const tracker = OSOManager.createComplianceTracker('SORA-2.5', 'IV');
+                const required = tracker.getRequiredOSOs();
+                
+                required.slice(0, 3).forEach(req => {
+                    tracker.selectOSO(req.id, req.requiredRobustness, `Evidence_${req.id}.pdf`, `Notes for ${req.number}`);
+                });
+                
+                // Export compliance report
+                const exportedReport = tracker.exportComplianceReport();
+                if (!exportedReport) {
+                    throw new Error('Export failed');
+                }
+                report += `✅ Export successful\n`;
+                
+                // Check export structure
+                if (!exportedReport.soraVersion || !exportedReport.sail || !exportedReport.selectedOSOs) {
+                    throw new Error('Export missing required fields');
+                }
+                report += `✅ Export structure valid:\n`;
+                report += `   - SORA Version: ${exportedReport.soraVersion}\n`;
+                report += `   - SAIL: ${exportedReport.sail}\n`;
+                report += `   - Selected OSOs: ${exportedReport.selectedOSOs.length}\n`;
+                report += `   - Compliance: ${exportedReport.compliance.compliancePercentage}%\n`;
+                
+                // Test import
+                const newTracker = OSOManager.createComplianceTracker('SORA-2.5', 'IV');
+                const importSuccess = newTracker.importComplianceData(exportedReport);
+                if (!importSuccess) {
+                    throw new Error('Import failed');
+                }
+                report += `✅ Import successful\n`;
+                
+                // Verify imported data
+                const importedValidation = newTracker.validateCompliance();
+                if (importedValidation.compliancePercentage !== exportedReport.compliance.compliancePercentage) {
+                    throw new Error('Imported data mismatch');
+                }
+                report += `✅ Imported data verified: ${importedValidation.compliancePercentage}% matches\n`;
+                
+                logResult('test7', true, report);
+            } catch (error) {
+                logResult('test7', false, 'ERROR: ' + error.message);
+            }
+        }
+        
+        // Test 8: Integration Check
+        function runTest8() {
+            try {
+                let report = '';
+                
+                // Check if mission.html integration points exist
+                report += `📋 Integration Check:\n\n`;
+                
+                // Check OSOManager methods
+                if (typeof OSOManager.getOSODetails === 'function') {
+                    report += `✅ OSOManager.getOSODetails() available\n`;
+                } else {
+                    throw new Error('getOSODetails method missing');
+                }
+                
+                if (typeof OSOManager.getAllOSOs === 'function') {
+                    report += `✅ OSOManager.getAllOSOs() available\n`;
+                } else {
+                    throw new Error('getAllOSOs method missing');
+                }
+                
+                if (typeof OSOManager.createComplianceTracker === 'function') {
+                    report += `✅ OSOManager.createComplianceTracker() available\n`;
+                } else {
+                    throw new Error('createComplianceTracker method missing');
+                }
+                
+                // Check OSOUI methods
+                if (typeof OSOUI.renderOSOGrid === 'function') {
+                    report += `✅ OSOUI.renderOSOGrid() available\n`;
+                } else {
+                    throw new Error('renderOSOGrid method missing');
+                }
+                
+                if (typeof OSOUI.showOSOSelectionModal === 'function') {
+                    report += `✅ OSOUI.showOSOSelectionModal() available\n`;
+                } else {
+                    throw new Error('showOSOSelectionModal method missing');
+                }
+                
+                if (typeof OSOUI.exportComplianceReport === 'function') {
+                    report += `✅ OSOUI.exportComplianceReport() available\n`;
+                } else {
+                    throw new Error('exportComplianceReport method missing');
+                }
+                
+                // Test getCurrentTracker
+                if (typeof OSOUI.getCurrentTracker === 'function') {
+                    report += `✅ OSOUI.getCurrentTracker() available\n`;
+                } else {
+                    throw new Error('getCurrentTracker method missing');
+                }
+                
+                report += `\n✅ All integration points verified!\n`;
+                report += `\n📝 Ready for mission.html integration:\n`;
+                report += `   - renderOSOs() can call OSOUI.renderOSOGrid()\n`;
+                report += `   - displaySORAResults() can display OSO compliance\n`;
+                report += `   - Export functions ready for backend sync\n`;
+                
+                logResult('test8', true, report);
+            } catch (error) {
+                logResult('test8', false, 'ERROR: ' + error.message);
+            }
+        }
+        
+        // Run All Tests
+        async function runAllTests() {
+            testResults = { total: 0, passed: 0, failed: 0 };
+            updateStats();
+            
+            const tests = [
+                runTest1,
+                runTest2,
+                runTest3,
+                runTest4,
+                runTest5,
+                runTest6,
+                runTest7,
+                runTest8
+            ];
+            
+            for (const test of tests) {
+                test();
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between tests
+            }
+            
+            // Final summary
+            setTimeout(() => {
+                const allPassed = testResults.failed === 0;
+                const resultDiv = document.createElement('div');
+                resultDiv.className = `test-result ${allPassed ? 'success' : 'warning'}`;
+                resultDiv.style.fontSize = '18px';
+                resultDiv.style.textAlign = 'center';
+                resultDiv.style.marginTop = '30px';
+                
+                if (allPassed) {
+                    resultDiv.innerHTML = `
+                        🎉 ALL TESTS PASSED! 🎉
+                        
+                        Total: ${testResults.total}
+                        Passed: ${testResults.passed} ✅
+                        Failed: ${testResults.failed} ❌
+                        
+                        OSO Framework Step 41 is READY FOR PRODUCTION! ✅
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        ⚠️ TESTS COMPLETED WITH ISSUES
+                        
+                        Total: ${testResults.total}
+                        Passed: ${testResults.passed} ✅
+                        Failed: ${testResults.failed} ❌
+                        
+                        Please review failed tests above.
+                    `;
+                }
+                
+                document.querySelector('.container').appendChild(resultDiv);
+            }, 1000);
+        }
+        
+        // Auto-run all tests on load
+        window.addEventListener('load', () => {
+            console.log('🧪 OSO Framework Test Suite Loaded');
+            console.log('Click "Run All Tests" to start testing');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+{
+  "schema_version": "1.0",
+  "standard": "SORA 2.0 (EASA AMC/GM) — ARC",
+  "references": [
+    {
+      "title": "EASA Easy Access Rules for UAS (AMC/GM) — Step 4/5 (ARC)",
+      "source": "EASA eRules, July 2024"
+    }
+  ],
+  "fields": [
+    {
+      "name": "operation_type",
+      "label": "Operation Type",
+      "type": "enum",
+      "enum": [
+        "VLOS",
+        "EVLOS",
+        "BVLOS"
+      ],
+      "required": true
+    },
+    {
+      "name": "u_space_airspace",
+      "label": "U-space Airspace",
+      "type": "enum",
+      "enum": [
+        "None",
+        "U-space U3/U4 (if applicable)"
+      ],
+      "required": false
+    },
+    {
+      "name": "airspace_class",
+      "label": "Airspace Class / ATS Context",
+      "type": "multi-enum",
+      "enum": [
+        "Class G",
+        "Class E",
+        "Class D",
+        "Class C",
+        "CTR",
+        "TMA",
+        "TIZ",
+        "ATZ",
+        "RMZ",
+        "TMZ"
+      ],
+      "required": true
+    },
+    {
+      "name": "proximity_aerodrome",
+      "label": "Proximity to Aerodromes/Heliports",
+      "type": "enum",
+      "enum": [
+        "Inside CTR/TMA",
+        "Near CTR/TMA (adjacent)",
+        "Outside CTR/TMA"
+      ],
+      "required": true
+    },
+    {
+      "name": "operational_altitude_agl_m",
+      "label": "Operational Altitude AGL (m)",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "time_of_operation",
+      "label": "Time of Operation",
+      "type": "enum",
+      "enum": [
+        "Day",
+        "Night",
+        "Off-peak window"
+      ],
+      "required": false
+    },
+    {
+      "name": "air_traffic_density_rating",
+      "label": "Air Traffic Density (rating)",
+      "type": "enum",
+      "enum": [
+        "Very High (5)",
+        "High (4)",
+        "Medium (3)",
+        "Low (2)",
+        "Very Low (1)"
+      ],
+      "required": true
+    },
+    {
+      "name": "operational_volume_defined",
+      "label": "Operational Volume Defined (geofence)",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "name": "adjacent_airspace_characterised",
+      "label": "Adjacent Airspace Characterised",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "name": "strategic_mitigations",
+      "label": "Strategic Mitigations (Table C.2)",
+      "type": "group",
+      "items": [
+        {
+          "name": "airspace_arrangements",
+          "label": "Airspace Organisation/Service Arrangements",
+          "type": "boolean"
+        },
+        {
+          "name": "operational_limitations_boundary",
+          "label": "Operational Limitations (Boundary)",
+          "type": "boolean"
+        },
+        {
+          "name": "operational_limitations_chronology",
+          "label": "Operational Limitations (Chronology/short exposure)",
+          "type": "boolean"
+        },
+        {
+          "name": "procedural_coordination_ats",
+          "label": "Procedural Separation / Coordination with ATS/ANSP",
+          "type": "boolean"
+        },
+        {
+          "name": "geoawareness_geofencing",
+          "label": "Geo-awareness / Geofencing constraints",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "evidence_links",
+      "label": "Evidence/References",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "initial_arc",
+      "type": "enum",
+      "enum": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "residual_arc",
+      "type": "enum",
+      "enum": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    }
+  ]
+}

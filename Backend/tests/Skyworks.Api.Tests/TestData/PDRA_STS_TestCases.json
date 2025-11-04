@@ -1,0 +1,768 @@
+{
+  "description": "Authoritative PDRA & STS Test Cases - Based on EU Regulation 2019/947",
+  "generated": "2025-10-23",
+  "source": "EASA Easy Access Rules for UAS (July 2024) - PDRAs and Standard Scenarios",
+  "testCases": [
+    {
+      "testId": "STS01_001",
+      "name": "STS-01 Urban Inspection - Class C5",
+      "category": "STS-01",
+      "description": "Basic STS-01 operation in populated area with controlled ground",
+      "input": {
+        "category": "STS-01",
+        "uasClass": "C5",
+        "maxDimension": 2.5,
+        "mtom": 8.0,
+        "maxSpeed": 4.5,
+        "maxHeightAGL": 80,
+        "environment": "Urban",
+        "populationDensity": 3000.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 20.0,
+        "vlos": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "Controlled ground area established",
+          "All persons informed and consenting",
+          "Ground risk buffer minimum 20m",
+          "Flight termination system operational"
+        ]
+      },
+      "rationale": "STS-01: VLOS in populated area, controlled ground, Class C5, speed <5m/s, proper buffer → GRC_2+ARC_a=SAIL_I"
+    },
+    {
+      "testId": "STS01_002",
+      "name": "STS-01 Construction Site - Max Buffer",
+      "category": "STS-01",
+      "description": "STS-01 at maximum height requiring largest ground risk buffer",
+      "input": {
+        "category": "STS-01",
+        "uasClass": "C5",
+        "maxDimension": 2.8,
+        "mtom": 12.0,
+        "maxSpeed": 4.8,
+        "maxHeightAGL": 120,
+        "environment": "Urban",
+        "populationDensity": 1500.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 60.0,
+        "vlos": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "Ground risk buffer minimum 60m (MTOM >10kg at 120m)",
+          "Flight termination system mandatory",
+          "Enhanced contingency procedures"
+        ]
+      },
+      "rationale": "STS-01: Max height 120m with MTOM >10kg requires 60m buffer per UAS.STS-01.020(1)(c)(i)(C)"
+    },
+    {
+      "testId": "STS01_003",
+      "name": "STS-01 Tethered Operation",
+      "category": "STS-01",
+      "description": "Tethered UA operation with reduced ground risk buffer",
+      "input": {
+        "category": "STS-01",
+        "uasClass": "C5",
+        "maxDimension": 1.5,
+        "mtom": 5.0,
+        "maxSpeed": 0.0,
+        "maxHeightAGL": 50,
+        "environment": "Urban",
+        "populationDensity": 4000.0,
+        "controlledGroundArea": true,
+        "tethered": true,
+        "tetherLength": 45.0,
+        "groundRiskBuffer": 50.0,
+        "vlos": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "Controlled ground area = tether length + 5m radius",
+          "Reduced risk due to tethering"
+        ]
+      },
+      "rationale": "STS-01: Tethered operation has controlled ground area = tether + 5m per UAS.STS-01.020(1)(c)(ii)"
+    },
+    {
+      "testId": "STS01_004",
+      "name": "STS-01 Near Tall Obstacle - Extended Height",
+      "category": "STS-01",
+      "description": "Operation near 110m obstacle extending to 125m height",
+      "input": {
+        "category": "STS-01",
+        "uasClass": "C5",
+        "maxDimension": 2.0,
+        "mtom": 9.5,
+        "maxSpeed": 4.0,
+        "maxHeightAGL": 125,
+        "obstacleHeight": 110,
+        "distanceFromObstacle": 40,
+        "environment": "Urban",
+        "populationDensity": 2000.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 25.0,
+        "vlos": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "Operation within 50m of obstacle >105m allows +15m height",
+          "Entity responsible for obstacle must request extension"
+        ]
+      },
+      "rationale": "STS-01: Near obstacle >105m allows max height = obstacle + 15m per UAS.STS-01.010(2)"
+    },
+    {
+      "testId": "STS01_005",
+      "name": "STS-01 Suburban Low Risk",
+      "category": "STS-01",
+      "description": "Low-risk suburban operation with minimum buffer",
+      "input": {
+        "category": "STS-01",
+        "uasClass": "C5",
+        "maxDimension": 1.2,
+        "mtom": 3.5,
+        "maxSpeed": 3.0,
+        "maxHeightAGL": 30,
+        "environment": "Suburban",
+        "populationDensity": 800.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 10.0,
+        "vlos": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true
+      },
+      "expected": {
+        "approved": true,
+        "sail": "SAIL_II",
+        "grc": "GRC_3",
+        "arc": "ARC_b",
+        "additionalRequirements": [
+          "Minimum 10m buffer (MTOM ≤10kg at 30m height)"
+        ]
+      },
+      "rationale": "STS-01: Low height (30m) + low MTOM (≤10kg) = minimum 10m buffer - Fixed values per EASA Regulation 2019/947"
+    },
+    {
+      "testId": "STS02_001",
+      "name": "STS-02 Rural Pipeline Inspection - With AOs",
+      "category": "STS-02",
+      "description": "BVLOS pipeline inspection with airspace observers",
+      "input": {
+        "category": "STS-02",
+        "uasClass": "C6",
+        "maxDimension": 2.8,
+        "mtom": 20.0,
+        "maxHeightAGL": 100,
+        "maxDistance": 1800,
+        "environment": "Rural",
+        "populationDensity": 50.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 80.0,
+        "meteorologicalVisibility": 8.0,
+        "airspaceObservers": 2,
+        "aoDistance": 900,
+        "bvlos": true,
+        "preprogrammedRoute": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true,
+        "geoFencing": true,
+        "launchRecoveryVlos": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "Maximum 2km from remote pilot",
+          "Maximum 1km from nearest AO",
+          "AO-to-pilot distance ≤1km",
+          "Minimum 5km flight visibility",
+          "Geo-fencing active"
+        ]
+      },
+      "rationale": "STS-02: BVLOS with 2 AOs, sparsely populated, proper distances, Class C6 → SAIL III"
+    },
+    {
+      "testId": "STS02_002",
+      "name": "STS-02 Without AOs - Limited Range",
+      "category": "STS-02",
+      "description": "STS-02 BVLOS without airspace observers - 1km limit",
+      "input": {
+        "category": "STS-02",
+        "uasClass": "C6",
+        "maxDimension": 2.5,
+        "mtom": 18.0,
+        "maxHeightAGL": 90,
+        "maxDistance": 950,
+        "environment": "Rural",
+        "populationDensity": 30.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 70.0,
+        "meteorologicalVisibility": 6,
+        "airspaceObservers": 0,
+        "bvlos": true,
+        "preprogrammedRoute": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true,
+        "geoFencing": true,
+        "launchRecoveryVlos": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "Maximum 1km from remote pilot (no AOs)",
+          "Preprogrammed trajectory when not in VLOS",
+          "Flight visibility ≥5km"
+        ]
+      },
+      "rationale": "STS-02: No AOs limits distance to 1km per UAS.STS-02.020(5)"
+    },
+    {
+      "testId": "STS02_003",
+      "name": "STS-02 Agricultural Survey - Maximum Distance",
+      "category": "STS-02",
+      "description": "Long-range agricultural survey with multiple AOs",
+      "input": {
+        "category": "STS-02",
+        "uasClass": "C6",
+        "maxDimension": 2.9,
+        "mtom": 24.0,
+        "maxHeightAGL": 120,
+        "maxDistance": 2000,
+        "environment": "Rural",
+        "populationDensity": 20.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 90.0,
+        "meteorologicalVisibility": 10,
+        "airspaceObservers": 3,
+        "aoDistance": 1000,
+        "bvlos": true,
+        "preprogrammedRoute": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true,
+        "geoFencing": true,
+        "launchRecoveryVlos": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "Maximum 2km from remote pilot (with AOs)",
+          "AOs positioned for adequate operational volume coverage",
+          "Robust communication between pilot and AOs"
+        ]
+      },
+      "rationale": "STS-02: With AOs allows 2km range per UAS.STS-02.020(6)(b)"
+    },
+    {
+      "testId": "STS02_004",
+      "name": "STS-02 Launch/Recovery in VLOS",
+      "category": "STS-02",
+      "description": "BVLOS operation requiring VLOS during launch and recovery",
+      "input": {
+        "category": "STS-02",
+        "uasClass": "C6",
+        "maxDimension": 2.6,
+        "mtom": 19.0,
+        "maxHeightAGL": 80,
+        "maxDistance": 1500,
+        "environment": "Rural",
+        "populationDensity": 40.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 75.0,
+        "meteorologicalVisibility": 7,
+        "airspaceObservers": 1,
+        "aoDistance": 750,
+        "bvlos": true,
+        "vlosLaunchRecovery": true,
+        "preprogrammedRoute": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true,
+        "geoFencing": true,
+        "launchRecoveryVlos": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "UA in sight during launch and recovery",
+          "Emergency flight termination exception for recovery"
+        ]
+      },
+      "rationale": "STS-02: Requires VLOS during launch/recovery per UAS.STS-02.020(4)"
+    },
+    {
+      "testId": "STS02_005",
+      "name": "STS-02 Low Visibility Rejection",
+      "category": "STS-02",
+      "description": "Operation fails due to insufficient flight visibility",
+      "input": {
+        "category": "STS-02",
+        "uasClass": "C6",
+        "maxDimension": 2.7,
+        "mtom": 22.0,
+        "maxHeightAGL": 110,
+        "maxDistance": 1700,
+        "environment": "Rural",
+        "populationDensity": 35.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 85.0,
+        "meteorologicalVisibility": 4,
+        "airspaceObservers": 2,
+        "aoDistance": 850,
+        "bvlos": true,
+        "preprogrammedRoute": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true,
+        "geoFencing": true,
+        "launchRecoveryVlos": true
+      },
+      "expected": {
+        "approved": false,
+        "rejectionReason": "Flight visibility below minimum 5km required for STS-02",
+        "sail": null,
+        "grc": null,
+        "arc": null
+      },
+      "rationale": "STS-02: Minimum 5km flight visibility required per UAS.STS-02.020(3) - REJECTED"
+    },
+    {
+      "testId": "PDRA_S01_001",
+      "name": "PDRA-S01 Custom UAS Urban Inspection",
+      "category": "PDRA-S01",
+      "description": "VLOS operation with custom (non-C5) UAS in populated area",
+      "input": {
+        "category": "PDRA-S01",
+        "uasClass": "Custom",
+        "maxDimension": 2.8,
+        "mtom": 11.0,
+        "maxHeightAGL": 100,
+        "environment": "Urban",
+        "populationDensity": 2800.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 30.0,
+        "vlos": true,
+        "airspaceClass": "D",
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": true,
+        "sail": "SAIL_II",
+        "grc": "GRC_3",
+        "arc": "ARC_b",
+        "additionalRequirements": [
+          "Full risk assessment required (not just declaration)",
+          "ARC-b maximum (low probability manned aircraft)",
+          "Operations manual medium robustness",
+          "ERP medium robustness"
+        ]
+      },
+      "rationale": "PDRA-S01: Similar to STS-01 but allows custom UAS without Class C5 marking - Fixed values per EASA Regulation 2019/947"
+    },
+    {
+      "testId": "PDRA_S01_002",
+      "name": "PDRA-S01 Maximum Dimensions",
+      "category": "PDRA-S01",
+      "description": "Operation at maximum allowed dimensions (3m)",
+      "input": {
+        "category": "PDRA-S01",
+        "uasClass": "Custom",
+        "maxDimension": 3.0,
+        "mtom": 15.0,
+        "maxHeightAGL": 150,
+        "environment": "Suburban",
+        "populationDensity": 1200.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 50.0,
+        "vlos": true,
+        "airspaceClass": "G",
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": true,
+        "sail": "SAIL_II",
+        "grc": "GRC_3",
+        "arc": "ARC_b",
+        "additionalRequirements": [
+          "Maximum 3m characteristic dimension",
+          "Maximum 150m height (higher than STS-01 120m)",
+          "Full risk assessment documentation"
+        ]
+      },
+      "rationale": "PDRA-S01: Max 3m dimension, up to 150m AGL - Fixed values per EASA Regulation 2019/947"
+    },
+    {
+      "testId": "PDRA_S01_003",
+      "name": "PDRA-S01 Controlled Airspace",
+      "category": "PDRA-S01",
+      "description": "Operation in controlled airspace with coordination",
+      "input": {
+        "category": "PDRA-S01",
+        "uasClass": "Custom",
+        "maxDimension": 2.5,
+        "mtom": 9.0,
+        "maxHeightAGL": 120,
+        "environment": "Urban",
+        "populationDensity": 1800.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 25.0,
+        "vlos": true,
+        "airspaceClass": "C",
+        "controlledAirspace": true,
+        "atcCoordination": true,
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": true,
+        "sail": "SAIL_II",
+        "grc": "GRC_3",
+        "arc": "ARC_b",
+        "additionalRequirements": [
+          "ATC coordination mandatory",
+          "Communication protocol with ATC",
+          "Clearance and instructions compliance"
+        ]
+      },
+      "rationale": "PDRA-S01: Allows controlled airspace if low probability manned aircraft - Fixed values per EASA Regulation 2019/947"
+    },
+    {
+      "testId": "PDRA_S01_004",
+      "name": "PDRA-S01 No Autonomous Operations",
+      "category": "PDRA-S01",
+      "description": "Verification of pilot control maintenance requirement",
+      "input": {
+        "category": "PDRA-S01",
+        "uasClass": "Custom",
+        "maxDimension": 2.2,
+        "mtom": 7.5,
+        "maxHeightAGL": 80,
+        "environment": "Suburban",
+        "populationDensity": 900.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 18.0,
+        "vlos": true,
+        "autonomousOperation": false,
+        "pilotMaintainsControl": true,
+        "airspaceClass": "G",
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": true,
+        "sail": "SAIL_II",
+        "grc": "GRC_3",
+        "arc": "ARC_b",
+        "additionalRequirements": [
+          "Pilot maintains control (except C2 link loss)",
+          "No autonomous operations allowed",
+          "Single UA per remote pilot"
+        ]
+      },
+      "rationale": "PDRA-S01: Condition 1.1 - No autonomous operations, pilot control mandatory - Fixed values per EASA Regulation 2019/947"
+    },
+    {
+      "testId": "PDRA_S01_005",
+      "name": "PDRA-S01 Over Dimension Rejection",
+      "category": "PDRA-S01",
+      "description": "Operation rejected for exceeding 3m dimension limit",
+      "input": {
+        "category": "PDRA-S01",
+        "uasClass": "Custom",
+        "maxDimension": 3.5,
+        "mtom": 18.0,
+        "maxHeightAGL": 100,
+        "environment": "Urban",
+        "populationDensity": 2000.0,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 40.0,
+        "vlos": true,
+        "airspaceClass": "G",
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": false,
+        "rejectionReason": "UA characteristic dimension exceeds 3m maximum for PDRA-S01",
+        "sail": null,
+        "grc": null,
+        "arc": null
+      },
+      "rationale": "PDRA-S01: Scope limited to max 3m characteristic dimension - REJECTED"
+    },
+    {
+      "testId": "PDRA_S02_001",
+      "name": "PDRA-S02 Custom UAS BVLOS Survey",
+      "category": "PDRA-S02",
+      "description": "BVLOS with custom (non-C6) UAS and airspace observers",
+      "input": {
+        "category": "PDRA-S02",
+        "uasClass": "Custom",
+        "maxDimension": 2.9,
+        "mtom": 23.0,
+        "maxHeightAGL": 130,
+        "maxDistance": 1900,
+        "environment": "Rural",
+        "populationDensity": 45.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 95.0,
+        "meteorologicalVisibility": 7.5,
+        "airspaceObservers": 2,
+        "aoDistance": 950,
+        "bvlos": true,
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": true,
+  "sail": "SAIL_II",
+  "grc": "GRC_3",
+  "arc": "ARC_b",
+        "additionalRequirements": [
+          "Full risk assessment required",
+          "No Class C6 requirement (custom UAS allowed)",
+          "ARC-b maximum",
+          "Operations manual medium robustness",
+          "ERP medium robustness"
+        ]
+      },
+      "rationale": "PDRA-S02: Similar to STS-02 but allows custom UAS without Class C6 marking"
+    },
+    {
+      "testId": "PDRA_S02_002",
+      "name": "PDRA-S02 Maximum Dimensions & Weight",
+      "category": "PDRA-S02",
+      "description": "Operation at maximum allowed dimensions (3m) and MTOM (25kg)",
+      "input": {
+        "category": "PDRA-S02",
+        "uasClass": "Custom",
+        "maxDimension": 3.0,
+        "mtom": 25.0,
+        "maxHeightAGL": 150,
+        "maxDistance": 1500,
+        "environment": "Rural",
+        "populationDensity": 25.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 100.0,
+        "meteorologicalVisibility": 9,
+        "airspaceObservers": 1,
+        "aoDistance": 800,
+        "bvlos": true,
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": true,
+        "sail": "SAIL_II",
+        "grc": "GRC_3",
+        "arc": "ARC_b",
+        "additionalRequirements": [
+          "Maximum 3m dimension",
+          "Maximum 25kg MTOM",
+          "Maximum 150m AGL"
+        ]
+      },
+      "rationale": "PDRA-S02: Max 3m dimension, 25kg MTOM, 150m height - Fixed values per EASA Regulation 2019/947"
+    },
+    {
+      "testId": "PDRA_S02_003",
+      "name": "PDRA-S02 Without AOs - 1km Limit",
+      "category": "PDRA-S02",
+      "description": "BVLOS without airspace observers limited to 1km",
+      "input": {
+        "category": "PDRA-S02",
+        "uasClass": "Custom",
+        "maxDimension": 2.6,
+        "mtom": 19.0,
+        "maxHeightAGL": 110,
+        "maxDistance": 980,
+        "environment": "Rural",
+        "populationDensity": 38.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 85.0,
+        "meteorologicalVisibility": 6.5,
+        "airspaceObservers": 0,
+        "launchRecoveryVlos": true,
+        "bvlos": true,
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": true,
+        "sail": "SAIL_II",
+        "grc": "GRC_3",
+        "arc": "ARC_b",
+        "additionalRequirements": [
+          "Maximum 1km without AOs",
+          "Same as STS-02 distance limitations"
+        ]
+      },
+      "rationale": "PDRA-S02: No AOs = 1km max distance - Fixed values per EASA Regulation 2019/947"
+    },
+    {
+      "testId": "PDRA_S02_004",
+      "name": "PDRA-S02 With AOs - 2km Maximum",
+      "category": "PDRA-S02",
+      "description": "Maximum range BVLOS with multiple airspace observers",
+      "input": {
+        "category": "PDRA-S02",
+        "uasClass": "Custom",
+        "maxDimension": 2.8,
+        "mtom": 24.0,
+        "maxHeightAGL": 140,
+        "maxDistance": 2000,
+        "environment": "Rural",
+        "populationDensity": 30.0,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 98.0,
+        "meteorologicalVisibility": 10,
+        "airspaceObservers": 3,
+        "aoDistance": 1000,
+        "bvlos": true,
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": true,
+        "sail": "SAIL_II",
+        "grc": "GRC_3",
+        "arc": "ARC_b",
+        "additionalRequirements": [
+          "Maximum 2km with AOs",
+          "AO positioning for operational volume coverage",
+          "Robust pilot-AO communication"
+        ]
+      },
+      "rationale": "PDRA-S02: With AOs allows 2km max distance - Fixed values per EASA Regulation 2019/947"
+    },
+    {
+      "testId": "PDRA_S02_005",
+      "name": "PDRA-S02 Not Sparsely Populated Rejection",
+      "category": "PDRA-S02",
+      "description": "Operation rejected for not being in sparsely populated area",
+      "input": {
+        "category": "PDRA-S02",
+        "uasClass": "Custom",
+        "maxDimension": 2.7,
+        "mtom": 21.0,
+        "maxHeightAGL": 120,
+        "maxDistance": 1600,
+        "environment": "Urban",
+        "populationDensity": 5000.0,
+        "sparselyPopulated": false,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 90.0,
+        "meteorologicalVisibility": 8,
+        "airspaceObservers": 2,
+        "aoDistance": 900,
+        "bvlos": true,
+        "lowProbabilityMannedAircraft": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "contingencyProceduresValidated": true
+      },
+      "expected": {
+        "approved": false,
+        "rejectionReason": "PDRA-S02 requires operation over sparsely populated area only",
+        "sail": null,
+        "grc": null,
+        "arc": null
+      },
+      "rationale": "PDRA-S02: Scope limited to sparsely populated areas per condition (3) - REJECTED"
+    }
+  ]
+}

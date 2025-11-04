@@ -1,0 +1,130 @@
+version: "JARUS_SORA_2.5_Annex_C_v1.0"
+source: "JARUS SORA v2.5 - Annex C v1.0: Strategic Mitigation of Air Risk"
+publication_date: "2024-01-15"
+doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+rules_hash: "sha256:def456ghi789"
+
+initial_arc_rules_25:
+  - condition:
+      airspace_class: ["G"]
+      air_traffic_density: [1, 2]
+      u_space_services_available: false
+    result: "a"
+    rule_ref: "Annex_C_Section_2.1_Low_Density_Class_G"
+    doc_ref:
+      doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+      annex: "Annex C"
+      section: "Section 2.1"
+    
+  - condition:
+      airspace_class: ["G"]
+      air_traffic_density: [1, 2]
+      u_space_services_available: true
+    result: "a"
+    rule_ref: "Annex_C_Section_2.2_U_Space_Low"
+    doc_ref:
+      doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+      annex: "Annex C"
+      section: "Section 2.2"
+    notes: "U-space services may support further reduction through service arrangements"
+    
+  - condition:
+      airspace_class: ["E", "D"]
+      air_traffic_density: [3, 4]
+    result: "c"
+    rule_ref: "Annex_C_Section_2.3_Medium_Density_Controlled"
+    doc_ref:
+      doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+      annex: "Annex C"
+      section: "Section 2.3"
+    
+  - condition:
+      airspace_class: ["C", "CTR", "TMA"]
+    result: "d"
+    rule_ref: "Annex_C_Section_2.4_High_Complexity_Airspace"
+    doc_ref:
+      doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+      annex: "Annex C"
+      section: "Section 2.4"
+    
+  - condition:
+      airspace_class: ["U-space"]
+      air_traffic_density: [1, 2, 3]
+    result: "b"
+    rule_ref: "Annex_C_Section_2.5_U_Space_Designation"
+    doc_ref:
+      doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+      annex: "Annex C"
+      section: "Section 2.5"
+
+default_by_airspace_25:
+  G: "a"
+  E: "b"
+  D: "c"
+  C: "d"
+  CTR: "d"
+  TMA: "d"
+  U-space: "b"
+  rule_ref: "Annex_C_Section_2_Default"
+
+strategic_mitigations_25:
+  airspace_containment:
+    Certified:
+      reduction: 2
+      rule_ref: "Annex_C_Section_3.1_Containment_Certified"
+      doc_ref:
+        doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+        annex: "Annex C"
+        section: "Section 3.1"
+      evidence: "Certified containment system + validation data"
+    Operational:
+      reduction: 1
+      rule_ref: "Annex_C_Section_3.1_Containment_Operational"
+      doc_ref:
+        doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+        annex: "Annex C"
+        section: "Section 3.1"
+      evidence: "Operational data showing containment effectiveness"
+    None:
+      reduction: 0
+      
+  temporal_segregation:
+    reduction: 1
+    rule_ref: "Annex_C_Section_3.2_Temporal"
+    doc_ref:
+      doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+      annex: "Annex C"
+      section: "Section 3.2"
+    evidence: "Traffic data showing <50% nominal density during operation"
+    
+  spatial_segregation:
+    reduction: 1
+    rule_ref: "Annex_C_Section_3.3_Spatial"
+    doc_ref:
+      doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+      annex: "Annex C"
+      section: "Section 3.3"
+    evidence: "Geographic separation data + coordination agreements"
+    
+  u_space_services:
+    reduction: 0  # Eligible for up to 1 class reduction within cap
+    role: "service_arrangement_evidence"
+    rule_ref: "Annex_C_Section_3.5_U_Space"
+    doc_ref:
+      doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+      annex: "Annex C"
+      section: "Section 3.5"
+    evidence: "U-space service provider SLA + tracking data + competent authority acceptance"
+    notes: "U-space services may support claiming up to 1 class reduction under service arrangements, subject to cap"
+
+reduction_caps_25:
+  without_certification: 1
+  with_certification: 2
+  with_u_space: 2  # U-space equivalent to certification
+  rule_ref: "Annex_C_Section_3.6_Caps"
+  doc_ref:
+    doc_id: "JARUS_SORA_v2.5_Annex_C_v1.0"
+    annex: "Annex C"
+    section: "Section 3.6"
+
+arc_floor: "a"

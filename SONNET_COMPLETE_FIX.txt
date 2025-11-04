@@ -1,0 +1,713 @@
+I'll provide complete fixes for the critical field mapping issue and robust startup system.
+
+## 1. FIXED PythonCalculationClient.cs
+
+```csharp
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Http;
+
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// HTTP Client for Python Calculation Microservice
+/// Calls Python FastAPI service on port 8001 for accurate EASA/JARUS calculations
+/// </summary>
+public interface IPythonCalculationClient
+{
+    Task<PythonGRCResponse?> CalculateGRC_2_0(PythonGRCRequest_2_0 request);
+    Task<PythonGRCResponse?> CalculateGRC_2_5(PythonGRCRequest_2_5 request);
+    Task<PythonARCResponse?> CalculateARC_2_0(PythonARCRequest_2_0 request);
+    Task<PythonARCResponse?> CalculateARC_2_5(PythonARCRequest_2_5 request);
+    Task<PythonSAILResponse?> CalculateSAIL(PythonSAILRequest request);
+    Task<bool> HealthCheck();
+}
+
+public class PythonCalculationClient : IPythonCalculationClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<PythonCalculationClient> _logger;
+    private readonly string _baseUrl;
+
+    public PythonCalculationClient(IHttpClientFactory httpClientFactory, ILogger<PythonCalculationClient> logger, IConfiguration configuration)
+    {
+        _httpClient = httpClientFactory.CreateClient("PythonService");
+        _logger = logger;
+        _baseUrl = configuration.GetValue<string>("PythonService:BaseUrl") ?? "http://localhost:8001";
+        _httpClient.BaseAddress = new Uri(_baseUrl);
+        _httpClient.Timeout = TimeSpan.FromSeconds(10);
+    }
+
+    public async Task<bool> HealthCheck()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/health");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Python service health check failed");
+            return false;
+        }
+    }
+
+    public async Task<PythonGRCResponse?> CalculateGRC_2_0(PythonGRCRequest_2_0 request)
+    {
+        try
+        {
+            // Normalize request: lowercase mitigation enums + scenario name conversion for Python compatibility
+            var normalizedReq = new
+            {
+                max_dimension_m = request.MaxDimensionM,
+                operational_scenario = ToScenarioString(request.OperationalScenario),
+                m1_strategic = ToTitleCase(request.M1Strategic),
+                m2_ground_impact = ToTitleCase(request.M2GroundImpact),
+                m3_emergency_response = ToTitleCase(request.M3EmergencyResponse),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/grc/2.0", content);
+            response.EnsureSuccessStatusCode();
+            
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python GRC 2.0 calculation");
+            throw;
+        }
+    }
+
+    public async Task<PythonGRCResponse?> CalculateGRC_2_5(PythonGRCRequest_2_5 request)
+    {
+        try
+        {
+            // Normalize request: lowercase mitigation enums for Python compatibility
+            var normalizedReq = new
+            {
+                max_dimension_m = request.MaxDimensionM,
+                max_speed_ms = request.MaxSpeedMs,
+                weight_kg = request.WeightKg,
+                population_density = request.PopulationDensity,
+                is_controlled_ground = request.IsControlledGround,
+                m1_strategic = ToTitleCase(request.M1Strategic),
+                m2_ground_impact = ToTitleCase(request.M2GroundImpact),
+                m3_emergency_response = ToTitleCase(request.M3EmergencyResponse),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/grc/2.5", content);
+            
+            // Read response body before checking status (for error message extraction)
+            var responseJson = await response.Content.ReadAsStringAsync();
+            
+            // If error response, try to extract structured error message
+            if (!response.IsSuccessStatusCode)
+            {
+                // Try to parse error detail: {"detail": "OUT_OF_SCOPE|iGRC=9|..."}
+                try
+                {
+                    var errorDoc = JsonDocument.Parse(responseJson);
+                    if (errorDoc.RootElement.TryGetProperty("detail", out var detailProp))
+                    {
+                        var detailMsg = detailProp.GetString() ?? string.Empty;
+                        throw new HttpRequestException($"Python GRC 2.5 returned {(int)response.StatusCode}: {detailMsg}");
+                    }
+                }
+                catch (JsonException)
+                {
+                    // If JSON parsing fails, use raw response
+                }
+                response.EnsureSuccessStatusCode(); // Will throw with status code message
+            }
+            
+            return JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python GRC 2.5 calculation");
+            throw;
+        }
+    }
+
+    public async Task<PythonARCResponse?> CalculateARC_2_0(PythonARCRequest_2_0 request)
+    {
+        try
+        {
+            // CRITICAL FIX: Use correct field names that Python expects
+            var normalizedReq = new
+            {
+                altitude_agl_ft = request.AltitudeAglFt,  // FIXED: was max_height_agl_m
+                max_height_amsl_m = request.MaxHeightAmslM,
+                airspace_class = request.AirspaceClass,
+                is_controlled = request.IsControlled,
+                is_modes_veil = request.IsModesVeil,
+                is_tmz = request.IsTmz,
+                environment = ToTitleCase(request.Environment),
+                is_airport_heliport = request.IsAirportHeliport,
+                is_atypical_segregated = request.IsAtypicalSegregated,
+                tactical_mitigation_level = ToTitleCase(request.TacticalMitigationLevel),
+            };
+            
+            _logger.LogDebug("Sending ARC 2.0 request: {Request}", JsonSerializer.Serialize(normalizedReq));
+            
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/arc/2.0", content);
+            var responseJson = await response.Content.ReadAsStringAsync();
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("ARC 2.0 failed with {StatusCode}: {Response}", response.StatusCode, responseJson);
+            }
+            
+            response.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<PythonARCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python ARC 2.0 calculation");
+            throw;
+        }
+    }
+
+    public async Task<PythonARCResponse?> CalculateARC_2_5(PythonARCRequest_2_5 request)
+    {
+        try
+        {
+            // CRITICAL FIX: Use correct field names that Python expects
+            var normalizedReq = new
+            {
+                altitude_agl_m = request.AltitudeAglM,  // FIXED: was max_height_agl_m
+                max_speed_ms = request.MaxSpeedMs,
+                airspace_class = request.AirspaceClass,
+                is_controlled = request.IsControlled,
+                is_modes_veil = request.IsModesVeil,
+                is_tmz = request.IsTmz,
+                environment = ToTitleCase(request.Environment),
+                is_airport_heliport = request.IsAirportHeliport,
+                is_atypical_segregated = request.IsAtypicalSegregated,
+                tactical_mitigation_level = ToTitleCase(request.TacticalMitigationLevel),
+            };
+            
+            _logger.LogDebug("Sending ARC 2.5 request: {Request}", JsonSerializer.Serialize(normalizedReq));
+            
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/arc/2.5", content);
+            var responseJson = await response.Content.ReadAsStringAsync();
+            
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("ARC 2.5 failed with {StatusCode}: {Response}", response.StatusCode, responseJson);
+            }
+            
+            response.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<PythonARCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python ARC 2.5 calculation");
+            throw;
+        }
+    }
+
+    public async Task<PythonSAILResponse?> CalculateSAIL(PythonSAILRequest request)
+    {
+        try
+        {
+            // Normalize request: SAIL expects ARC enums like "ARC-a" (hyphens, lowercase) and version strings
+            var normalizedReq = new
+            {
+                sora_version = request.SoraVersion,
+                final_grc = request.FinalGRC,
+                final_arc = ToARCEnum(request.FinalARC),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/sail", content);
+            response.EnsureSuccessStatusCode();
+            
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<PythonSAILResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python SAIL calculation");
+            throw;
+        }
+    }
+
+    // Normalize uppercase enum strings to title-case for Python
+    private string ToTitleCase(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return s ?? string.Empty;
+        var lower = s.ToLowerInvariant();
+        if (lower == "none") return "None";
+        if (lower == "low") return "Low";
+        if (lower == "medium") return "Medium";
+        if (lower == "high") return "High";
+        // Environments
+        if (lower == "rural") return "Rural";
+        if (lower == "urban") return "Urban";
+        if (lower == "suburban") return "Suburban";
+        if (lower == "controlled") return "Controlled";
+        if (lower == "industrial") return "Industrial";
+        // Default: capitalize first letter
+        return char.ToUpperInvariant(s[0]) + s.Substring(1).ToLowerInvariant();
+    }
+
+    // Normalize ARC enum from e.g., "ARC_a" -> "ARC-a"
+    private string ToARCEnum(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return s ?? string.Empty;
+        // Python ARCRating uses lowercase suffix with hyphens: ARC-a, ARC-b, ARC-c, ARC-d
+        return s.Replace("_", "-");
+    }
+
+    // Convert .NET OperationalScenario enum to Python scenario string
+    // Based on JARUS SORA 2.0 Table 2 scenario names
+    private string ToScenarioString(string dotnetScenario)
+    {
+        return dotnetScenario switch
+        {
+            "VLOS_SparselyPopulated" => "VLOS_Sparsely",
+            "BVLOS_SparselyPopulated" => "BVLOS_Sparsely",
+            "VLOS_Populated" => "VLOS_Populated",
+            "BVLOS_Populated" => "BVLOS_Populated",
+            "VLOS_GatheringOfPeople" => "VLOS_Gathering",
+            "BVLOS_GatheringOfPeople" => "BVLOS_Gathering",
+            "ControlledGroundArea" => "VLOS_Controlled",
+            _ => dotnetScenario // Pass through if already correct
+        };
+    }
+}
+
+// ============================================================================
+// PYTHON API REQUEST/RESPONSE MODELS
+// ============================================================================
+
+#region GRC Models
+
+public class PythonGRCRequest_2_0
+{
+    [JsonPropertyName("max_dimension_m")]
+    public double MaxDimensionM { get; set; }
+
+    [JsonPropertyName("operational_scenario")]
+    public string OperationalScenario { get; set; } = string.Empty;
+
+    [JsonPropertyName("m1_strategic")]
+    public string M1Strategic { get; set; } = "None";
+
+    [JsonPropertyName("m2_ground_impact")]
+    public string M2GroundImpact { get; set; } = "Medium";
+
+    [JsonPropertyName("m3_emergency_response")]
+    public string M3EmergencyResponse { get; set; } = "Medium";
+}
+
+public class PythonGRCRequest_2_5
+{
+    [JsonPropertyName("max_dimension_m")]
+    public double MaxDimensionM { get; set; }
+
+    [JsonPropertyName("max_speed_ms")]
+    public double MaxSpeedMs { get; set; }
+
+    [JsonPropertyName("weight_kg")]
+    public double? WeightKg { get; set; }
+
+    [JsonPropertyName("population_density")]
+    public double PopulationDensity { get; set; }
+
+    [JsonPropertyName("is_controlled_ground")]
+    public bool IsControlledGround { get; set; }
+
+    [JsonPropertyName("m1_strategic")]
+    public string M1Strategic { get; set; } = "None";
+
+    [JsonPropertyName("m2_ground_impact")]
+    public string M2GroundImpact { get; set; } = "Medium";
+
+    [JsonPropertyName("m3_emergency_response")]
+    public string M3EmergencyResponse { get; set; } = "Medium";
+}
+
+public class PythonGRCResponse
+{
+    [JsonPropertyName("intrinsic_grc")]
+    public int IntrinsicGRC { get; set; }
+
+    [JsonPropertyName("final_grc")]
+    public int FinalGRC { get; set; }
+
+    [JsonPropertyName("m1_effect")]
+    public int M1Effect { get; set; }
+
+    [JsonPropertyName("m2_effect")]
+    public int M2Effect { get; set; }
+
+    [JsonPropertyName("m3_effect")]
+    public int M3Effect { get; set; }
+
+    [JsonPropertyName("dimension_category")]
+    public string DimensionCategory { get; set; } = string.Empty;
+
+    [JsonPropertyName("notes")]
+    public string Notes { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty;
+}
+
+#endregion
+
+#region ARC Models
+
+public class PythonARCRequest_2_0
+{
+    // CRITICAL FIX: Use correct field names that match Python backend
+    [JsonPropertyName("altitude_agl_ft")]  // FIXED: was max_height_agl_m
+    public double AltitudeAglFt { get; set; }
+
+    [JsonPropertyName("max_height_amsl_m")]
+    public double MaxHeightAmslM { get; set; }
+
+    [JsonPropertyName("airspace_class")]
+    public string AirspaceClass { get; set; } = "G";
+
+    [JsonPropertyName("is_controlled")]
+    public bool IsControlled { get; set; }
+
+    [JsonPropertyName("is_modes_veil")]
+    public bool IsModesVeil { get; set; }
+
+    [JsonPropertyName("is_tmz")]
+    public bool IsTmz { get; set; }
+
+    [JsonPropertyName("environment")]
+    public string Environment { get; set; } = "Rural";
+
+    [JsonPropertyName("is_airport_heliport")]
+    public bool IsAirportHeliport { get; set; }
+
+    [JsonPropertyName("is_atypical_segregated")]
+    public bool IsAtypicalSegregated { get; set; }
+
+    [JsonPropertyName("tactical_mitigation_level")]
+    public string TacticalMitigationLevel { get; set; } = "None";
+}
+
+public class PythonARCRequest_2_5
+{
+    // CRITICAL FIX: Use correct field names that match Python backend
+    [JsonPropertyName("altitude_agl_m")]  // FIXED: was max_height_agl_m
+    public double AltitudeAglM { get; set; }
+
+    [JsonPropertyName("max_speed_ms")]
+    public double MaxSpeedMs { get; set; }
+
+    [JsonPropertyName("airspace_class")]
+    public string AirspaceClass { get; set; } = "G";
+
+    [JsonPropertyName("is_controlled")]
+    public bool IsControlled { get; set; }
+
+    [JsonPropertyName("is_modes_veil")]
+    public bool IsModesVeil { get; set; }
+
+    [JsonPropertyName("is_tmz")]
+    public bool IsTmz { get; set; }
+
+    [JsonPropertyName("environment")]
+    public string Environment { get; set; } = "Rural";
+
+    [JsonPropertyName("is_airport_heliport")]
+    public bool IsAirportHeliport { get; set; }
+
+    [JsonPropertyName("is_atypical_segregated")]
+    public bool IsAtypicalSegregated { get; set; }
+
+    [JsonPropertyName("tactical_mitigation_level")]
+    public string TacticalMitigationLevel { get; set; } = "None";
+}
+
+public class PythonARCResponse
+{
+    [JsonPropertyName("initial_arc")]
+    public string InitialARC { get; set; } = string.Empty;
+
+    [JsonPropertyName("final_arc")]
+    public string FinalARC { get; set; } = string.Empty;
+
+    [JsonPropertyName("aec")]
+    public int AEC { get; set; }
+
+    [JsonPropertyName("density_rating")]
+    public int DensityRating { get; set; }
+
+    [JsonPropertyName("tactical_mitigation_effect")]
+    public int TacticalMitigationEffect { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string Notes { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty;
+}
+
+#endregion
+
+#region SAIL Models
+
+public class PythonSAILRequest
+{
+    [JsonPropertyName("sora_version")]
+    public string SoraVersion { get; set; } = "2.0";
+
+    [JsonPropertyName("final_grc")]
+    public int FinalGRC { get; set; }
+
+    [JsonPropertyName("final_arc")]
+    public string FinalARC { get; set; } = string.Empty;
+}
+
+public class PythonSAILResponse
+{
+    [JsonPropertyName("sail")]
+    public string SAIL { get; set; } = string.Empty;
+
+    [JsonPropertyName("final_grc")]
+    public int FinalGRC { get; set; }
+
+    [JsonPropertyName("final_arc")]
+    public string FinalARC { get; set; } = string.Empty;
+
+    [JsonPropertyName("sora_version")]
+    public string SoraVersion { get; set; } = string.Empty;
+
+    [JsonPropertyName("notes")]
+    public string Notes { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty;
+}
+
+#endregion
+```
+
+## 2. FIXED sora_models.py (WITH BACKWARDS COMPATIBILITY)
+
+```python
+"""
+SKYWORKS AI SUITE - SORA Models
+Pydantic models for SORA 2.0 and 2.5 calculations
+
+CRITICAL FIXES:
+- ARCRequest schemas must have all required fields
+- SAILRequest must use ARCRating enum (not string)
+- SAILResponse must return string SAIL (not int)
+- BACKWARDS COMPATIBILITY: Accept both old and new field names
+"""
+
+from typing import Optional, List, Union, Any
+from pydantic import BaseModel, Field, field_validator, model_validator
+from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ENUMS
+# ═══════════════════════════════════════════════════════════════════════════
+
+class MitigationLevel(str, Enum):
+    """Mitigation robustness levels - EXACT case-sensitive values"""
+    NONE = "None"
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+
+
+class OperationalScenario(str, Enum):
+    """SORA 2.0 Operational Scenarios"""
+    VLOS_CONTROLLED = "VLOS_Controlled"
+    VLOS_SPARSELY = "VLOS_Sparsely"
+    VLOS_POPULATED = "VLOS_Populated"
+    BVLOS_CONTROLLED = "BVLOS_Controlled"
+    BVLOS_SPARSELY = "BVLOS_Sparsely"
+    BVLOS_POPULATED = "BVLOS_Populated"
+    
+    # Legacy aliases
+    VLOS_SPARSELY_POPULATED = "VLOS_SparselyPopulated"
+    BVLOS_SPARSELY_POPULATED = "BVLOS_SparselyPopulated"
+
+
+class ARCRating(str, Enum):
+    """
+    Air Risk Class ratings
+    
+    CRITICAL: This is an ENUM, not a plain string
+    Used in SAILRequest to ensure type safety
+    """
+    ARC_a = "ARC-a"
+    ARC_b = "ARC-b"
+    ARC_c = "ARC-c"
+    ARC_d = "ARC-d"
+
+
+class AirspaceClass(str, Enum):
+    """ICAO Airspace Classifications"""
+    CLASS_A = "A"
+    CLASS_B = "B"
+    CLASS_C = "C"
+    CLASS_D = "D"
+    CLASS_E = "E"
+    CLASS_F = "F"
+    CLASS_G = "G"
+
+
+class EnvironmentType(str, Enum):
+    """Environment types for ARC calculation"""
+    URBAN = "Urban"
+    SUBURBAN = "Suburban"
+    RURAL = "Rural"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GRC MODELS
+# ═══════════════════════════════════════════════════════════════════════════
+
+class GRCRequest_2_0(BaseModel):
+    """
+    SORA 2.0 Ground Risk Class calculation request
+    
+    Required fields:
+    - max_dimension_m: float > 0
+    - operational_scenario: string (e.g., "VLOS_Sparsely")
+    - m1_strategic, m2_ground_impact, m3_emergency_response: MitigationLevel
+    """
+    max_dimension_m: float = Field(gt=0, description="Maximum characteristic dimension in meters")
+    operational_scenario: str = Field(description="Operational scenario")
+    m1_strategic: MitigationLevel = Field(default=MitigationLevel.NONE)
+    m2_ground_impact: MitigationLevel = Field(default=MitigationLevel.NONE)
+    m3_emergency_response: MitigationLevel = Field(default=MitigationLevel.NONE)
+    
+    @field_validator('operational_scenario')
+    @classmethod
+    def normalize_scenario(cls, v: str) -> str:
+        """Normalize legacy scenario names"""
+        if "SparselyPopulated" in v:
+            v = v.replace("SparselyPopulated", "Sparsely")
+        return v
+
+
+class GRCRequest_2_5(BaseModel):
+    """
+    SORA 2.5 Ground Risk Class calculation request
+    
+    CRITICAL FIXES:
+    - Speed categories: <25, <50, <100, ≥100 (NOT <35, <75, <120)
+    - 250g rule: weight ≤ 0.25 AND speed < 25 (BOTH required, strict <)
+    - Population boundaries: STRICT < (not ≤)
+    
+    Required fields:
+    - max_dimension_m: float > 0
+    - max_speed_ms: float > 0
+    - population_density: float ≥ 0
+    - is_controlled_ground: bool
+    - weight_kg: Optional[float] (for 250g rule)
+    """
+    max_dimension_m: float = Field(gt=0, description="Maximum characteristic dimension in meters")
+    max_speed_ms: float = Field(gt=0, description="Maximum speed in m/s")
+    weight_kg: Optional[float] = Field(default=None, description="UAS weight in kg (for 250g rule)")
+    population_density: float = Field(ge=0, description="Population density in people/km²")
+    is_controlled_ground: bool = Field(default=False, description="Operation in controlled ground area")
+    m1_strategic: MitigationLevel = Field(default=MitigationLevel.NONE)
+    m2_ground_impact: MitigationLevel = Field(default=MitigationLevel.NONE)
+    m3_emergency_response: MitigationLevel = Field(default=MitigationLevel.NONE)
+    
+    # Backwards compatibility aliases
+    population_density_per_km2: Optional[float] = Field(default=None, exclude=True)
+    controlled_ground_area: Optional[bool] = Field(default=None, exclude=True)
+    
+    @field_validator('population_density', mode='before')
+    @classmethod
+    def handle_population_alias(cls, v, info):
+        """Handle legacy population_density_per_km2 field"""
+        if v is None and hasattr(info, 'data'):
+            data = info.data if hasattr(info, 'data') else {}
+            if 'population_density_per_km2' in data and data['population_density_per_km2'] is not None:
+                return data['population_density_per_km2']
+        return v
+    
+    @field_validator('is_controlled_ground', mode='before')
+    @classmethod
+    def handle_controlled_alias(cls, v, info):
+        """Handle legacy controlled_ground_area field"""
+        if v is None and hasattr(info, 'data'):
+            data = info.data if hasattr(info, 'data') else {}
+            if 'controlled_ground_area' in data and data['controlled_ground_area'] is not None:
+                return data['controlled_ground_area']
+        return v
+
+
+class GRCResponse(BaseModel):
+    """Ground Risk Class calculation response"""
+    intrinsic_grc: int = Field(description="Intrinsic GRC before mitigations")
+    final_grc: int = Field(description="Final GRC after mitigations")
+    m1_effect: int = Field(description="M1 strategic mitigation effect")
+    m2_effect: int = Field(description="M2 ground impact mitigation effect")
+    m3_effect: int = Field(description="M3 emergency response mitigation effect")
+    dimension_category: str = Field(description="Dimension category label")
+    notes: str = Field(description="Detailed calculation notes")
+    source: str = Field(description="JARUS reference")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ARC MODELS - WITH BACKWARDS COMPATIBILITY
+# ═══════════════════════════════════════════════════════════════════════════
+
+class ARCRequest_2_0(BaseModel):
+    """
+    SORA 2.0 Air Risk Class calculation request
+    
+    CRITICAL FIX: All required fields must be present
+    - airspace_class: REQUIRED
+    - altitude_agl_ft: REQUIRED (in feet for SORA 2.0)
+    - environment: REQUIRED
+    
+    BACKWARDS COMPATIBILITY:
+    - Accepts both altitude_agl_ft (correct) and max_height_agl_m (legacy .NET)
+    """
+    airspace_class: AirspaceClass = Field(description="ICAO airspace class")
+    altitude_agl_ft: float = Field(ge=0, description="Altitude above ground level in feet")
+    environment: EnvironmentType = Field(description="Environment type")
+    distance_to_aerodrome_nm: Optional[float] = Field(
+        default=None, 
+        description="Distance to nearest aerodrome in nautical miles"
+    )
+    is_in_ctr: bool = Field(default=False, description="Operating in aerodrome Control Zone")
+    is_mode_s_veil: bool = Field(default=False, description="Operating in Mode-S veil")
+    is_tmz: bool = Field(default=False, description="Operating in Transponder Mandatory Zone")
+    is_atypical_segregated: bool = Field(default=False, description="Atypical/segregated airspace")
+    strategic_mitigations: List[str] = Field(
+        default_factory=list, 
+        description="List of strategic mitigations (SM1, SM2, etc.)"
+    )
+    
+    # BACKWARDS COMPATIBILITY: Legacy .NET fields (excluded from serialization)
+    max_height_agl_m: Optional[float] = Field(default=None, exclude=True)
+    max_height_amsl_m: Optional[float] = Field(default=None

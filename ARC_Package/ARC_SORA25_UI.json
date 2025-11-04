@@ -1,0 +1,162 @@
+{
+  "schema_version": "1.0",
+  "standard": "SORA 2.5 (JARUS Main Body + Annex C) — ARC",
+  "references": [
+    {
+      "title": "JARUS SORA v2.5 — Main Body (JAR_doc_25) Step 4/5",
+      "source": "JARUS 2024"
+    },
+    {
+      "title": "JARUS SORA v2.5 — Annex C v1.0 Strategic Mitigation of Air Risk",
+      "source": "JARUS 2024"
+    }
+  ],
+  "fields": [
+    {
+      "name": "operation_type",
+      "label": "Operation Type",
+      "type": "enum",
+      "enum": [
+        "VLOS",
+        "EVLOS",
+        "BVLOS"
+      ],
+      "required": true
+    },
+    {
+      "name": "airspace_class",
+      "label": "Airspace Class / ATS Context",
+      "type": "multi-enum",
+      "enum": [
+        "Class G",
+        "Class E",
+        "Class D",
+        "Class C",
+        "CTR",
+        "TMA",
+        "TIZ",
+        "ATZ",
+        "RMZ",
+        "TMZ",
+        "U-space"
+      ],
+      "required": true
+    },
+    {
+      "name": "proximity_aerodrome",
+      "label": "Proximity to Aerodromes/Heliports",
+      "type": "enum",
+      "enum": [
+        "Inside CTR/TMA",
+        "Near CTR/TMA (adjacent)",
+        "Outside CTR/TMA"
+      ],
+      "required": true
+    },
+    {
+      "name": "operational_altitude_agl_m",
+      "label": "Operational Altitude AGL (m)",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "time_of_operation",
+      "label": "Time of Operation",
+      "type": "enum",
+      "enum": [
+        "Day",
+        "Night",
+        "Off-peak window"
+      ],
+      "required": false
+    },
+    {
+      "name": "air_traffic_density_rating",
+      "label": "Air Traffic Density (rating)",
+      "type": "enum",
+      "enum": [
+        "Very High (5)",
+        "High (4)",
+        "Medium (3)",
+        "Low (2)",
+        "Very Low (1)"
+      ],
+      "required": true
+    },
+    {
+      "name": "operational_volume_defined",
+      "label": "Operational Volume Defined (geofence)",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "name": "adjacent_airspace_characterised",
+      "label": "Adjacent Airspace Characterised",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "name": "annex_c_mitigations",
+      "label": "Annex C Strategic Mitigations",
+      "type": "group",
+      "items": [
+        {
+          "name": "airspace_design_segregation",
+          "label": "Airspace design/segregation",
+          "type": "boolean"
+        },
+        {
+          "name": "operational_limitations_boundary",
+          "label": "Operational Limitations (Boundary)",
+          "type": "boolean"
+        },
+        {
+          "name": "operational_limitations_chronology",
+          "label": "Operational Limitations (Chronology / short exposure)",
+          "type": "boolean"
+        },
+        {
+          "name": "procedural_service_arrangements",
+          "label": "Procedural / Service arrangements with ATS/ANSP",
+          "type": "boolean"
+        },
+        {
+          "name": "time_area_based_density_reduction",
+          "label": "Time/Area-based density reduction (with data)",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "name": "evidence_links",
+      "label": "Evidence/References",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "required": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "initial_arc",
+      "type": "enum",
+      "enum": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    },
+    {
+      "name": "residual_arc",
+      "type": "enum",
+      "enum": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ]
+    }
+  ]
+}

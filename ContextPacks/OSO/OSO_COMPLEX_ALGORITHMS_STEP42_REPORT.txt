@@ -1,0 +1,188 @@
+# OSO Complex Algorithms — Step 42 Reference
+
+## COMPACT SUMMARY (extracted from SORA 2.5 Annex B & JARUS Guidelines)
+
+### OSO #11: Detect & Avoid (Strategic/Tactical)
+
+**Requirements:**
+- Strategic: ARC-a/b → Must have pre-flight planning + NOTAMs
+- Tactical: ARC-c/d → Requires active DnA system OR visual observers
+
+**Algorithm:**
+```
+IF operation.ARC >= ARC_C:
+    REQUIRE tactical_dna_system OR visual_observers >= 2
+    IF tactical_dna_system == NULL:
+        APPLY M3_PENALTY (-1 SAIL)
+        
+IF operation.ARC == ARC_A OR ARC_B:
+    REQUIRE strategic_planning (airspace analysis)
+```
+
+**Cross-references:**
+- Links to: ARC calculation, GRC Table 2
+- TMPR available: YES (M3 if no tactical system)
+
+---
+
+### OSO #17: Operational Volume Definition
+
+**Requirements:**
+- Define 3D volume (lat/lon/altitude + buffer)
+- Account for wind drift, GPS errors
+- Segregation from manned traffic
+
+**Algorithm:**
+```
+operational_volume = {
+    planned_trajectory +
+    position_error_buffer (GPS accuracy) +
+    wind_drift_margin (forecast) +
+    safety_margin (10-20% of trajectory length)
+}
+
+IF operational_volume INTERSECTS controlled_airspace:
+    REQUIRE ATC coordination
+    APPLY GRC reduction (JARUS Table 2)
+```
+
+**Validation:**
+- Check: No overlap with TFRs, NOTAMs, airports (< 5 NM)
+- Check: Altitude ceiling compliance
+
+---
+
+### OSO #19: Human Performance (Crew Training)
+
+**Requirements:**
+- Remote pilot: Certified (A1/A2/A3 or equivalent)
+- Ground crew: Trained for emergency procedures
+- Training records: Valid within 12 months
+
+**Algorithm:**
+```
+crew_score = 0
+
+IF pilot.certification == EASA_A1_A3:
+    crew_score += 3
+ELSE IF pilot.hours >= 50:
+    crew_score += 2
+ELSE:
+    crew_score += 1
+
+IF ground_crew.training_valid:
+    crew_score += 2
+    
+IF crew_score < 4:
+    REQUIRE additional training OR APPLY M3_PENALTY
+```
+
+---
+
+### OSO #23: Adjacent Area (Population Density)
+
+**Requirements:**
+- Identify areas within 1 NM of flight path
+- Classify: Controlled ground (CGR) vs Uncontrolled
+- Apply population density mitigation
+
+**Algorithm:**
+```
+adjacent_areas = GET_AREAS_WITHIN(flight_path, radius=1NM)
+
+FOR EACH area IN adjacent_areas:
+    IF area.type == UNCONTROLLED:
+        IF area.population_density > 100/km²:
+            REQUIRE strategic mitigation (flight altitude > 150m AGL)
+            OR APPLY M3_PENALTY
+```
+
+**GRC Impact:**
+- High density area → GRC +1 or +2 (JARUS Table 1)
+
+---
+
+### M3 Penalty (TMPR) — Universal Rule
+
+**When to Apply:**
+```
+FOR EACH OSO in [#11, #17, #19, #23, ...]:
+    IF OSO.robustness == "LOW":
+        IF TMPR_mitigation == NULL:
+            APPLY M3_PENALTY:
+                final_SAIL = initial_SAIL - 1
+                min_SAIL = 0 (cannot go below SAIL 0)
+```
+
+**TMPR Definition:**
+- Tactical Mitigation Performance Requirement
+- Must reduce residual risk by ≥ 1 order of magnitude
+- Examples: Parachute system, flight termination, geo-fencing
+
+---
+
+### Integration Points
+
+**SAILCalculator Service:**
+```csharp
+// Call this for GRC/ARC/SAIL calculations
+var sail = SAILCalculator.CalculateSAIL(operation);
+```
+
+**ARCService:**
+```csharp
+// Get ARC level for OSO #11 validation
+var arc = ARCService.GetARCLevel(operation.AirRisk);
+```
+
+**TMPRService:**
+```csharp
+// Check if TMPR available for M3 penalty mitigation
+var tmpr = TMPRService.GetTMPR(oso_id);
+if (tmpr == null) ApplyM3Penalty();
+```
+
+---
+
+## SORA 2.5 Compliance Checklist
+
+✅ Each OSO must return: `OSOResult` with:
+- `IsCompliant: bool`
+- `Confidence: 0.0-1.0` (based on evidence quality)
+- `RequiredEvidence: string[]` (what documentation needed)
+- `M3PenaltyApplied: bool`
+
+✅ Floor Rule: Minimum requirements per SAIL level
+✅ Cross-validation: OSO #11 ↔ ARC, OSO #17 ↔ GRC
+✅ All algorithms must handle NULL inputs gracefully
+
+---
+
+## Code Structure (Expected in OSOService.cs)
+
+```csharp
+public class OSOService
+{
+    // OSO #11: Detect & Avoid
+    public OSOResult ValidateDetectAndAvoid(Operation op, ARC arc);
+    
+    // OSO #17: Operational Volume
+    public OSOResult ValidateOperationalVolume(Operation op);
+    
+    // OSO #19: Human Performance
+    public OSOResult ValidateHumanPerformance(Operation op);
+    
+    // OSO #23: Adjacent Area
+    public OSOResult ValidateAdjacentArea(Operation op, GRC grc);
+    
+    // M3 Penalty calculation
+    private int ApplyM3Penalty(int initialSAIL, TMPR tmpr);
+}
+```
+
+---
+
+**END OF COMPACT SUMMARY**
+
+Total: ~400 lines (vs 1000+ pages of EASA/JARUS originals)
+Source: SORA 2.5 Annex B, JARUS Guidelines AMC1/AMC2, Tables 1-3

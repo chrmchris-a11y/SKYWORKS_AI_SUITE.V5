@@ -1,0 +1,8 @@
+[PLACEHOLDER] Paste the English SORA training prompt here.
+
+Guidance:
+- Describe the SORA pipeline (iGRC → Final GRC → Initial ARC → Residual ARC → SAIL → OSO → TMPR)
+- Include SORA 2.0 special cases (e.g., GRC5 + ARC-c ⇒ SAIL IV; M3 ERP penalty if absent)
+- Include SORA 2.5 rules (≤250g & ≤25m/s ⇒ iGRC 1; grey cells for dense assemblies)
+- Specify the output contract (JSON with iGRC, finalGRC, initialARC, residualARC, sail, steps[], warnings[])
+- Instruct the model to cite table names (e.g., “SORA 2.5 Table 2”) and add reasons in steps

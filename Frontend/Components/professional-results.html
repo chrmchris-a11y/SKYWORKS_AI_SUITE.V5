@@ -1,0 +1,410 @@
+<!-- 
+  PROFESSIONAL RESULTS PRESENTATION COMPONENT
+  Displays Initial Assessment → Mitigations Applied → Final Assessment
+  Per JARUS SORA 2.5 Methodology
+-->
+
+<style>
+  .sora-results-container {
+    margin-top: 24px;
+    padding: 20px;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+
+  .sora-results-header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .sora-results-header h2 {
+    color: #1a237e;
+    font-size: 24px;
+    margin: 0 0 8px 0;
+  }
+
+  .sora-results-header .subtitle {
+    color: #666;
+    font-size: 14px;
+  }
+
+  .sora-flow {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 32px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .sora-card {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    flex: 1;
+    min-width: 200px;
+    max-width: 280px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+
+  .sora-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  .sora-card.initial {
+    border-top: 4px solid #ff6f00;
+  }
+
+  .sora-card.mitigations {
+    border-top: 4px solid #1976d2;
+  }
+
+  .sora-card.final {
+    border-top: 4px solid #2e7d32;
+  }
+
+  .sora-card-header {
+    font-weight: 700;
+    font-size: 16px;
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .sora-card.initial .sora-card-header {
+    color: #ff6f00;
+  }
+
+  .sora-card.mitigations .sora-card-header {
+    color: #1976d2;
+  }
+
+  .sora-card.final .sora-card-header {
+    color: #2e7d32;
+  }
+
+  .sora-metric {
+    margin: 12px 0;
+  }
+
+  .sora-metric-label {
+    font-size: 12px;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-bottom: 4px;
+  }
+
+  .sora-metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .sora-metric-value.grc {
+    color: #e65100;
+  }
+
+  .sora-metric-value.arc {
+    color: #0d47a1;
+  }
+
+  .sora-metric-value.sail {
+    color: #1b5e20;
+  }
+
+  .sora-flow-arrow {
+    font-size: 32px;
+    color: #999;
+    flex-shrink: 0;
+  }
+
+  .sora-mitigation-list {
+    font-size: 13px;
+    color: #555;
+    line-height: 1.6;
+  }
+
+  .sora-mitigation-list div {
+    padding: 4px 0;
+    border-bottom: 1px solid #eee;
+  }
+
+  .sora-mitigation-list div:last-child {
+    border-bottom: none;
+  }
+
+  .sora-delta {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .sora-delta.positive {
+    background: #c8e6c9;
+    color: #2e7d32;
+  }
+
+  .sora-delta.negative {
+    background: #ffccbc;
+    color: #d84315;
+  }
+
+  .sora-sail-matrix {
+    margin-top: 24px;
+    padding: 16px;
+    background: white;
+    border-radius: 8px;
+    border: 2px solid #4caf50;
+  }
+
+  .sora-sail-matrix-title {
+    font-weight: 700;
+    color: #1b5e20;
+    margin-bottom: 12px;
+    font-size: 16px;
+  }
+
+  .sora-sail-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    font-size: 12px;
+  }
+
+  .sora-sail-cell {
+    padding: 8px;
+    text-align: center;
+    border: 1px solid #ddd;
+    background: #f5f5f5;
+    border-radius: 4px;
+  }
+
+  .sora-sail-cell.header {
+    background: #1976d2;
+    color: white;
+    font-weight: 700;
+  }
+
+  .sora-sail-cell.selected {
+    background: #4caf50;
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+  }
+
+  @media (max-width: 768px) {
+    .sora-flow {
+      flex-direction: column;
+    }
+
+    .sora-flow-arrow {
+      transform: rotate(90deg);
+    }
+
+    .sora-card {
+      max-width: 100%;
+    }
+  }
+</style>
+
+<div id="professionalResults" class="sora-results-container" style="display: none;">
+  <div class="sora-results-header">
+    <h2 data-i18n="missionPlanner.results.title">🎯 SORA Assessment Results</h2>
+    <div class="subtitle" data-i18n="missionPlanner.results.soraVersion">JARUS SORA v2.5 Methodology</div>
+  </div>
+
+  <!-- Initial → Mitigations → Final Flow -->
+  <div class="sora-flow">
+    <!-- Initial Assessment Card -->
+    <div class="sora-card initial">
+      <div class="sora-card-header" data-i18n="missionPlanner.initial.title">📊 Initial Assessment</div>
+      
+      <div class="sora-metric">
+        <div class="sora-metric-label" data-i18n="missionPlanner.initial.intrinsicGRC">iGRC (Intrinsic)</div>
+        <div class="sora-metric-value grc" id="professionalInitialGRC">-</div>
+      </div>
+
+      <div class="sora-metric">
+        <div class="sora-metric-label" data-i18n="missionPlanner.initial.initialARC">Initial ARC</div>
+        <div class="sora-metric-value arc" id="professionalInitialARC">-</div>
+      </div>
+    </div>
+
+    <div class="sora-flow-arrow">→</div>
+
+    <!-- Mitigations Applied Card -->
+    <div class="sora-card mitigations">
+      <div class="sora-card-header" data-i18n="missionPlanner.mitigations.title">🛡️ Mitigations Applied</div>
+      
+      <div class="sora-mitigation-list" id="professionalMitigationsList">
+        <div style="color:#999; font-style:italic;">No mitigations applied</div>
+      </div>
+    </div>
+
+    <div class="sora-flow-arrow">→</div>
+
+    <!-- Final Assessment Card -->
+    <div class="sora-card final">
+      <div class="sora-card-header" data-i18n="missionPlanner.final.title">✅ Final Assessment</div>
+      
+      <div class="sora-metric">
+        <div class="sora-metric-label" data-i18n="missionPlanner.final.finalGRC">Final GRC</div>
+        <div class="sora-metric-value grc">
+          <span id="professionalFinalGRC">-</span>
+          <span class="sora-delta" id="professionalGRCDelta"></span>
+        </div>
+      </div>
+
+      <div class="sora-metric">
+        <div class="sora-metric-label" data-i18n="missionPlanner.final.residualARC">Residual ARC</div>
+        <div class="sora-metric-value arc" id="professionalResidualARC">-</div>
+      </div>
+
+      <div class="sora-metric">
+        <div class="sora-metric-label" data-i18n="missionPlanner.final.sail">SAIL</div>
+        <div class="sora-metric-value sail" id="professionalSAIL">-</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SAIL Determination Matrix -->
+  <div class="sora-sail-matrix" id="professionalSAILMatrix" style="display: none;">
+    <div class="sora-sail-matrix-title">📋 SAIL Determination Matrix (GRC × ARC)</div>
+    <div class="sora-sail-grid">
+      <div class="sora-sail-cell header">GRC\ARC</div>
+      <div class="sora-sail-cell header">a</div>
+      <div class="sora-sail-cell header">b</div>
+      <div class="sora-sail-cell header">c</div>
+      <div class="sora-sail-cell header">d</div>
+      
+      <div class="sora-sail-cell header">1-2</div>
+      <div class="sora-sail-cell" data-grc="1-2" data-arc="a">-</div>
+      <div class="sora-sail-cell" data-grc="1-2" data-arc="b">I</div>
+      <div class="sora-sail-cell" data-grc="1-2" data-arc="c">II</div>
+      <div class="sora-sail-cell" data-grc="1-2" data-arc="d">II</div>
+      
+      <div class="sora-sail-cell header">3-4</div>
+      <div class="sora-sail-cell" data-grc="3-4" data-arc="a">I</div>
+      <div class="sora-sail-cell" data-grc="3-4" data-arc="b">II</div>
+      <div class="sora-sail-cell" data-grc="3-4" data-arc="c">III</div>
+      <div class="sora-sail-cell" data-grc="3-4" data-arc="d">IV</div>
+      
+      <div class="sora-sail-cell header">5-6</div>
+      <div class="sora-sail-cell" data-grc="5-6" data-arc="a">II</div>
+      <div class="sora-sail-cell" data-grc="5-6" data-arc="b">III</div>
+      <div class="sora-sail-cell" data-grc="5-6" data-arc="c">IV</div>
+      <div class="sora-sail-cell" data-grc="5-6" data-arc="d">VI</div>
+      
+      <div class="sora-sail-cell header">7+</div>
+      <div class="sora-sail-cell" data-grc="7+" data-arc="a">III</div>
+      <div class="sora-sail-cell" data-grc="7+" data-arc="b">IV</div>
+      <div class="sora-sail-cell" data-grc="7+" data-arc="c">VI</div>
+      <div class="sora-sail-cell" data-grc="7+" data-arc="d">VI</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * Update Professional Results Display
+ * Called after SORA API response
+ */
+window.updateProfessionalResults = function(data, selectedCategory) {
+  const container = document.getElementById('professionalResults');
+  if (!container) return;
+
+  // Show container
+  container.style.display = 'block';
+
+  // Update Initial Assessment
+  const iGRC = data.intrinsicGRC ?? data.initialGRC ?? '-';
+  const initialARC = data.initialARC ?? '-';
+  document.getElementById('professionalInitialGRC').textContent = iGRC;
+  document.getElementById('professionalInitialARC').textContent = initialARC;
+
+  // Update Mitigations List
+  const mitigationsList = document.getElementById('professionalMitigationsList');
+  if (data.mitigationsApplied && data.mitigationsApplied.length > 0) {
+    mitigationsList.innerHTML = data.mitigationsApplied.map(m => 
+      `<div><strong>${m.type}</strong>: ${m.robustness} (${m.reduction >= 0 ? '+' : ''}${m.reduction})</div>`
+    ).join('');
+  } else if (selectedCategory && selectedCategory.startsWith('SORA-2.5')) {
+    // Extract from form for SORA 2.5
+    const mitigations = [];
+    const m1a = parseInt(document.getElementById('m1a_25')?.value || '0');
+    const m1b = parseInt(document.getElementById('m1b_25')?.value || '0');
+    const m1c = parseInt(document.getElementById('m1c_25')?.value || '0');
+    const m2 = parseInt(document.getElementById('m2_25')?.value || '0');
+    
+    if (m1a !== 0) mitigations.push(`<div><strong>M1(A)</strong>: ${m1a === -1 ? 'Low' : 'Medium'} (${m1a})</div>`);
+    if (m1b !== 0) mitigations.push(`<div><strong>M1(B)</strong>: ${m1b === -1 ? 'Medium' : 'High'} (${m1b})</div>`);
+    if (m1c !== 0) mitigations.push(`<div><strong>M1(C)</strong>: Low (${m1c})</div>`);
+    if (m2 !== 0) mitigations.push(`<div><strong>M2</strong>: ${m2 === -1 ? 'Medium' : 'High'} (${m2})</div>`);
+    
+    mitigationsList.innerHTML = mitigations.length > 0 ? mitigations.join('') : '<div style="color:#999; font-style:italic;">No mitigations applied</div>';
+  } else {
+    mitigationsList.innerHTML = '<div style="color:#999; font-style:italic;">No mitigations applied</div>';
+  }
+
+  // Update Final Assessment
+  const finalGRC = data.finalGRC ?? '-';
+  const residualARC = data.residualARC ?? data.residualArc ?? '-';
+  const sail = data.sail ?? data.SAIL ?? '-';
+  
+  document.getElementById('professionalFinalGRC').textContent = finalGRC;
+  document.getElementById('professionalResidualARC').textContent = residualARC;
+  document.getElementById('professionalSAIL').textContent = sail;
+
+  // Calculate and display GRC delta
+  const deltaEl = document.getElementById('professionalGRCDelta');
+  if (typeof iGRC === 'number' && typeof finalGRC === 'number') {
+    const delta = finalGRC - iGRC;
+    if (delta !== 0) {
+      deltaEl.textContent = delta > 0 ? `+${delta}` : `${delta}`;
+      deltaEl.className = 'sora-delta ' + (delta > 0 ? 'negative' : 'positive');
+      deltaEl.style.display = 'inline-block';
+    } else {
+      deltaEl.style.display = 'none';
+    }
+  } else {
+    deltaEl.style.display = 'none';
+  }
+
+  // Show SAIL Matrix if valid
+  const matrixEl = document.getElementById('professionalSAILMatrix');
+  if (typeof finalGRC === 'number' && residualARC && residualARC !== '-') {
+    matrixEl.style.display = 'block';
+    
+    // Highlight selected cell
+    const arcLetter = residualARC.replace('ARC-', '').toLowerCase();
+    let grcRange = '1-2';
+    if (finalGRC >= 7) grcRange = '7+';
+    else if (finalGRC >= 5) grcRange = '5-6';
+    else if (finalGRC >= 3) grcRange = '3-4';
+    
+    // Clear previous selections
+    document.querySelectorAll('.sora-sail-cell.selected').forEach(el => el.classList.remove('selected'));
+    
+    // Highlight the determined SAIL cell
+    const cell = document.querySelector(`.sora-sail-cell[data-grc="${grcRange}"][data-arc="${arcLetter}"]`);
+    if (cell) cell.classList.add('selected');
+  } else {
+    matrixEl.style.display = 'none';
+  }
+};
+
+/**
+ * Hide Professional Results
+ */
+window.hideProfessionalResults = function() {
+  const container = document.getElementById('professionalResults');
+  if (container) container.style.display = 'none';
+};
+</script>

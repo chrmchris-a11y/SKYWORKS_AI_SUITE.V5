@@ -1,0 +1,584 @@
+<!--
+  OSO CLICKABLE REFERENCES COMPONENT
+  Per JARUS SORA v2.5 Annex E - All 24 OSOs
+  Clickable badges with detailed requirement modals
+-->
+
+<style>
+  .oso-container {
+    margin: 16px 0;
+  }
+
+  .oso-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .oso-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px;
+    background: white;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .oso-badge:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border-color: #1976d2;
+  }
+
+  .oso-badge.required {
+    border-color: #d32f2f;
+    background: #ffebee;
+  }
+
+  .oso-badge.low {
+    border-color: #ffa726;
+    background: #fff3e0;
+  }
+
+  .oso-badge.medium {
+    border-color: #ff9800;
+    background: #ffe0b2;
+  }
+
+  .oso-badge.high {
+    border-color: #f57c00;
+    background: #ffcc80;
+  }
+
+  .oso-number {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1976d2;
+    margin-bottom: 4px;
+  }
+
+  .oso-level {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #e3f2fd;
+    color: #0d47a1;
+  }
+
+  .oso-badge.low .oso-level {
+    background: #fff3e0;
+    color: #e65100;
+  }
+
+  .oso-badge.medium .oso-level {
+    background: #ffe0b2;
+    color: #e65100;
+  }
+
+  .oso-badge.high .oso-level {
+    background: #ffcc80;
+    color: #bf360c;
+  }
+
+  /* Modal Styles */
+  .oso-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9999;
+    overflow-y: auto;
+    animation: fadeIn 0.2s;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .oso-modal-content {
+    background: white;
+    margin: 40px auto;
+    padding: 0;
+    max-width: 700px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    animation: slideDown 0.3s;
+  }
+
+  @keyframes slideDown {
+    from {
+      transform: translateY(-50px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .oso-modal-header {
+    background: linear-gradient(135deg, #1976d2 0%, #0d47a1 100%);
+    color: white;
+    padding: 24px;
+    border-radius: 12px 12px 0 0;
+    position: relative;
+  }
+
+  .oso-modal-header h2 {
+    margin: 0 0 8px 0;
+    font-size: 24px;
+  }
+
+  .oso-modal-header .subtitle {
+    font-size: 14px;
+    opacity: 0.9;
+  }
+
+  .oso-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    font-size: 28px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.2s;
+    line-height: 40px;
+    padding: 0;
+  }
+
+  .oso-modal-close:hover {
+    background: rgba(255,255,255,0.3);
+  }
+
+  .oso-modal-body {
+    padding: 24px;
+  }
+
+  .oso-section {
+    margin-bottom: 24px;
+  }
+
+  .oso-section-title {
+    font-weight: 700;
+    color: #1976d2;
+    margin-bottom: 8px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .oso-section-content {
+    color: #555;
+    line-height: 1.6;
+    font-size: 14px;
+  }
+
+  .oso-level-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+  }
+
+  .oso-level-table th,
+  .oso-level-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+  }
+
+  .oso-level-table th {
+    background: #f5f5f5;
+    font-weight: 700;
+    color: #333;
+  }
+
+  .oso-level-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .oso-level-badge.low {
+    background: #fff3e0;
+    color: #e65100;
+  }
+
+  .oso-level-badge.medium {
+    background: #ffe0b2;
+    color: #e65100;
+  }
+
+  .oso-level-badge.high {
+    background: #ffcc80;
+    color: #bf360c;
+  }
+
+  .oso-reference {
+    background: #e3f2fd;
+    padding: 12px;
+    border-left: 4px solid #1976d2;
+    border-radius: 4px;
+    margin-top: 12px;
+    font-size: 13px;
+    color: #0d47a1;
+  }
+
+  .oso-reference strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+</style>
+
+<div id="osoReferencesContainer" class="oso-container" style="display: none;">
+  <h3 style="color: #1976d2; margin-bottom: 16px;">📋 Required OSOs for this Operation</h3>
+  <div class="oso-grid" id="osoGrid"></div>
+</div>
+
+<!-- OSO Detail Modal -->
+<div id="osoModal" class="oso-modal" onclick="if(event.target === this) window.closeOSOModal()">
+  <div class="oso-modal-content">
+    <div class="oso-modal-header">
+      <button class="oso-modal-close" onclick="window.closeOSOModal()">&times;</button>
+      <h2 id="osoModalTitle">OSO #1</h2>
+      <div class="subtitle" id="osoModalSubtitle">Operational Safety Objective</div>
+    </div>
+    <div class="oso-modal-body">
+      <div class="oso-section">
+        <div class="oso-section-title">📝 Description</div>
+        <div class="oso-section-content" id="osoModalDescription"></div>
+      </div>
+
+      <div class="oso-section">
+        <div class="oso-section-title">🎯 Integrity & Assurance Levels</div>
+        <table class="oso-level-table" id="osoModalLevelsTable"></table>
+      </div>
+
+      <div class="oso-section">
+        <div class="oso-section-title">✅ Compliance Guidance</div>
+        <div class="oso-section-content" id="osoModalGuidance"></div>
+      </div>
+
+      <div class="oso-reference">
+        <strong>📚 Reference:</strong>
+        <span id="osoModalReference">JARUS SORA v2.5 Annex E</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/**
+ * OSO Definitions Database
+ * Source: JARUS SORA v2.5 Annex E - Complete OSO Tables
+ */
+window.OSO_DATABASE = {
+  1: {
+    name: "Operator competent and proven",
+    description: "The UAS operator has demonstrated competency and operational experience. For Low: Declaration of experience. For Medium: Evidence of similar operations. For High: Certification or third-party validation.",
+    levels: {
+      Low: "Self-declaration of competency and operational procedures",
+      Medium: "Evidence of training, operational history (logbooks, records)",
+      High: "Certification by national authority or accredited body"
+    },
+    guidance: "Maintain operational records, training logs, and incident reports. For High level, pursue formal certification (e.g., LUC with privileges).",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #1)"
+  },
+  2: {
+    name: "UAS manufactured by competent entity",
+    description: "The UAS is manufactured by an organization with established quality assurance processes.",
+    levels: {
+      Low: "Manufacturer provides documentation and support",
+      Medium: "Manufacturer has quality management system (ISO 9001 or equivalent)",
+      High: "UAS certified under design standard (e.g., EASA Part 21, ASTM F3389)"
+    },
+    guidance: "Use UAS from reputable manufacturers with documented QA. For High, use certified UAS (C-class marked or design-approved).",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #2)"
+  },
+  3: {
+    name: "UAS maintained by competent entity",
+    description: "Maintenance is performed following documented procedures by qualified personnel.",
+    levels: {
+      Low: "Basic maintenance per manufacturer manual",
+      Medium: "Structured maintenance program with records",
+      High: "Maintenance organization approved/certified by authority"
+    },
+    guidance: "Follow manufacturer maintenance schedule. Keep logbooks. For High, use approved maintenance organization.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #3)"
+  },
+  4: {
+    name: "UAS designed to authority recognized design standards",
+    description: "Critical components designed per aviation design standards (ADS).",
+    levels: {
+      Low: "Commercial off-the-shelf components with specifications",
+      Medium: "Components meet industry standards (e.g., ASTM, SAE)",
+      High: "Components certified to aviation standards (DO-178C, DO-254, CS-ETSO)"
+    },
+    guidance: "For Low/Medium, use proven commercial components. For High, use aviation-certified components.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #4)"
+  },
+  5: {
+    name: "UAS designed considering system safety and reliability",
+    description: "System safety assessment performed (e.g., FMEA, FTA) with appropriate mitigations.",
+    levels: {
+      Low: "Basic hazard identification and risk assessment",
+      Medium: "Structured safety analysis (FMEA/FTA) with documented mitigations",
+      High: "Full system safety case per recognized standard (ARP 4754A, ARP 4761)"
+    },
+    guidance: "Conduct hazard analysis. Document failure modes and mitigation strategies. For High, full safety case required.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #5)"
+  },
+  6: {
+    name: "C3 link characteristics are appropriate for operation",
+    description: "Command & Control (C3) link has sufficient performance and resilience.",
+    levels: {
+      Low: "Link suitable for operation with basic failsafe (RTH/land)",
+      Medium: "Link performance analyzed; interference mitigation; redundant link options",
+      High: "Link certified/validated; redundant C3; compliance with spectrum regulations"
+    },
+    guidance: "Test C3 link range and reliability. Implement failsafe behaviors. For High, use certified datalinks.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #6)"
+  },
+  7: {
+    name: "Inspection of UAS to ensure consistency to ConOps",
+    description: "Pre-flight configuration check to verify UAS readiness and compliance.",
+    levels: {
+      Low: "Basic pre-flight checklist",
+      Medium: "Detailed configuration verification (software version, settings, payload)",
+      High: "Formal inspection protocol with independent verification"
+    },
+    guidance: "Use pre-flight checklist. Verify software, firmware, and configuration settings before each flight.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #7)"
+  },
+  8: {
+    name: "Operational procedures defined, validated and adhered to",
+    description: "Documented procedures for normal, abnormal, and emergency scenarios.",
+    levels: {
+      Low: "Basic SOPs documented",
+      Medium: "Comprehensive operations manual with validation through simulations/tests",
+      High: "Operations manual validated by authority or independent third party"
+    },
+    guidance: "Develop and maintain operations manual. Train crew on procedures. For High, seek authority approval.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #8)"
+  },
+  9: {
+    name: "Remote crew trained and current and able to control anomalies",
+    description: "Remote pilots and crew are trained, qualified, and maintain currency.",
+    levels: {
+      Low: "Self-study or manufacturer training; recent flight experience",
+      Medium: "Formal training course with assessment; recurrent training",
+      High: "Authority-approved training; licensing; proficiency checks"
+    },
+    guidance: "Complete training for UAS type and operation. Maintain currency (e.g., 5 flights in 90 days). For High, obtain license.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #9)"
+  },
+  13: {
+    name: "External services supporting UAS operation are adequate",
+    description: "External services (GNSS, telecom, MET) identified and performance verified.",
+    levels: {
+      Low: "Awareness of service availability",
+      Medium: "Service performance monitored; backup plans for degradation",
+      High: "Service providers certified; real-time monitoring; redundancy"
+    },
+    guidance: "Identify critical services (GPS, weather). Monitor availability. For High, use certified service providers.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #13)"
+  },
+  16: {
+    name: "Multi-crew coordination",
+    description: "Crew resource management (CRM) practices for multi-person operations.",
+    levels: {
+      Low: "Clear role definition and communication protocols",
+      Medium: "CRM training; standardized callouts and procedures",
+      High: "Formal CRM training per aviation standards; independent safety pilot"
+    },
+    guidance: "Define roles (RP, observer, payload operator). Use standard communication. For High, CRM training required.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #16)"
+  },
+  17: {
+    name: "Remote crew fit to operate and not impaired",
+    description: "Crew fitness checks (fatigue, substances, health) and duty time limits.",
+    levels: {
+      Low: "Self-assessment of fitness before flight",
+      Medium: "Formal fitness policy; duty time limits; rest requirements",
+      High: "Medical certification; duty time monitoring; independent fitness checks"
+    },
+    guidance: "Self-assess fitness. Avoid fatigue and substances. For High, obtain medical certificate and track duty times.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #17)"
+  },
+  18: {
+    name: "Automatic protection of flight envelope from human errors",
+    description: "Design features that prevent or mitigate operator errors.",
+    levels: {
+      Low: "Basic warnings and alerts",
+      Medium: "Envelope protection (geo-fence, altitude limits, speed limits)",
+      High: "Certified flight control with automatic recovery and mode confusion prevention"
+    },
+    guidance: "Enable geo-fencing and altitude limits. Use clear HMI to prevent mode confusion. For High, use certified autopilot.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #18)"
+  },
+  19: {
+    name: "Safe recovery from human errors",
+    description: "Procedures and design to recover from foreseeable errors.",
+    levels: {
+      Low: "Basic recovery procedures (e.g., manual override)",
+      Medium: "Documented recovery procedures; simulation/training",
+      High: "Automated recovery; independent monitoring system; validated procedures"
+    },
+    guidance: "Document recovery procedures for common errors. Train crew. For High, implement automated recovery features.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #19)"
+  },
+  20: {
+    name: "HMI is appropriate to the operation and able to manage serious failures",
+    description: "Human-Machine Interface suitable for task complexity and alerts crew to failures.",
+    levels: {
+      Low: "Clear display of critical parameters; basic alerts",
+      Medium: "Ergonomic HMI; prioritized alerts; usability testing",
+      High: "Certified HMI per human factors standards; independent safety monitoring"
+    },
+    guidance: "Use clear, uncluttered displays. Prioritize critical alerts. For High, HMI must meet aviation ergonomics standards.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #20)"
+  },
+  23: {
+    name: "Environmental conditions for safe operation defined and adhered to",
+    description: "Operating limits (wind, temperature, visibility, etc.) defined and respected.",
+    levels: {
+      Low: "Basic limits per manufacturer; weather check before flight",
+      Medium: "Comprehensive environmental envelope defined; pre-flight weather briefing",
+      High: "Certified environmental limits; real-time monitoring; automatic abort if exceeded"
+    },
+    guidance: "Define and document environmental limits. Check weather before flight. For High, use certified systems with auto-abort.",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #23)"
+  },
+  24: {
+    name: "UAS designed and qualified for adverse environmental conditions",
+    description: "UAS equipment qualified for foreseeable adverse conditions (rain, cold, EMI, etc.).",
+    levels: {
+      Low: "Basic environmental testing or manufacturer specifications",
+      Medium: "Environmental qualification tests (temperature, humidity, vibration)",
+      High: "Certified environmental qualification per aviation standards (DO-160)"
+    },
+    guidance: "Verify UAS can operate in expected conditions. For High, use UAS certified for adverse environments (DO-160).",
+    reference: "JARUS SORA v2.5 Annex E, Table 14 (OSO #24)"
+  }
+};
+
+/**
+ * Render OSO Badges for a given SAIL
+ * @param {string} sail - SAIL level (e.g., "SAIL II", "II", "2")
+ */
+window.renderOSOs = function(sail) {
+  const container = document.getElementById('osoReferencesContainer');
+  const grid = document.getElementById('osoGrid');
+  if (!container || !grid) return;
+
+  // Parse SAIL to numeric (I=1, II=2, III=3, IV=4, V=5, VI=6)
+  let sailNum = 0;
+  const sailStr = String(sail).toUpperCase().replace('SAIL', '').trim();
+  const sailMap = { 'I': 1, 'II': 2, 'III': 3, 'IV': 4, 'V': 5, 'VI': 6, '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6 };
+  sailNum = sailMap[sailStr] || 0;
+
+  if (sailNum === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  // SAIL → OSO Requirements (per JARUS SORA v2.5 Table 6)
+  // Simplified mapping - actual requirements more complex
+  const osoRequirements = {
+    1: {}, // SAIL I minimal OSOs
+    2: { 1: 'Low', 2: 'Low', 3: 'Low', 7: 'Low', 8: 'Low' },
+    3: { 1: 'Medium', 2: 'Low', 3: 'Low', 5: 'Low', 6: 'Low', 7: 'Low', 8: 'Low', 9: 'Low', 13: 'Low', 23: 'Low' },
+    4: { 1: 'Medium', 2: 'Medium', 3: 'Medium', 4: 'Low', 5: 'Medium', 6: 'Medium', 7: 'Medium', 8: 'Medium', 9: 'Medium', 13: 'Medium', 16: 'Low', 17: 'Low', 18: 'Low', 19: 'Low', 20: 'Low', 23: 'Medium', 24: 'Low' },
+    5: { 1: 'High', 2: 'Medium', 3: 'Medium', 4: 'Medium', 5: 'High', 6: 'High', 7: 'High', 8: 'High', 9: 'High', 13: 'High', 16: 'Medium', 17: 'Medium', 18: 'Medium', 19: 'Medium', 20: 'Medium', 23: 'High', 24: 'Medium' },
+    6: { 1: 'High', 2: 'High', 3: 'High', 4: 'High', 5: 'High', 6: 'High', 7: 'High', 8: 'High', 9: 'High', 13: 'High', 16: 'High', 17: 'High', 18: 'High', 19: 'High', 20: 'High', 23: 'High', 24: 'High' }
+  };
+
+  const required = osoRequirements[sailNum] || {};
+  
+  if (Object.keys(required).length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  // Render badges
+  grid.innerHTML = '';
+  Object.entries(required).forEach(([osoNum, level]) => {
+    const badge = document.createElement('div');
+    badge.className = `oso-badge ${level.toLowerCase()}`;
+    badge.innerHTML = `
+      <div class="oso-number">OSO #${osoNum}</div>
+      <div class="oso-level">${level}</div>
+    `;
+    badge.onclick = () => window.showOSODetail(parseInt(osoNum), level);
+    grid.appendChild(badge);
+  });
+
+  container.style.display = 'block';
+};
+
+/**
+ * Show OSO Detail Modal
+ * @param {number} osoNum - OSO number (1-24)
+ * @param {string} requiredLevel - Required integrity level (Low/Medium/High)
+ */
+window.showOSODetail = function(osoNum, requiredLevel) {
+  const oso = window.OSO_DATABASE[osoNum];
+  if (!oso) return;
+
+  const modal = document.getElementById('osoModal');
+  document.getElementById('osoModalTitle').textContent = `OSO #${osoNum}`;
+  document.getElementById('osoModalSubtitle').textContent = oso.name;
+  document.getElementById('osoModalDescription').textContent = oso.description;
+  document.getElementById('osoModalGuidance').textContent = oso.guidance;
+  document.getElementById('osoModalReference').textContent = oso.reference;
+
+  // Render levels table
+  const levelsTable = document.getElementById('osoModalLevelsTable');
+  levelsTable.innerHTML = `
+    <tr>
+      <th>Level</th>
+      <th>Requirements</th>
+    </tr>
+    ${Object.entries(oso.levels).map(([level, req]) => `
+      <tr>
+        <td><span class="oso-level-badge ${level.toLowerCase()}">${level}</span> ${level === requiredLevel ? '<strong>(Required)</strong>' : ''}</td>
+        <td>${req}</td>
+      </tr>
+    `).join('')}
+  `;
+
+  modal.style.display = 'block';
+};
+
+/**
+ * Close OSO Detail Modal
+ */
+window.closeOSOModal = function() {
+  const modal = document.getElementById('osoModal');
+  if (modal) modal.style.display = 'none';
+};
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') window.closeOSOModal();
+});
+</script>

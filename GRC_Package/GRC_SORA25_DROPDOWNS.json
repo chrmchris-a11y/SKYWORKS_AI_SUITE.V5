@@ -1,0 +1,127 @@
+{
+  "schema_version": "1.0",
+  "standard": "SORA 2.5 (JARUS) — GRC UI",
+  "generated_utc": "2025-10-30T09:42:25.045761Z",
+  "inputs": [
+    {
+      "name": "characteristic_dimension_m",
+      "label": "Characteristic Dimension (m)",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "max_speed_mps",
+      "label": "Maximum Speed (m/s)",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "population_density_p_km2",
+      "label": "Population Density (people/km²)",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "environment_type",
+      "label": "Environment Type",
+      "type": "enum",
+      "enum": [
+        "Rural",
+        "Suburban",
+        "Urban",
+        "Industrial",
+        "Controlled"
+      ],
+      "required": false
+    },
+    {
+      "name": "containment_quality",
+      "label": "Containment / Footprint Control",
+      "type": "enum",
+      "enum": [
+        "Poor",
+        "Adequate",
+        "Good"
+      ],
+      "required": false
+    },
+    {
+      "name": "m1a_sheltering",
+      "label": "M1A (Sheltering)",
+      "type": "enum",
+      "enum": [
+        "None",
+        "Low",
+        "Medium"
+      ],
+      "required": true
+    },
+    {
+      "name": "m1b_operational",
+      "label": "M1B (Operational Restrictions)",
+      "type": "enum",
+      "enum": [
+        "None",
+        "Medium",
+        "High"
+      ],
+      "required": true
+    },
+    {
+      "name": "m1c_ground_observation",
+      "label": "M1C (Ground Observation/Tactical)",
+      "type": "enum",
+      "enum": [
+        "None",
+        "Low"
+      ],
+      "required": true
+    },
+    {
+      "name": "m2_impact",
+      "label": "M2 (Impact Dynamics)",
+      "type": "enum",
+      "enum": [
+        "None",
+        "Medium",
+        "High"
+      ],
+      "required": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "initial_grc",
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "name": "final_grc",
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "calculation_notes": [
+    "Compute iGRC via quantitative model (Main Body + Annex F).",
+    "Apply M1A/M1B/M1C (with N/A constraints) then M2.",
+    "Apply any model-specific floor/cap after M1; clamp final >= 1."
+  ]
+}

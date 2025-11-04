@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SKYWORKS - 20 Comprehensive SORA Tests</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        .status-bar {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e9ecef;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .status-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .status-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .status-value.pass { color: #28a745; }
+        .status-value.fail { color: #dc3545; }
+        .status-value.pending { color: #6c757d; }
+        
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn:active { transform: translateY(0); }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            padding: 30px;
+        }
+        .test-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        .test-card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            transform: translateY(-4px);
+        }
+        .test-card.running {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+        .test-card.pass {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+        .test-card.fail {
+            border-color: #dc3545;
+            background: #f8d7da;
+        }
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .test-id {
+            font-size: 14px;
+            font-weight: 700;
+            color: #495057;
+        }
+        .test-status {
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .test-status.pending { background: #e9ecef; color: #6c757d; }
+        .test-status.running { background: #ffc107; color: #000; animation: pulse 1s infinite; }
+        .test-status.pass { background: #28a745; color: white; }
+        .test-status.fail { background: #dc3545; color: white; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 10px;
+        }
+        .test-params {
+            font-size: 13px;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        .test-params div {
+            margin: 4px 0;
+        }
+        .test-results {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+        }
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 6px 0;
+            font-size: 14px;
+        }
+        .result-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .result-value {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+        .result-value.match { color: #28a745; }
+        .result-value.mismatch { color: #dc3545; }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 6px;
+            color: #721c24;
+            font-size: 13px;
+        }
+        
+        .summary {
+            padding: 30px;
+            background: #f8f9fa;
+            border-top: 2px solid #e9ecef;
+        }
+        .summary h2 {
+            margin-bottom: 20px;
+            color: #212529;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .summary-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .summary-value {
+            font-size: 48px;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        .summary-label {
+            font-size: 16px;
+            color: #6c757d;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 SKYWORKS AI SUITE V5</h1>
+            <p>Comprehensive SORA 2.0 & 2.5 Testing Platform - 20 Full Validation Tests</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-label">Total Tests:</span>
+                <span class="status-value pending" id="totalTests">20</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Passed:</span>
+                <span class="status-value pass" id="passedTests">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Failed:</span>
+                <span class="status-value fail" id="failedTests">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Progress:</span>
+                <span class="status-value pending" id="progress">0%</span>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-primary" id="runAllBtn" onclick="runAllTests()">
+                <span class="spinner" style="display: none;" id="runningSpinner"></span>
+                <span id="runBtnText">▶️ Εκτέλεση Όλων των Tests</span>
+            </button>
+            <button class="btn btn-success" onclick="runSORA20Tests()">✅ Μόνο SORA 2.0 (10 tests)</button>
+            <button class="btn btn-success" onclick="runSORA25Tests()">✅ Μόνο SORA 2.5 (10 tests)</button>
+            <button class="btn btn-secondary" onclick="resetTests()">🔄 Reset</button>
+            <button class="btn btn-danger" onclick="exportResults()">📊 Export Results (JSON)</button>
+        </div>
+        
+        <div class="test-grid" id="testGrid"></div>
+        
+        <div class="summary" id="summarySection" style="display: none;">
+            <h2>📊 Test Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-label">Total Tests</div>
+                    <div class="summary-value" id="summaryTotal">20</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">✅ Passed</div>
+                    <div class="summary-value pass" id="summaryPassed">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">❌ Failed</div>
+                    <div class="summary-value fail" id="summaryFailed">0</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-label">Success Rate</div>
+                    <div class="summary-value pending" id="summaryRate">0%</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const PYTHON_API = 'http://localhost:8001/api/v1/calculate';
+        
+        // 20 Comprehensive Test Scenarios
+        const tests = [
+            // ═══════════════════════════════════════════════════════════
+            // SORA 2.0 TESTS (10 tests)
+            // ═══════════════════════════════════════════════════════════
+            {
+                id: 'SORA_2.0_TEST_01',
+                title: 'Micro Drone - Rural Area',
+                version: '2.0',
+                params: {
+                    mtom_kg: 0.249,
+                    population_density: 1,
+                    m1: 'Medium',
+                    m2: 'High',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 1,
+                    final_grc: 1,
+                    mitigation_total: -4
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_02',
+                title: 'Micro Drone - Urban Area (Boundary Test)',
+                version: '2.0',
+                params: {
+                    mtom_kg: 0.249,
+                    population_density: 25000,
+                    m1: 'High',
+                    m2: 'High',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 4,
+                    final_grc: 1,
+                    mitigation_total: -4
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_03',
+                title: 'Small Drone - Sparse Population',
+                version: '2.0',
+                params: {
+                    mtom_kg: 0.8,
+                    population_density: 400,
+                    m1: 'Medium',
+                    m2: 'Medium',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 2,
+                    final_grc: 1,
+                    mitigation_total: -3
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_04',
+                title: 'Small Drone - Suburban (8k/km²)',
+                version: '2.0',
+                params: {
+                    mtom_kg: 0.8,
+                    population_density: 8000,
+                    m1: 'Low',
+                    m2: 'Low',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 4,
+                    final_grc: 3,
+                    mitigation_total: -1
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_05',
+                title: 'Medium Drone (5kg) - Rural',
+                version: '2.0',
+                params: {
+                    mtom_kg: 5,
+                    population_density: 1,
+                    m1: 'High',
+                    m2: 'High',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 2,
+                    final_grc: 1,
+                    mitigation_total: -4
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_06',
+                title: 'Medium Drone (5kg) - Urban (30k/km²)',
+                version: '2.0',
+                params: {
+                    mtom_kg: 5,
+                    population_density: 30000,
+                    m1: 'Medium',
+                    m2: 'High',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 6,
+                    final_grc: 2,
+                    mitigation_total: -4
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_07',
+                title: 'Large Drone (32kg) - Urban with Full Mitigations',
+                version: '2.0',
+                params: {
+                    mtom_kg: 32,
+                    population_density: 25000,
+                    m1: 'Medium',
+                    m2: 'High',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 7,
+                    final_grc: 3,
+                    mitigation_total: -4
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_08',
+                title: 'Large Drone (32kg) - No Mitigations',
+                version: '2.0',
+                params: {
+                    mtom_kg: 32,
+                    population_density: 25000,
+                    m1: 'None',
+                    m2: 'None',
+                    m3: 'Low'
+                },
+                expected: {
+                    initial_grc: 7,
+                    final_grc: 7,
+                    mitigation_total: 0
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_09',
+                title: 'Very Large Drone (100kg) - Dense Area',
+                version: '2.0',
+                params: {
+                    mtom_kg: 100,
+                    population_density: 50000,
+                    m1: 'Medium',
+                    m2: 'High',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 7,
+                    final_grc: 3,
+                    mitigation_total: -4
+                }
+            },
+            {
+                id: 'SORA_2.0_TEST_10',
+                title: 'Edge Case - 0.24kg (Below Category 1)',
+                version: '2.0',
+                params: {
+                    mtom_kg: 0.24,
+                    population_density: 10000,
+                    m1: 'Low',
+                    m2: 'Low',
+                    m3: 'None'
+                },
+                expected: {
+                    initial_grc: 3,
+                    final_grc: 1,
+                    mitigation_total: -2
+                }
+            },
+            
+            // ═══════════════════════════════════════════════════════════
+            // SORA 2.5 TESTS (10 tests - Same scenarios, different mitigations)
+            // ═══════════════════════════════════════════════════════════
+            {
+                id: 'SORA_2.5_TEST_01',
+                title: 'Micro Drone - Rural Area',
+                version: '2.5',
+                params: {
+                    mtom_kg: 0.249,
+                    population_density: 1,
+                    m1a: 'High',
+                    m1b: 'Low',
+                    m1c: 'None',
+                    m2: 'High'
+                },
+                expected: {
+                    initial_grc: 1,
+                    final_grc: 1,
+                    mitigation_total: -2
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_02',
+                title: 'Micro Drone - Urban Area',
+                version: '2.5',
+                params: {
+                    mtom_kg: 0.249,
+                    population_density: 25000,
+                    m1a: 'High',
+                    m1b: 'Low',
+                    m1c: 'High',
+                    m2: 'High'
+                },
+                expected: {
+                    initial_grc: 4,
+                    final_grc: 2,
+                    mitigation_total: -2
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_03',
+                title: 'Small Drone - Sparse Population',
+                version: '2.5',
+                params: {
+                    mtom_kg: 0.8,
+                    population_density: 400,
+                    m1a: 'Low',
+                    m1b: 'Low',
+                    m1c: 'Low',
+                    m2: 'Medium'
+                },
+                expected: {
+                    initial_grc: 2,
+                    final_grc: 1,
+                    mitigation_total: -3
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_04',
+                title: 'Small Drone - Suburban',
+                version: '2.5',
+                params: {
+                    mtom_kg: 0.8,
+                    population_density: 8000,
+                    m1a: 'Low',
+                    m1b: 'None',
+                    m1c: 'None',
+                    m2: 'Low'
+                },
+                expected: {
+                    initial_grc: 4,
+                    final_grc: 3,
+                    mitigation_total: -1
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_05',
+                title: 'Medium Drone (5kg) - Rural',
+                version: '2.5',
+                params: {
+                    mtom_kg: 5,
+                    population_density: 1,
+                    m1a: 'High',
+                    m1b: 'Low',
+                    m1c: 'None',
+                    m2: 'High'
+                },
+                expected: {
+                    initial_grc: 2,
+                    final_grc: 1,
+                    mitigation_total: -2
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_06',
+                title: 'Medium Drone (5kg) - Urban - CONSISTENCY TEST',
+                version: '2.5',
+                params: {
+                    mtom_kg: 5,
+                    population_density: 30000,
+                    m1a: 'Low',
+                    m1b: 'Low',
+                    m1c: 'Low',
+                    m2: 'Medium'
+                },
+                expected: {
+                    initial_grc: 6,
+                    final_grc: 3,
+                    mitigation_total: -3
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_07',
+                title: 'Large Drone (32kg) - Urban - CONSISTENCY TEST',
+                version: '2.5',
+                params: {
+                    mtom_kg: 32,
+                    population_density: 25000,
+                    m1a: 'Low',
+                    m1b: 'Low',
+                    m1c: 'Low',
+                    m2: 'Medium'
+                },
+                expected: {
+                    initial_grc: 7,
+                    final_grc: 4,
+                    mitigation_total: -3
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_08',
+                title: 'Large Drone (32kg) - Minimal Mitigations',
+                version: '2.5',
+                params: {
+                    mtom_kg: 32,
+                    population_density: 25000,
+                    m1a: 'None',
+                    m1b: 'None',
+                    m1c: 'None',
+                    m2: 'None'
+                },
+                expected: {
+                    initial_grc: 7,
+                    final_grc: 7,
+                    mitigation_total: 0
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_09',
+                title: 'Very Large Drone (100kg) - Max Mitigations',
+                version: '2.5',
+                params: {
+                    mtom_kg: 100,
+                    population_density: 50000,
+                    m1a: 'High',
+                    m1b: 'Low',
+                    m1c: 'High',
+                    m2: 'High'
+                },
+                expected: {
+                    initial_grc: 7,
+                    final_grc: 5,
+                    mitigation_total: -2
+                }
+            },
+            {
+                id: 'SORA_2.5_TEST_10',
+                title: 'Edge Case - Boundary Test (0.5kg)',
+                version: '2.5',
+                params: {
+                    mtom_kg: 0.5,
+                    population_density: 500,
+                    m1a: 'Low',
+                    m1b: 'Low',
+                    m1c: 'Low',
+                    m2: 'Low'
+                },
+                expected: {
+                    initial_grc: 2,
+                    final_grc: 1,
+                    mitigation_total: -2
+                }
+            }
+        ];
+        
+        let testResults = [];
+        let currentTest = 0;
+        let isRunning = false;
+        
+        // Initialize test grid
+        function initializeTests() {
+            const grid = document.getElementById('testGrid');
+            grid.innerHTML = '';
+            
+            tests.forEach((test, index) => {
+                const card = document.createElement('div');
+                card.className = 'test-card';
+                card.id = `test-${index}`;
+                
+                const paramsHTML = test.version === '2.0' 
+                    ? `<div>M1: ${test.params.m1}, M2: ${test.params.m2}, M3: ${test.params.m3}</div>`
+                    : `<div>M1A: ${test.params.m1a}, M1B: ${test.params.m1b}, M1C: ${test.params.m1c}, M2: ${test.params.m2}</div>`;
+                
+                card.innerHTML = `
+                    <div class="test-header">
+                        <div class="test-id">${test.id}</div>
+                        <div class="test-status pending">⏳ Pending</div>
+                    </div>
+                    <div class="test-title">${test.title}</div>
+                    <div class="test-params">
+                        <div>📦 MTOM: ${test.params.mtom_kg}kg</div>
+                        <div>👥 Population: ${test.params.population_density}/km²</div>
+                        ${paramsHTML}
+                        <div>🎯 SORA Version: ${test.version}</div>
+                    </div>
+                    <div class="test-results" id="results-${index}" style="display: none;"></div>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+        
+        // Run all tests
+        async function runAllTests() {
+            if (isRunning) return;
+            
+            isRunning = true;
+            currentTest = 0;
+            testResults = [];
+            
+            document.getElementById('runAllBtn').disabled = true;
+            document.getElementById('runningSpinner').style.display = 'inline-block';
+            document.getElementById('runBtnText').textContent = 'Running Tests...';
+            document.getElementById('summarySection').style.display = 'none';
+            
+            for (let i = 0; i < tests.length; i++) {
+                await runSingleTest(i);
+                updateProgress();
+            }
+            
+            showSummary();
+            
+            document.getElementById('runAllBtn').disabled = false;
+            document.getElementById('runningSpinner').style.display = 'none';
+            document.getElementById('runBtnText').textContent = '▶️ Εκτέλεση Όλων των Tests';
+            isRunning = false;
+        }
+        
+        // Run single test
+        async function runSingleTest(index) {
+            const test = tests[index];
+            const card = document.getElementById(`test-${index}`);
+            const statusEl = card.querySelector('.test-status');
+            const resultsDiv = document.getElementById(`results-${index}`);
+            
+            // Update status to running
+            card.className = 'test-card running';
+            statusEl.className = 'test-status running';
+            statusEl.textContent = '⚡ Running...';
+            
+            try {
+                // Call Python API
+                const endpoint = test.version === '2.0' 
+                    ? `${PYTHON_API}/grc/2.0`
+                    : `${PYTHON_API}/grc/2.5`;
+                
+                // Transform params to match API expectations
+                let apiParams = { ...test.params };
+                if (test.version === '2.0') {
+                    // SORA 2.0: m1 → m1_strategic, m2 → m2_impact, m3 → m3_erp
+                    if (apiParams.m1) {
+                        apiParams.m1_strategic = apiParams.m1;
+                        delete apiParams.m1;
+                    }
+                    if (apiParams.m2) {
+                        apiParams.m2_impact = apiParams.m2;
+                        delete apiParams.m2;
+                    }
+                    if (apiParams.m3) {
+                        apiParams.m3_erp = apiParams.m3;
+                        delete apiParams.m3;
+                    }
+                } else {
+                    // SORA 2.5: m1a → m1a_sheltering, m1b → m1b_operational, m1c → m1c_ground_observation, m2 → m2_impact
+                    if (apiParams.m1a) {
+                        apiParams.m1a_sheltering = apiParams.m1a;
+                        delete apiParams.m1a;
+                    }
+                    if (apiParams.m1b) {
+                        apiParams.m1b_operational = apiParams.m1b;
+                        delete apiParams.m1b;
+                    }
+                    if (apiParams.m1c) {
+                        apiParams.m1c_ground_observation = apiParams.m1c;
+                        delete apiParams.m1c;
+                    }
+                    if (apiParams.m2) {
+                        apiParams.m2_impact = apiParams.m2;
+                        delete apiParams.m2;
+                    }
+                }
+                
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(apiParams)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                // Validate results
+                const passed = 
+                    result.initial_grc === test.expected.initial_grc &&
+                    result.final_grc === test.expected.final_grc &&
+                    result.mitigation_total === test.expected.mitigation_total;
+                
+                // Update card
+                card.className = passed ? 'test-card pass' : 'test-card fail';
+                statusEl.className = passed ? 'test-status pass' : 'test-status fail';
+                statusEl.textContent = passed ? '✅ PASS' : '❌ FAIL';
+                
+                // Show results
+                resultsDiv.style.display = 'block';
+                resultsDiv.innerHTML = `
+                    <div class="result-row">
+                        <span class="result-label">Initial GRC:</span>
+                        <span class="result-value ${result.initial_grc === test.expected.initial_grc ? 'match' : 'mismatch'}">
+                            ${result.initial_grc} ${result.initial_grc === test.expected.initial_grc ? '✓' : '✗ (Expected: ' + test.expected.initial_grc + ')'}
+                        </span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Final GRC:</span>
+                        <span class="result-value ${result.final_grc === test.expected.final_grc ? 'match' : 'mismatch'}">
+                            ${result.final_grc} ${result.final_grc === test.expected.final_grc ? '✓' : '✗ (Expected: ' + test.expected.final_grc + ')'}
+                        </span>
+                    </div>
+                    <div class="result-row">
+                        <span class="result-label">Mitigations:</span>
+                        <span class="result-value ${result.mitigation_total === test.expected.mitigation_total ? 'match' : 'mismatch'}">
+                            ${result.mitigation_total} ${result.mitigation_total === test.expected.mitigation_total ? '✓' : '✗ (Expected: ' + test.expected.mitigation_total + ')'}
+                        </span>
+                    </div>
+                `;
+                
+                testResults.push({ test: test.id, passed, result });
+                
+            } catch (error) {
+                // Test failed with error
+                card.className = 'test-card fail';
+                statusEl.className = 'test-status fail';
+                statusEl.textContent = '❌ ERROR';
+                
+                resultsDiv.style.display = 'block';
+                resultsDiv.innerHTML = `
+                    <div class="error-message">
+                        <strong>Error:</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+                
+                testResults.push({ test: test.id, passed: false, error: error.message });
+            }
+            
+            // Small delay between tests
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Update progress
+        function updateProgress() {
+            const total = tests.length;
+            const completed = testResults.length;
+            const passed = testResults.filter(r => r.passed).length;
+            const failed = testResults.filter(r => !r.passed).length;
+            
+            document.getElementById('passedTests').textContent = passed;
+            document.getElementById('failedTests').textContent = failed;
+            document.getElementById('progress').textContent = Math.round((completed / total) * 100) + '%';
+        }
+        
+        // Show summary
+        function showSummary() {
+            const total = tests.length;
+            const passed = testResults.filter(r => r.passed).length;
+            const failed = testResults.filter(r => !r.passed).length;
+            const rate = Math.round((passed / total) * 100);
+            
+            document.getElementById('summaryTotal').textContent = total;
+            document.getElementById('summaryPassed').textContent = passed;
+            document.getElementById('summaryFailed').textContent = failed;
+            document.getElementById('summaryRate').textContent = rate + '%';
+            
+            const rateEl = document.getElementById('summaryRate');
+            if (rate === 100) {
+                rateEl.className = 'summary-value pass';
+            } else if (rate >= 80) {
+                rateEl.className = 'summary-value pending';
+            } else {
+                rateEl.className = 'summary-value fail';
+            }
+            
+            document.getElementById('summarySection').style.display = 'block';
+            document.getElementById('summarySection').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Run SORA 2.0 tests only
+        async function runSORA20Tests() {
+            if (isRunning) return;
+            alert('Running 10 SORA 2.0 tests...');
+            // Implementation similar to runAllTests but filtered
+        }
+        
+        // Run SORA 2.5 tests only
+        async function runSORA25Tests() {
+            if (isRunning) return;
+            alert('Running 10 SORA 2.5 tests...');
+            // Implementation similar to runAllTests but filtered
+        }
+        
+        // Reset tests
+        function resetTests() {
+            testResults = [];
+            currentTest = 0;
+            document.getElementById('passedTests').textContent = '0';
+            document.getElementById('failedTests').textContent = '0';
+            document.getElementById('progress').textContent = '0%';
+            document.getElementById('summarySection').style.display = 'none';
+            initializeTests();
+        }
+        
+        // Export results
+        function exportResults() {
+            if (testResults.length === 0) {
+                alert('Δεν υπάρχουν αποτελέσματα για export!');
+                return;
+            }
+            
+            const data = {
+                timestamp: new Date().toISOString(),
+                total: tests.length,
+                passed: testResults.filter(r => r.passed).length,
+                failed: testResults.filter(r => !r.passed).length,
+                results: testResults
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `skyworks-test-results-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initializeTests();
+            console.log('✅ Test platform loaded - 20 tests ready');
+        });
+    </script>
+</body>
+</html>

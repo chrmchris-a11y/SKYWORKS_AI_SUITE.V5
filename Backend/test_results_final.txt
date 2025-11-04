@@ -1,0 +1,105 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Skyworks.Core -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Core\bin\Debug\net8.0\Skyworks.Core.dll
+  Skyworks.AgentComm -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.AgentComm\bin\Debug\net8.0\Skyworks.AgentComm.dll
+  Skyworks.Infrastructure -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Infrastructure\bin\Debug\net8.0\Skyworks.Infrastructure.dll
+  Skyworks.Api -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Api\bin\Debug\net8.0\Skyworks.Api.dll
+  Skyworks.Api.Tests -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\bin\Debug\net8.0\Skyworks.Api.Tests.dll
+Test run for C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\bin\Debug\net8.0\Skyworks.Api.Tests.dll (.NETCoreApp,Version=v8.0)
+VSTest version 17.11.1 (x64)
+
+Starting test execution, please wait...
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.27]     Skyworks.Api.Tests.AuthAndKbTests.Login_Returns_Token [SKIP]
+  Skipped Skyworks.Api.Tests.AuthAndKbTests.Login_Returns_Token [1 ms]
+[xUnit.net 00:00:00.80]     Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(testCase: AuthoritativeTestCase { Description = "Test 2.5 ground risk buffer inclusion in iGRC dete"┬À┬À┬À, Expected = TestExpected { FinalGRC = "GRC_5", InitialARC = "ARC_c", InitialGRC = "GRC_6", ResidualARC = "ARC_c", Sail = "SAIL_V", ┬À┬À┬À }, ExpectedToFail = False, Input = TestInput { AirspaceClass = "G", AltitudeAGL_ft = 350, ControlledAirspace = False, ControlledArea = False, DroneId = null, ┬À┬À┬À }, Name = "SORA 2.5 Suburban with Ground Risk Buffer", ┬À┬À┬À }) [FAIL]
+  Failed Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(testCase: AuthoritativeTestCase { Description = "Test 2.5 ground risk buffer inclusion in iGRC dete"┬À┬À┬À, Expected = TestExpected { FinalGRC = "GRC_5", InitialARC = "ARC_c", InitialGRC = "GRC_6", ResidualARC = "ARC_c", Sail = "SAIL_V", ┬À┬À┬À }, ExpectedToFail = False, Input = TestInput { AirspaceClass = "G", AltitudeAGL_ft = 350, ControlledAirspace = False, ControlledArea = False, DroneId = null, ┬À┬À┬À }, Name = "SORA 2.5 Suburban with Ground Risk Buffer", ┬À┬À┬À }) [2 ms]
+  Error Message:
+   Assert.Equal() Failure: Strings differ
+                Ôåô (pos 5)
+Expected: "SAIL_V"
+Actual:   "SAIL_IV"
+                Ôåæ (pos 5)
+  Stack Trace:
+     at Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(AuthoritativeTestCase testCase) in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\Orchestration\SORAAuthoritative_E2E_Tests.cs:line 122
+--- End of stack trace from previous location ---
+  Standard Output Messages:
+ ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+ TEST: SORA25_002 - SORA 2.5 Suburban with Ground Risk Buffer
+ Version: SORA 2.5
+ Description: Test 2.5 ground risk buffer inclusion in iGRC determination
+ Rationale: SORA 2.5: 3000 ppl/km┬▓ (500-5000) ÔåÆ iGRC=6; Sheltering M1A -1 ÔåÆ fGRC=5; Urban <500ft ÔåÆ ARC-c; GRC_5├ùARC_c = SAIL V
+ ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+ 
+Ô£à HTTP 200 OK - Response: {"isSuccessful":true,"soraVersion":"2.5","missionId":"SORA25_002","missionName":"SORA 2.5 Suburban with Ground Risk Buffer","intrinsicGRC":6,"finalGRC":5,"groundRiskNotes":"iGRC=6, Final GRC=5","initialARC":"ARC_c","residualARC":"ARC_c","airRiskNotes":"Initial ARC: ARC_c. Explicit ARC provided: ARC_...
+ 
+[EXPECTED vs ACTUAL]
+ Initial GRC:   GRC_6      | GRC_6
+ Final GRC:     GRC_5      | GRC_5
+ Initial ARC:   ARC_c      | ARC_c
+ Residual ARC:  ARC_c      | ARC_c
+ SAIL:          SAIL_V     | SAIL_IV
+ TMPR:          High       | High
+
+
+[xUnit.net 00:00:00.81]     Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(testCase: AuthoritativeTestCase { Description = "Atypical operation maintains ARC-a regardless of m"┬À┬À┬À, Expected = TestExpected { FinalGRC = "GRC_4", InitialARC = "ARC_a", InitialGRC = "GRC_4", ResidualARC = "ARC_a", Sail = "SAIL_I", ┬À┬À┬À }, ExpectedToFail = False, Input = TestInput { AirspaceClass = "G", AltitudeAGL_ft = 150, ControlledAirspace = False, ControlledArea = False, DroneId = null, ┬À┬À┬À }, Name = "SORA 2.5 Atypical Segregated - No Floor", ┬À┬À┬À }) [FAIL]
+[xUnit.net 00:00:00.81]     Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(testCase: AuthoritativeTestCase { Description = "Verify 2.5 floor rule with S1+S2+S3 mitigations", Expected = TestExpected { FinalGRC = "GRC_6", InitialARC = "ARC_c", InitialGRC = "GRC_6", ResidualARC = "ARC_b", Sail = "SAIL_IV", ┬À┬À┬À }, ExpectedToFail = False, Input = TestInput { AirspaceClass = "G", AltitudeAGL_ft = 450, ControlledAirspace = False, ControlledArea = False, DroneId = null, ┬À┬À┬À }, Name = "SORA 2.5 Strategic Mitigation Floor Test", ┬À┬À┬À }) [FAIL]
+  Failed Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(testCase: AuthoritativeTestCase { Description = "Atypical operation maintains ARC-a regardless of m"┬À┬À┬À, Expected = TestExpected { FinalGRC = "GRC_4", InitialARC = "ARC_a", InitialGRC = "GRC_4", ResidualARC = "ARC_a", Sail = "SAIL_I", ┬À┬À┬À }, ExpectedToFail = False, Input = TestInput { AirspaceClass = "G", AltitudeAGL_ft = 150, ControlledAirspace = False, ControlledArea = False, DroneId = null, ┬À┬À┬À }, Name = "SORA 2.5 Atypical Segregated - No Floor", ┬À┬À┬À }) [1 ms]
+  Error Message:
+   Assert.Equal() Failure: Strings differ
+Expected: "SAIL_I"
+Actual:   "SAIL_III"
+                 Ôåæ (pos 6)
+  Stack Trace:
+     at Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(AuthoritativeTestCase testCase) in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\Orchestration\SORAAuthoritative_E2E_Tests.cs:line 122
+--- End of stack trace from previous location ---
+  Standard Output Messages:
+ ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+ TEST: SORA25_004 - SORA 2.5 Atypical Segregated - No Floor
+ Version: SORA 2.5
+ Description: Atypical operation maintains ARC-a regardless of mitigations
+ Rationale: SORA 2.5: 3 ppl/km┬▓ (<5) ÔåÆ iGRC=4, fGRC=4; Atypical/Segregated ÔåÆ ARC-a; GRC_4├ùARC_a = SAIL I
+ ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+ 
+Ô£à HTTP 200 OK - Response: {"isSuccessful":true,"soraVersion":"2.5","missionId":"SORA25_004","missionName":"SORA 2.5 Atypical Segregated - No Floor","intrinsicGRC":4,"finalGRC":4,"groundRiskNotes":"iGRC=4, Final GRC=4","initialARC":"ARC_a","residualARC":"ARC_a","airRiskNotes":"Initial ARC: ARC_a. Explicit ARC provided: ARC_a....
+ 
+[EXPECTED vs ACTUAL]
+ Initial GRC:   GRC_4      | GRC_4
+ Final GRC:     GRC_4      | GRC_4
+ Initial ARC:   ARC_a      | ARC_a
+ Residual ARC:  ARC_a      | ARC_a
+ SAIL:          SAIL_I     | SAIL_III
+ TMPR:          Low        | Low
+
+
+  Failed Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(testCase: AuthoritativeTestCase { Description = "Verify 2.5 floor rule with S1+S2+S3 mitigations", Expected = TestExpected { FinalGRC = "GRC_6", InitialARC = "ARC_c", InitialGRC = "GRC_6", ResidualARC = "ARC_b", Sail = "SAIL_IV", ┬À┬À┬À }, ExpectedToFail = False, Input = TestInput { AirspaceClass = "G", AltitudeAGL_ft = 450, ControlledAirspace = False, ControlledArea = False, DroneId = null, ┬À┬À┬À }, Name = "SORA 2.5 Strategic Mitigation Floor Test", ┬À┬À┬À }) [2 ms]
+  Error Message:
+   Assert.Equal() Failure: Strings differ
+                Ôåô (pos 5)
+Expected: "SAIL_IV"
+Actual:   "SAIL_V"
+                Ôåæ (pos 5)
+  Stack Trace:
+     at Skyworks.Api.Tests.Orchestration.SORAAuthoritative_E2E_Tests.AuthoritativeTests_VerifyAgainstJARUSSpecification(AuthoritativeTestCase testCase) in C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\Orchestration\SORAAuthoritative_E2E_Tests.cs:line 122
+--- End of stack trace from previous location ---
+  Standard Output Messages:
+ ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+ TEST: SORA25_006 - SORA 2.5 Strategic Mitigation Floor Test
+ Version: SORA 2.5
+ Description: Verify 2.5 floor rule with S1+S2+S3 mitigations
+ Rationale: SORA 2.5: 1500 ppl/km┬▓ (500-5000) ÔåÆ iGRC=6, fGRC=6; Urban <500ft ÔåÆ ARC-c; S1 mitigation -1 ÔåÆ ARC-b; GRC_6├ùARC_b = SAIL IV
+ ÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉÔòÉ
+ 
+Ô£à HTTP 200 OK - Response: {"isSuccessful":true,"soraVersion":"2.5","missionId":"SORA25_006","missionName":"SORA 2.5 Strategic Mitigation Floor Test","intrinsicGRC":6,"finalGRC":6,"groundRiskNotes":"iGRC=6, Final GRC=6","initialARC":"ARC_c","residualARC":"ARC_b","airRiskNotes":"Initial ARC: ARC_c. Explicit ARC provided: ARC_c...
+ 
+[EXPECTED vs ACTUAL]
+ Initial GRC:   GRC_6      | GRC_6
+ Final GRC:     GRC_6      | GRC_6
+ Initial ARC:   ARC_c      | ARC_c
+ Residual ARC:  ARC_b      | ARC_b
+ SAIL:          SAIL_IV    | SAIL_V
+ TMPR:          Medium     | Medium
+
+
+
+Failed!  - Failed:     3, Passed:   267, Skipped:     1, Total:   271, Duration: 1 s - Skyworks.Api.Tests.dll (net8.0)

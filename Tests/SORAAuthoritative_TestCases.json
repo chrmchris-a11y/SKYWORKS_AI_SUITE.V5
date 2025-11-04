@@ -1,0 +1,631 @@
+{
+  "description": "Authoritative SORA 2.0 and 2.5 Test Cases - Based on JARUS Official Documentation",
+  "generated": "2025-10-23",
+  "source": "JARUS SORA 2.0 (JAR_doc_06) and SORA 2.5 (JAR_doc_25, 26, 27)",
+  "testCases": [
+    {
+      "testId": "SORA20_001",
+      "name": "Low Risk Rural VLOS - SAIL I",
+      "version": "2.0",
+      "description": "Basic rural operation with minimal risk - baseline test",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 1.0,
+        "maxSpeed": 15.0,
+        "environment": "Rural",
+        "populationDensity": 10.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 300,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_3",
+        "finalGRC": "GRC_3",
+        "initialARC": "ARC_b",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_III",
+        "tmpr": "Medium"
+      },
+      "rationale": "Rural 10 ppl/km², BVLOS_SparselyPopulated → iGRC=3, fGRC=3; ARC-b → GRC_3×ARC_b = SAIL III"
+    },
+    {
+      "testId": "SORA20_002",
+      "name": "Urban Dense with Sheltering - SAIL III",
+      "version": "2.0",
+      "description": "Suburban operation leveraging sheltering mitigation",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 20.0,
+        "environment": "Urban",
+        "populationDensity": 2500.0,
+        "controlledArea": false,
+        "sheltering": true,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 400,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_5",
+        "finalGRC": "GRC_4",
+        "initialARC": "ARC_c",
+        "residualARC": "ARC_c",
+        "sail": "SAIL_IV",
+        "tmpr": "High"
+      },
+      "rationale": "Urban 2500 ppl/km² → VLOS_Populated iGRC=5; Sheltering M1A -1 → fGRC=4; ARC-c → GRC_4×ARC_c = SAIL IV"
+    },
+    {
+      "testId": "SORA20_003",
+      "name": "Strategic Mitigation S1 Reduces ARC",
+      "version": "2.0",
+      "description": "Test strategic mitigation S1 reducing ARC-c to ARC-b",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 18.0,
+        "environment": "Rural",
+        "populationDensity": 150.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 400,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": ["S1"]
+      },
+      "expected": {
+        "initialGRC": "GRC_4",
+        "finalGRC": "GRC_4",
+        "initialARC": "ARC_b",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_III",
+        "tmpr": "Medium"
+      },
+      "rationale": "Rural 150 ppl/km² → BVLOS_SparselyPopulated iGRC=4; S1 doesn't reduce (already ARC_b); GRC_4×ARC_b = SAIL III"
+    },
+    {
+      "testId": "SORA20_004",
+      "name": "Atypical Segregated Airspace - SAIL I",
+      "version": "2.0",
+      "description": "Operation in segregated airspace with ARC-a (no tactical mitigation required)",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 8.0,
+        "maxSpeed": 25.0,
+        "environment": "Rural",
+        "populationDensity": 5.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": true,
+        "altitudeAGL_ft": 200,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_5",
+        "finalGRC": "GRC_5",
+        "initialARC": "ARC_a",
+        "residualARC": "ARC_a",
+        "sail": "SAIL_II",
+        "tmpr": "Low"
+      },
+      "rationale": "Remote 5 ppl/km² → BVLOS_SparselyPopulated iGRC=5; Atypical/Segregated → ARC-a; GRC_5×ARC_a = SAIL II"
+    },
+    {
+      "testId": "SORA20_005",
+      "name": "Controlled Area GRC-1 Baseline",
+      "version": "2.0",
+      "description": "Operation in controlled ground area - minimum GRC",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 1.5,
+        "maxSpeed": 12.0,
+        "environment": "Urban",
+        "populationDensity": 0.0,
+        "controlledArea": true,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 250,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_2",
+        "finalGRC": "GRC_2",
+        "initialARC": "ARC_c",
+        "residualARC": "ARC_c",
+        "sail": "SAIL_III",
+        "tmpr": "Medium"
+      },
+      "rationale": "Controlled area → ControlledGroundArea scenario iGRC=2, fGRC=2; Urban <500ft → ARC-c; GRC_2×ARC_c = SAIL III"
+    },
+    {
+      "testId": "SORA20_006",
+      "name": "High Altitude Above 500ft AGL - ARC-d",
+      "version": "2.0",
+      "description": "Operation above AEC threshold (500ft) in controlled airspace",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 20.0,
+        "environment": "Urban",
+        "populationDensity": 1000.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 800,
+        "airspaceClass": "D",
+        "controlledAirspace": true,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_5",
+        "finalGRC": "GRC_5",
+        "initialARC": "ARC_d",
+        "residualARC": "ARC_d",
+        "sail": "SAIL_V",
+        "tmpr": "VeryHigh"
+      },
+      "rationale": "1000 ppl/km² → VLOS_Populated iGRC=5; >500ft + controlled → ARC-d; GRC_5×ARC_d = SAIL V"
+    },
+    {
+      "testId": "SORA20_007",
+      "name": "Assembly of People GRC-6 - High Risk",
+      "version": "2.0",
+      "description": "Operation over assembly scenario (>50k ppl/km²) - OUT OF SCOPE",
+      "expectedToFail": true,
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 15.0,
+        "environment": "Urban",
+        "populationDensity": 80000.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 150,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": null,
+        "finalGRC": null,
+        "initialARC": null,
+        "residualARC": null,
+        "sail": null,
+        "tmpr": null
+      },
+      "rationale": "SORA 2.0: Assembly >50k ppl/km² with VLOS_GatheringOfPeople scenario → OUT OF SCOPE (not supported)"
+    },
+    {
+      "testId": "SORA20_008",
+      "name": "Multiple Strategic Mitigations Cap Test",
+      "version": "2.0",
+      "description": "S1+S2+S3+S4 applied but capped at -2 reduction (ARC-d to ARC-b)",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 22.0,
+        "environment": "Rural",
+        "populationDensity": 200.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 700,
+        "airspaceClass": "D",
+        "controlledAirspace": true,
+        "urbanAir": false,
+        "strategicMitigations": ["S1", "S2", "S3", "S4"]
+      },
+      "expected": {
+        "initialGRC": "GRC_4",
+        "finalGRC": "GRC_4",
+        "initialARC": "ARC_d",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_III",
+        "tmpr": "Medium"
+      },
+      "rationale": "200 ppl/km² → BVLOS_SparselyPopulated iGRC=4; >500ft controlled → ARC-d; S1-S4 capped at -2 → ARC-b; GRC_4×ARC_b = SAIL III"
+    },
+    {
+      "testId": "SORA20_009",
+      "name": "Floor Rule Prevents ARC-a from ARC-c",
+      "version": "2.0",
+      "description": "Strategic mitigations S1+S2 would reduce ARC-c to ARC-a, but floor prevents it",
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 18.0,
+        "environment": "Rural",
+        "populationDensity": 100.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 400,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": ["S1", "S2"]
+      },
+      "expected": {
+        "initialGRC": "GRC_4",
+        "finalGRC": "GRC_4",
+        "initialARC": "ARC_b",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_III",
+        "tmpr": "Medium"
+      },
+      "rationale": "100 ppl/km² → BVLOS_SparselyPopulated iGRC=4; Rural <500ft → ARC-b; S1+S2 don't reduce (floor rule); GRC_4×ARC_b = SAIL III"
+    },
+    {
+      "testId": "SORA20_010",
+      "name": "SAIL VI Maximum Risk Scenario",
+      "version": "2.0",
+      "description": "Highest risk: Assembly + controlled airspace >500ft - OUT OF SCOPE",
+      "expectedToFail": true,
+      "input": {
+        "soraVersion": "2.0",
+        "droneId": null,
+        "maxDimension": 8.0,
+        "maxSpeed": 28.0,
+        "environment": "Urban",
+        "populationDensity": 60000.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 600,
+        "airspaceClass": "C",
+        "controlledAirspace": true,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": null,
+        "finalGRC": null,
+        "initialARC": null,
+        "residualARC": null,
+        "sail": null,
+        "tmpr": null
+      },
+      "rationale": "SORA 2.0: Assembly >50k ppl/km² with Large_8m dimension → OUT OF SCOPE (not supported)"
+    },
+    {
+      "testId": "SORA25_001",
+      "name": "SORA 2.5 Rural Low Density - SAIL I",
+      "version": "2.5",
+      "description": "Basic 2.5 test with minimal risk",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 1.0,
+        "maxSpeed": 15.0,
+        "environment": "Rural",
+        "populationDensity": 8.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 200,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_3",
+        "finalGRC": "GRC_3",
+        "initialARC": "ARC_b",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_III",
+        "tmpr": "Medium"
+      },
+      "rationale": "SORA 2.5: 8 ppl/km² (5-50) → iGRC=3, fGRC=3; Uncontrolled rural <500ft → ARC-b; GRC_3×ARC_b = SAIL III"
+    },
+    {
+      "testId": "SORA25_002",
+      "name": "SORA 2.5 Suburban with Ground Risk Buffer",
+      "version": "2.5",
+      "description": "Test 2.5 ground risk buffer inclusion in iGRC determination",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 20.0,
+        "environment": "Urban",
+        "populationDensity": 3000.0,
+        "controlledArea": false,
+        "sheltering": true,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 350,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_6",
+        "finalGRC": "GRC_5",
+        "initialARC": "ARC_c",
+        "residualARC": "ARC_c",
+        "sail": "SAIL_IV",
+        "tmpr": "High"
+      },
+      "rationale": "SORA 2.5: 3000 ppl/km² (500-5000) → iGRC=6; Sheltering M1A -1 → fGRC=5; Urban <500ft → ARC-c; GRC_5×ARC_c = SAIL IV (JARUS Table 5)"
+    },
+    {
+      "testId": "SORA25_003",
+      "name": "SORA 2.5 Containment Requirements Test",
+      "version": "2.5",
+      "description": "Test 2.5 containment (Step #8) with medium SAIL",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 18.0,
+        "environment": "Rural",
+        "populationDensity": 120.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 300,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": ["S1"]
+      },
+      "expected": {
+        "initialGRC": "GRC_5",
+        "finalGRC": "GRC_5",
+        "initialARC": "ARC_b",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_IV",
+        "tmpr": "High"
+      },
+      "rationale": "SORA 2.5: 120 ppl/km² (50-500) → iGRC=5, fGRC=5; Rural <500ft → ARC-b; S1 doesn't reduce (already ARC_b); GRC_5×ARC_b = SAIL IV"
+    },
+    {
+      "testId": "SORA25_004",
+      "name": "SORA 2.5 Atypical Segregated - No Floor",
+      "version": "2.5",
+      "description": "Atypical operation maintains ARC-a regardless of mitigations",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 8.0,
+        "maxSpeed": 25.0,
+        "environment": "Rural",
+        "populationDensity": 3.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": true,
+        "altitudeAGL_ft": 150,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_4",
+        "finalGRC": "GRC_4",
+        "initialARC": "ARC_a",
+        "residualARC": "ARC_a",
+        "sail": "SAIL_III",
+        "tmpr": "Low"
+      },
+      "rationale": "SORA 2.5: 3 ppl/km² (<5) → iGRC=4, fGRC=4; Atypical/Segregated → ARC-a; GRC_4×ARC_a = SAIL III (JARUS Table 5)"
+    },
+    {
+      "testId": "SORA25_005",
+      "name": "SORA 2.5 High Density Metro - GRC-5",
+      "version": "2.5",
+      "description": "High density metropolitan without assembly",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 20.0,
+        "environment": "Urban",
+        "populationDensity": 12000.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 400,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_7",
+        "finalGRC": "GRC_7",
+        "initialARC": "ARC_c",
+        "residualARC": "ARC_c",
+        "sail": "SAIL_VI",
+        "tmpr": "VeryHigh"
+      },
+      "rationale": "SORA 2.5: 12000 ppl/km² (5000-50000) → iGRC=7, fGRC=7; Urban <500ft → ARC-c; GRC_7×ARC_c = SAIL VI"
+    },
+    {
+      "testId": "SORA25_006",
+      "name": "SORA 2.5 Strategic Mitigation Floor Test",
+      "version": "2.5",
+      "description": "Verify 2.5 floor rule with S1+S2+S3 mitigations",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 18.0,
+        "environment": "Urban",
+        "populationDensity": 1500.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 450,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": true,
+        "strategicMitigations": ["S1", "S2", "S3"]
+      },
+      "expected": {
+        "initialGRC": "GRC_6",
+        "finalGRC": "GRC_6",
+        "initialARC": "ARC_c",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_V",
+        "tmpr": "Medium"
+      },
+      "rationale": "SORA 2.5: 1500 ppl/km² (500-5000) → iGRC=6, fGRC=6; Urban <500ft → ARC-c; S1 mitigation -1 → ARC-b; GRC_6×ARC_b = SAIL V (JARUS Table 5)"
+    },
+    {
+      "testId": "SORA25_007",
+      "name": "SORA 2.5 Controlled Airspace >500ft",
+      "version": "2.5",
+      "description": "Above AEC threshold in controlled airspace",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 22.0,
+        "environment": "Rural",
+        "populationDensity": 250.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 750,
+        "airspaceClass": "D",
+        "controlledAirspace": true,
+        "urbanAir": false,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_5",
+        "finalGRC": "GRC_5",
+        "initialARC": "ARC_d",
+        "residualARC": "ARC_d",
+        "sail": "SAIL_V",
+        "tmpr": "VeryHigh"
+      },
+      "rationale": "SORA 2.5: 250 ppl/km² (50-500) → iGRC=5, fGRC=5; >500ft controlled → ARC-d; GRC_5×ARC_d = SAIL V"
+    },
+    {
+      "testId": "SORA25_008",
+      "name": "SORA 2.5 Assembly Scenario GRC-6",
+      "version": "2.5",
+      "description": "Operation over assembly of people - OUT OF SCOPE",
+      "expectedToFail": true,
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 15.0,
+        "environment": "Urban",
+        "populationDensity": 75000.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 200,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": null,
+        "finalGRC": null,
+        "initialARC": null,
+        "residualARC": null,
+        "sail": null,
+        "tmpr": null
+      },
+      "rationale": "SORA 2.5: Assembly >50k ppl/km² → Final GRC > 7 → OUT OF SCOPE"
+    },
+    {
+      "testId": "SORA25_009",
+      "name": "SORA 2.5 Lightly Populated with Sheltering",
+      "version": "2.5",
+      "description": "Lightly populated area with sheltering mitigation",
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 3.0,
+        "maxSpeed": 18.0,
+        "environment": "Rural",
+        "populationDensity": 35.0,
+        "controlledArea": false,
+        "sheltering": true,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 300,
+        "airspaceClass": "G",
+        "controlledAirspace": false,
+        "urbanAir": false,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": "GRC_4",
+        "finalGRC": "GRC_3",
+        "initialARC": "ARC_b",
+        "residualARC": "ARC_b",
+        "sail": "SAIL_III",
+        "tmpr": "Medium"
+      },
+      "rationale": "SORA 2.5: 35 ppl/km² (5-50) → iGRC=4; Sheltering M1A -1 → fGRC=3; Rural <500ft → ARC-b; GRC_3×ARC_b = SAIL III"
+    },
+    {
+      "testId": "SORA25_010",
+      "name": "SORA 2.5 Maximum Risk SAIL VI",
+      "version": "2.5",
+      "description": "Highest risk scenario: Assembly + controlled airspace >500ft - OUT OF SCOPE",
+      "expectedToFail": true,
+      "input": {
+        "soraVersion": "2.5",
+        "droneId": null,
+        "maxDimension": 8.0,
+        "maxSpeed": 30.0,
+        "environment": "Urban",
+        "populationDensity": 90000.0,
+        "controlledArea": false,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 800,
+        "airspaceClass": "C",
+        "controlledAirspace": true,
+        "urbanAir": true,
+        "strategicMitigations": []
+      },
+      "expected": {
+        "initialGRC": null,
+        "finalGRC": null,
+        "initialARC": null,
+        "residualARC": null,
+        "sail": null,
+        "tmpr": null
+      },
+      "rationale": "SORA 2.5: Assembly >50k ppl/km² with Large_8m dimension → OUT OF SCOPE (grey cell in SORA 2.5 Table 2)"
+    }
+  ]
+}

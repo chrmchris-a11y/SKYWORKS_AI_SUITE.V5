@@ -1,0 +1,430 @@
+
+"""
+SKYWORKS AI SUITE - GRC Calculator
+Ground Risk Class Calculation - 100% EASA/JARUS Compliant
+
+SORA 2.0: JARUS SORA 2.0 (JAR-DEL-WG6-D.04 Edition 2.0), Section 2.3.1
+SORA 2.5: JARUS SORA 2.5 (JAR-DEL-SRM-SORA-MB-2.5), Annex A Table A-1
+"""
+
+from models.sora_models import (
+    GRCRequest_2_0,
+    GRCRequest_2_5,
+    GRCResponse,
+    MitigationLevel,
+)
+
+
+class GRCCalculator:
+    """Ground Risk Class Calculator - JARUS Authoritative Implementation"""
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # SORA 2.0 INTRINSIC GRC TABLE (Section 2.3.1)
+    # ═══════════════════════════════════════════════════════════════════════
+    # Dimension categories: <1m, 1-3m, 3-8m, ≥8m
+    # Scenarios: VLOS_Controlled, VLOS_Sparsely, VLOS_Populated,
+    #            BVLOS_Controlled, BVLOS_Sparsely, BVLOS_Populated
+    
+    INTRINSIC_GRC_2_0 = {
+        "VLOS_Controlled": [1, 2, 4, 7],
+        "VLOS_Sparsely": [2, 4, 6, 8],
+        "VLOS_Populated": [4, 6, 8, -1],  # -1 = OUT_OF_SCOPE
+        "BVLOS_Controlled": [2, 4, 6, 8],
+        "BVLOS_Sparsely": [3, 5, 7, 9],
+        "BVLOS_Populated": [5, 7, 7, -1],  # ≥8m is OUT_OF_SCOPE, 3-8m is 7
+    }
+
+    # Floor values by scenario (minimum final GRC after mitigations)
+    FLOOR_2_0 = {
+        "VLOS_Controlled": 1,
+        "VLOS_Sparsely": 1,
+        "VLOS_Populated": 1,
+        "BVLOS_Controlled": 2,
+        "BVLOS_Sparsely": 3,
+        "BVLOS_Populated": 3,
+    }
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # SORA 2.5 INTRINSIC GRC TABLE (Annex A, Table A-1)
+    # ═══════════════════════════════════════════════════════════════════════
+    # SINGLE unified table 7 rows × 5 columns
+    # Row 0: Controlled ground area (ANY population density)
+    # Rows 1-6: Non-controlled ground by population density
+    
+    INTRINSIC_GRC_2_5 = [
+        [1, 2, 2, 3, 4],      # Row 0: Controlled ground area
+        [1, 3, 4, 5, 6],      # Row 1: <5 people/km² (STRICT <)
+        [2, 4, 5, 6, 7],      # Row 2: 5-50 people/km² (STRICT <)
+        [3, 5, 6, 7, 8],      # Row 3: 50-500 people/km² (STRICT <)
+        [4, 6, 7, 8, -1],     # Row 4: 500-5000 people/km² (STRICT <)
+        [5, 7, 8, -1, -1],    # Row 5: 5000-50000 people/km² (STRICT <)
+        [6, 8, -1, -1, -1],   # Row 6: ≥50000 people/km² (Assemblies)
+    ]
+    
+    # Floor values by column (dimension/speed category)
+    # These are the values from row 0 (controlled ground)
+    MIN_GRC_FLOOR_2_5 = [1, 2, 2, 3, 4]
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # HELPER METHODS
+    # ═══════════════════════════════════════════════════════════════════════
+
+    @staticmethod
+    def _get_dimension_category_2_0(dimension_m: float) -> tuple[str, int]:
+        """
+        Get SORA 2.0 dimension category
+        
+        Categories:
+        - Cat 1: < 1m
+        - Cat 2: 1m ≤ x < 3m
+        - Cat 3: 3m ≤ x < 8m
+        - Cat 4: ≥ 8m
+        """
+        if dimension_m < 1.0:
+            return ("< 1m", 0)
+        elif dimension_m < 3.0:
+            return ("1-3m", 1)
+        elif dimension_m < 8.0:
+            return ("3-8m", 2)
+        else:
+            return ("≥ 8m", 3)
+
+    @staticmethod
+    def _get_dimension_category_2_5(dimension_m: float) -> int:
+        """
+        Get SORA 2.5 dimension category (0-3)
+        
+        Categories:
+        - Cat 0: < 1m
+        - Cat 1: 1m ≤ x < 3m
+        - Cat 2: 3m ≤ x < 8m
+        - Cat 3: ≥ 8m
+        """
+        if dimension_m < 1.0:
+            return 0
+        elif dimension_m < 3.0:
+            return 1
+        elif dimension_m < 8.0:
+            return 2
+        else:
+            return 3
+
+    @staticmethod
+    def _get_speed_category_2_5(speed_ms: float) -> int:
+        """
+        Get SORA 2.5 speed category (0-3)
+        
+        Categories:
+        - Cat 0: < 25 m/s   (STRICT <, not ≤)
+        - Cat 1: 25 ≤ x < 50 (STRICT <)
+        - Cat 2: 50 ≤ x < 100 (STRICT <)
+        - Cat 3: ≥ 100 m/s
+        """
+        if speed_ms < 25.0:
+            return 0
+        elif speed_ms < 50.0:
+            return 1
+        elif speed_ms < 100.0:
+            return 2
+        else:
+            return 3
+
+    def _get_population_row_2_5(
+        self,
+        is_controlled_ground: bool,
+        population_density: float
+    ) -> int:
+        """
+        Get the row index for the unified INTRINSIC_GRC_2_5 table.
+        
+        Returns single row index (0-6):
+        - Row 0: Controlled ground (ANY population density)
+        - Rows 1-6: Non-controlled ground by population thresholds
+        
+        All boundaries are STRICT < (except ≥ for final category)
+        """
+        if is_controlled_ground:
+            return 0  # Controlled ground always uses row 0
+        
+        # Non-controlled ground: population density based
+        if population_density < 5:       # STRICT <
+            return 1
+        elif population_density < 50:    # STRICT <
+            return 2
+        elif population_density < 500:   # STRICT <
+            return 3
+        elif population_density < 5000:  # STRICT <
+            return 4
+        elif population_density < 50000: # STRICT <
+            return 5
+        else:  # ≥ 50000
+            return 6
+
+    @staticmethod
+    def _apply_mitigation_step(
+        current_grc: int,
+        mitigation_level: MitigationLevel,
+        floor: int,
+    ) -> tuple[int, int]:
+        """
+        Apply a single mitigation step with floor enforcement
+        
+        Floor is applied AFTER EACH mitigation, not at the end
+        
+        Mitigation effects:
+        - High: -2 to GRC
+        - Medium: -1 to GRC
+        - Low: 0 to GRC
+        - None: 0 to GRC
+        
+        Returns: (new_grc, effect)
+        """
+        reduction_map = {
+            MitigationLevel.HIGH: -2,
+            MitigationLevel.MEDIUM: -1,
+            MitigationLevel.LOW: 0,
+            MitigationLevel.NONE: 0,
+        }
+        
+        reduction = reduction_map[mitigation_level]
+        new_grc = max(current_grc + reduction, floor)
+        effect = new_grc - current_grc
+        
+        return (new_grc, effect)
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # SORA 2.0 CALCULATION
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def calculate_grc_2_0(self, request: GRCRequest_2_0) -> GRCResponse:
+        """
+        Calculate GRC for SORA 2.0
+        
+        Source: JARUS SORA 2.0, Section 2.3.1
+        """
+        # Normalize scenario name
+        scenario = request.operational_scenario
+        if "SparselyPopulated" in scenario:
+            scenario = scenario.replace("SparselyPopulated", "Sparsely")
+        
+        # Get dimension category
+        dim_label, dim_col = self._get_dimension_category_2_0(request.max_dimension_m)
+        
+        # Validate scenario
+        if scenario not in self.INTRINSIC_GRC_2_0:
+            raise ValueError(f"Unknown operational scenario: '{scenario}'")
+        
+        # Lookup intrinsic GRC
+        intrinsic_grc = self.INTRINSIC_GRC_2_0[scenario][dim_col]
+        
+        # Check for impossible configurations (marked as -1 in table)
+        if intrinsic_grc == -1:
+            raise ValueError(
+                f"OUT_OF_SCOPE|iGRC=-1|reason="
+                f"Scenario '{scenario}' with dimension {dim_label} is out of SORA scope (table value -1)"
+            )
+        
+        # Note: iGRC can exceed 7, but final GRC after mitigations must be ≤7
+        
+        # Get floor for this scenario
+        floor = self.FLOOR_2_0[scenario]
+        
+        # Apply mitigations SEQUENTIALLY with floor enforcement
+        current_grc = intrinsic_grc
+        
+        # M1: Strategic mitigation
+        current_grc, m1_effect = self._apply_mitigation_step(
+            current_grc, request.m1_strategic, floor
+        )
+        
+        # M2: Ground impact mitigation
+        current_grc, m2_effect = self._apply_mitigation_step(
+            current_grc, request.m2_ground_impact, floor
+        )
+        
+        # M3: Emergency response mitigation
+        current_grc, m3_effect = self._apply_mitigation_step(
+            current_grc, request.m3_emergency_response, floor
+        )
+        
+        final_grc = current_grc
+        
+        # Final validation: AFTER mitigations
+        if final_grc > 7:
+            raise ValueError(
+                f"OUT_OF_SCOPE|fGRC={final_grc}|reason="
+                f"Final GRC {final_grc} exceeds SORA scope (max 7) even with mitigations"
+            )
+        
+        # Build notes
+        notes = (
+            f"SORA 2.0 GRC Calculation:\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"• Scenario: {scenario}\n"
+            f"• Dimension: {request.max_dimension_m:.2f}m → {dim_label}\n"
+            f"• Intrinsic GRC: {intrinsic_grc}\n"
+            f"• Floor: {floor}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Mitigation Effects (applied sequentially):\n"
+            f"• M1 Strategic ({request.m1_strategic.value}): {m1_effect:+d}\n"
+            f"• M2 Ground Impact ({request.m2_ground_impact.value}): {m2_effect:+d}\n"
+            f"• M3 Emergency Response ({request.m3_emergency_response.value}): {m3_effect:+d}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"• Final GRC: {final_grc}"
+        )
+        
+        return GRCResponse(
+            intrinsic_grc=intrinsic_grc,
+            final_grc=final_grc,
+            m1_effect=m1_effect,
+            m2_effect=m2_effect,
+            m3_effect=m3_effect,
+            dimension_category=dim_label,
+            notes=notes,
+            source="JARUS SORA 2.0, Section 2.3.1",
+        )
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # SORA 2.5 CALCULATION
+    # ═══════════════════════════════════════════════════════════════════════
+
+    def calculate_grc_2_5(self, request: GRCRequest_2_5) -> GRCResponse:
+        """
+        Calculate GRC for SORA 2.5
+        
+        Source: JARUS SORA 2.5, Annex A Table A-1
+        """
+        
+        # ═══════════════════════════════════════════════════════════════
+        # 250g Special Rule (MUST be checked FIRST)
+        # ═══════════════════════════════════════════════════════════════
+        # Both conditions MUST be true:
+        # 1. weight_kg ≤ 0.25
+        # 2. max_speed_ms < 25 (STRICT <, not ≤)
+        
+        if request.weight_kg is not None:
+            if request.weight_kg <= 0.25 and request.max_speed_ms < 25.0:
+                # 250g rule applies - return GRC=1 immediately (NO mitigations)
+                return GRCResponse(
+                    intrinsic_grc=1,
+                    final_grc=1,
+                    m1_effect=0,
+                    m2_effect=0,
+                    m3_effect=0,
+                    dimension_category="< 1m",
+                    notes=(
+                        f"SORA 2.5 GRC Calculation:\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"250g RULE APPLIED:\n"
+                        f"• Weight: {request.weight_kg:.3f} kg ≤ 0.25 kg\n"
+                        f"• Speed: {request.max_speed_ms:.1f} m/s < 25 m/s\n"
+                        f"• Both conditions satisfied → GRC = 1\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"• Final GRC: 1 (mitigations not applied)"
+                    ),
+                    source="JARUS SORA 2.5, Annex A - 250g Rule",
+                )
+        
+        # ═══════════════════════════════════════════════════════════════
+        # Standard SORA 2.5 Calculation
+        # ═══════════════════════════════════════════════════════════════
+        
+        # Get dimension and speed categories
+        dim_cat = self._get_dimension_category_2_5(request.max_dimension_m)
+        speed_cat = self._get_speed_category_2_5(request.max_speed_ms)
+        
+        # WORST-CASE category selection (max of dimension and speed)
+        final_category = max(dim_cat, speed_cat)
+        
+        category_labels = ["< 1m", "1-3m", "3-8m", "≥ 8m", "> 8m"]
+        dim_speed_label = category_labels[final_category]
+        
+        # Get population row (0-6)
+        row_idx = self._get_population_row_2_5(
+            request.is_controlled_ground,
+            request.population_density
+        )
+        
+        # Lookup intrinsic GRC from unified table
+        intrinsic_grc = self.INTRINSIC_GRC_2_5[row_idx][final_category]
+        
+        # Floor is determined by column (row 0 values)
+        floor = self.MIN_GRC_FLOOR_2_5[final_category]
+        
+        # Build population label
+        if request.is_controlled_ground:
+            pop_label = f"Controlled ground, pop={request.population_density:.1f}"
+        else:
+            pop_label = f"Non-controlled ground, pop={request.population_density:.1f}"
+        
+        # Check for impossible configurations (marked as -1 in table)
+        if intrinsic_grc == -1:
+            raise ValueError(
+                f"OUT_OF_SCOPE|iGRC=-1|reason="
+                f"Configuration out of SORA scope (table value -1)"
+            )
+        
+        # Note: iGRC can be 8, but final GRC after mitigations must be ≤7
+        
+        # Apply mitigations SEQUENTIALLY with floor enforcement
+        current_grc = intrinsic_grc
+        
+        # M1: Strategic mitigation
+        current_grc, m1_effect = self._apply_mitigation_step(
+            current_grc, request.m1_strategic, floor
+        )
+        
+        # M2: Ground impact mitigation
+        current_grc, m2_effect = self._apply_mitigation_step(
+            current_grc, request.m2_ground_impact, floor
+        )
+        
+        # M3: Emergency response mitigation
+        current_grc, m3_effect = self._apply_mitigation_step(
+            current_grc, request.m3_emergency_response, floor
+        )
+        
+        final_grc = current_grc
+        
+        # Final validation: FINAL GRC must be ≤7 (AFTER mitigations)
+        if final_grc > 7:
+            raise ValueError(
+                f"OUT_OF_SCOPE|fGRC={final_grc}|reason="
+                f"Final GRC {final_grc} exceeds SORA scope (max 7) even with mitigations"
+            )
+        
+        # Build notes
+        notes = (
+            f"SORA 2.5 GRC Calculation:\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"• Dimension: {request.max_dimension_m:.2f}m → Cat {dim_cat}\n"
+            f"• Speed: {request.max_speed_ms:.1f} m/s → Cat {speed_cat}\n"
+            f"• Combined (worst-case): {dim_speed_label} (Cat {final_category})\n"
+            f"• Population: {pop_label}\n"
+            f"• Intrinsic GRC: {intrinsic_grc}\n"
+            f"• Floor: {floor}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Mitigation Effects (applied sequentially):\n"
+            f"• M1 Strategic ({request.m1_strategic.value}): {m1_effect:+d}\n"
+            f"• M2 Ground Impact ({request.m2_ground_impact.value}): {m2_effect:+d}\n"
+            f"• M3 Emergency Response ({request.m3_emergency_response.value}): {m3_effect:+d}\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"• Final GRC: {final_grc}"
+        )
+        
+        return GRCResponse(
+            intrinsic_grc=intrinsic_grc,
+            final_grc=final_grc,
+            m1_effect=m1_effect,
+            m2_effect=m2_effect,
+            m3_effect=m3_effect,
+            dimension_category=dim_speed_label,
+            notes=notes,
+            source="JARUS SORA 2.5, Annex A Table A-1",
+        )
+
+The key changes I made:
+
+1. **Single unified table structure** - Replaced the two separate tables with one `INTRINSIC_GRC_2_5` table (7×5)
+
+2. **Simplified population row logic** - `_get_population_row_2_5()` now returns a single integer (0-6) instead of a tuple

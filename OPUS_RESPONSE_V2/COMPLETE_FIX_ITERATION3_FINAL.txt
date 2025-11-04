@@ -1,0 +1,1239 @@
+# 🔥 COMPLETE FIX FOR OPUS 4.1 - ITERATION 3 (FINAL)
+
+## 1. Complete SoraProxyController.cs (PRODUCTION-READY)
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
+using System.Text;
+
+namespace Skyworks.Api.Controllers
+{
+    [ApiController]
+    [Route("api/[controller]")]
+    public class SoraProxyController : ControllerBase
+    {
+        private readonly ILogger<SoraProxyController> _logger;
+        private readonly HttpClient _httpClient;
+        private const string PYTHON_API_BASE = "http://localhost:8001";
+
+        public SoraProxyController(ILogger<SoraProxyController> logger, IHttpClientFactory httpClientFactory)
+        {
+            _logger = logger;
+            _httpClient = httpClientFactory.CreateClient();
+            _httpClient.Timeout = TimeSpan.FromSeconds(30);
+        }
+
+        [HttpPost("complete")]
+        public async Task<IActionResult> Complete([FromBody] JsonElement requestBody)
+        {
+            try
+            {
+                _logger.LogInformation("Received SORA complete request");
+                _logger.LogDebug("Request body: {Body}", requestBody.GetRawText());
+
+                // Detect request format
+                if (requestBody.TryGetProperty("SoraVersion", out var soraVersion))
+                {
+                    var versionString = soraVersion.GetString();
+                    if (string.IsNullOrEmpty(versionString))
+                    {
+                        _logger.LogWarning("SoraVersion is empty");
+                        return BadRequest(new { error = "SoraVersion cannot be empty" });
+                    }
+
+                    _logger.LogInformation("Detected mission.html format with SORA version: {Version}", versionString);
+                    return await HandleMissionHtmlFormat(requestBody, versionString);
+                }
+                else if (requestBody.TryGetProperty("category", out var categoryProp))
+                {
+                    var category = categoryProp.GetString();
+                    if (string.IsNullOrEmpty(category))
+                    {
+                        _logger.LogWarning("Category is empty");
+                        return BadRequest(new { error = "Category cannot be empty" });
+                    }
+
+                    _logger.LogInformation("Detected standard format with category: {Category}", category);
+                    return await HandleStandardFormat(requestBody, category);
+                }
+                else
+                {
+                    _logger.LogWarning("Unknown request format");
+                    return BadRequest(new { error = "Unknown request format. Expected 'SoraVersion' or 'category' property." });
+                }
+            }
+            catch (JsonException jex)
+            {
+                _logger.LogError(jex, "JSON parsing error");
+                return BadRequest(new { error = "Invalid JSON format", details = jex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unhandled error in Complete endpoint");
+                return StatusCode(500, new 
+                { 
+                    error = "Internal server error", 
+                    details = ex.Message,
+                    type = ex.GetType().Name
+                });
+            }
+        }
+
+        private async Task<IActionResult> HandleMissionHtmlFormat(JsonElement requestBody, string soraVersion)
+        {
+            try
+            {
+                _logger.LogInformation("Processing mission.html format for SORA {Version}", soraVersion);
+
+                if (soraVersion == "2.0")
+                {
+                    var request = ExtractSora20FromMissionHtml(requestBody);
+                    return await ForwardToPythonAndTransform(request, "/api/grc/calculate-v20", "SORA-2.0");
+                }
+                else if (soraVersion == "2.5")
+                {
+                    var request = ExtractSora25FromMissionHtml(requestBody);
+                    // FIX: Use correct endpoint for SORA 2.5
+                    return await ForwardToPythonAndTransform(request, "/api/sora/complete-v25", "SORA-2.5");
+                }
+                else
+                {
+                    _logger.LogWarning("Unsupported SORA version: {Version}", soraVersion);
+                    return BadRequest(new { error = $"Unsupported SORA version: {soraVersion}" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling mission.html format");
+                return StatusCode(500, new { error = "Error processing mission format", details = ex.Message });
+            }
+        }
+
+        private async Task<IActionResult> HandleStandardFormat(JsonElement requestBody, string category)
+        {
+            try
+            {
+                _logger.LogInformation("Processing standard format for category: {Category}", category);
+
+                if (category == "SORA-2.0")
+                {
+                    return await ForwardToPythonAndTransform(requestBody, "/api/grc/calculate-v20", category);
+                }
+                else if (category == "SORA-2.5")
+                {
+                    return await ForwardToPythonAndTransform(requestBody, "/api/sora/complete-v25", category);
+                }
+                else
+                {
+                    _logger.LogWarning("Unknown category: {Category}", category);
+                    return BadRequest(new { error = $"Unknown category: {category}" });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling standard format");
+                return StatusCode(500, new { error = "Error processing standard format", details = ex.Message });
+            }
+        }
+
+        private SoraCompleteRequest ExtractSora20FromMissionHtml(JsonElement json)
+        {
+            var request = new SoraCompleteRequest { Category = "SORA-2.0" };
+
+            try
+            {
+                if (!json.TryGetProperty("GroundRisk", out var groundRisk))
+                {
+                    _logger.LogWarning("GroundRisk not found in request");
+                    throw new ArgumentException("GroundRisk is required for SORA 2.0");
+                }
+
+                // Population Density
+                if (groundRisk.TryGetProperty("PopulationDensity", out var popDensity))
+                {
+                    var popValue = popDensity.GetDouble();
+                    request.PopulationDensity = popValue < 500 ? "Low" : 
+                                              popValue < 10000 ? "Medium" : "High";
+                    _logger.LogDebug("Population density {Value} mapped to {Category}", popValue, request.PopulationDensity);
+                }
+                else
+                {
+                    _logger.LogWarning("PopulationDensity missing, defaulting to Low");
+                    request.PopulationDensity = "Low";
+                }
+
+                // Sheltering - with proper fallback
+                request.Sheltering = ExtractSheltering(groundRisk) ?? "High";
+                _logger.LogDebug("Sheltering set to: {Sheltering}", request.Sheltering);
+
+                // Scenario
+                if (groundRisk.TryGetProperty("Scenario_V2_0", out var scenario))
+                {
+                    request.Scenario_V2_0 = scenario.GetString() ?? "VLOS_SparselyPopulated";
+                }
+                else
+                {
+                    request.Scenario_V2_0 = "VLOS_SparselyPopulated";
+                }
+
+                // MTOM - Calculate from kinetic energy if present
+                if (groundRisk.TryGetProperty("KineticEnergy", out var keElement))
+                {
+                    var kineticEnergy = keElement.GetDouble();
+                    // KE = 0.5 * m * v^2, assuming v = 10 m/s
+                    request.MtomKg = Math.Round(kineticEnergy / 50.0, 2);
+                    _logger.LogDebug("Calculated MTOM from KE: {KE} J -> {Mass} kg", kineticEnergy, request.MtomKg);
+                }
+                else
+                {
+                    request.MtomKg = 15.0; // Default
+                }
+
+                // Kinetic Energy
+                if (groundRisk.TryGetProperty("KineticEnergy", out var ke))
+                {
+                    request.KineticEnergy = ke.GetDouble();
+                }
+
+                // Max Characteristic Dimension
+                if (groundRisk.TryGetProperty("MaxCharacteristicDimension", out var dimension))
+                {
+                    request.MaxCharacteristicDimension = dimension.GetDouble();
+                }
+
+                // Calculate initial GRC
+                request.InitialGrc = CalculateInitialGrc(request.PopulationDensity, request.Sheltering);
+                _logger.LogDebug("Initial GRC calculated: {GRC}", request.InitialGrc);
+
+                // Extract mitigations
+                if (groundRisk.TryGetProperty("Mitigations", out var mitigations) && mitigations.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var mitigation in mitigations.EnumerateArray())
+                    {
+                        if (!mitigation.TryGetProperty("Type", out var typeElem) ||
+                            !mitigation.TryGetProperty("Robustness", out var robustnessElem))
+                        {
+                            continue;
+                        }
+
+                        var type = typeElem.GetString();
+                        var robustness = robustnessElem.GetString();
+
+                        if (string.IsNullOrEmpty(type) || string.IsNullOrEmpty(robustness))
+                        {
+                            continue;
+                        }
+
+                        switch (type.ToUpper())
+                        {
+                            case "M1":
+                                request.M1 = MapRobustnessToGrcReduction(robustness);
+                                _logger.LogDebug("M1 set to {Value} for robustness {Robustness}", request.M1, robustness);
+                                break;
+                            case "M2":
+                                request.M2 = robustness;
+                                _logger.LogDebug("M2 set to {Robustness}", robustness);
+                                break;
+                            case "M3":
+                                request.M3 = MapM3RobustnessToReduction(robustness);
+                                _logger.LogDebug("M3 set to {Value} for robustness {Robustness}", request.M3, robustness);
+                                break;
+                        }
+                    }
+                }
+
+                return request;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting SORA 2.0 data from mission.html format");
+                throw;
+            }
+        }
+
+        private SoraCompleteRequest ExtractSora25FromMissionHtml(JsonElement json)
+        {
+            var request = new SoraCompleteRequest { Category = "SORA-2.5" };
+
+            try
+            {
+                // Ground Risk
+                if (json.TryGetProperty("GroundRisk", out var groundRisk))
+                {
+                    // Population Density for GRC
+                    if (groundRisk.TryGetProperty("PopulationDensity", out var popDensity))
+                    {
+                        var popValue = popDensity.GetDouble();
+                        request.GrcInputs = new GrcInputs
+                        {
+                            PopulationDensity = popValue,
+                            MaximumUasDimension = 1.2,
+                            MtomKg = 25.0
+                        };
+
+                        // Extract dimension if available
+                        if (groundRisk.TryGetProperty("MaxCharacteristicDimension", out var dimElem))
+                        {
+                            request.GrcInputs.MaximumUasDimension = dimElem.GetDouble();
+                        }
+                    }
+
+                    // Calculate initial GRC for 2.5
+                    var popCategory = request.GrcInputs?.PopulationDensity < 500 ? "Low" :
+                                    request.GrcInputs?.PopulationDensity < 10000 ? "Medium" : "High";
+                    request.InitialGrc = CalculateInitialGrc25(popCategory);
+                }
+
+                // Air Risk
+                if (json.TryGetProperty("AirRisk", out var airRisk))
+                {
+                    request.OperationalVolume = new OperationalVolume
+                    {
+                        MaxAltitudeFt = 400,
+                        MaxRadiusKm = 1.0,
+                        OperationClass = "VLOS",
+                        Location = "48.8566,2.3522",
+                        Environment = "Rural"
+                    };
+
+                    // Extract environment
+                    if (airRisk.TryGetProperty("Environment", out var envElem))
+                    {
+                        request.OperationalVolume.Environment = envElem.GetString() ?? "Rural";
+                    }
+
+                    // Extract airspace info
+                    if (airRisk.TryGetProperty("AirspaceClass", out var classElem))
+                    {
+                        request.OperationalVolume.AirspaceClass = classElem.GetString() ?? "G";
+                    }
+
+                    // Traffic density
+                    if (airRisk.TryGetProperty("TrafficDensity", out var trafficElem))
+                    {
+                        request.TrafficDensity = trafficElem.GetString() ?? "Low";
+                    }
+
+                    // Enhanced ARC inputs for 2.5
+                    request.ArcInputs25 = new ArcInputs25
+                    {
+                        USpaceServices = false,
+                        TrafficDensitySource = "Empirical",
+                        AirspaceContainment = "None",
+                        TemporalSegregation = false,
+                        SpatialSegregation = false
+                    };
+
+                    // Extract enhanced fields
+                    if (airRisk.TryGetProperty("USpaceServices", out var uSpaceElem) && uSpaceElem.ValueKind == JsonValueKind.True)
+                    {
+                        request.ArcInputs25.USpaceServices = true;
+                    }
+
+                    if (airRisk.TryGetProperty("TrafficDensitySource", out var sourceElem))
+                    {
+                        request.ArcInputs25.TrafficDensitySource = sourceElem.GetString() ?? "Empirical";
+                    }
+
+                    if (airRisk.TryGetProperty("AirspaceContainment", out var containElem))
+                    {
+                        request.ArcInputs25.AirspaceContainment = containElem.GetString() ?? "None";
+                    }
+
+                    if (airRisk.TryGetProperty("TemporalSegregation", out var tempElem) && tempElem.ValueKind == JsonValueKind.True)
+                    {
+                        request.ArcInputs25.TemporalSegregation = true;
+                    }
+
+                    if (airRisk.TryGetProperty("SpatialSegregation", out var spatialElem) && spatialElem.ValueKind == JsonValueKind.True)
+                    {
+                        request.ArcInputs25.SpatialSegregation = true;
+                    }
+                }
+
+                return request;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting SORA 2.5 data from mission.html format");
+                throw;
+            }
+        }
+
+        private async Task<IActionResult> ForwardToPythonAndTransform(object request, string pythonEndpoint, string category)
+        {
+            try
+            {
+                var jsonContent = JsonSerializer.Serialize(request, new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = true,
+                    DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                });
+
+                _logger.LogInformation("Forwarding to Python API: {Endpoint}", pythonEndpoint);
+                _logger.LogDebug("Request payload: {Payload}", jsonContent);
+
+                var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+                HttpResponseMessage response;
+                try
+                {
+                    response = await _httpClient.PostAsync($"{PYTHON_API_BASE}{pythonEndpoint}", content);
+                }
+                catch (HttpRequestException hex)
+                {
+                    _logger.LogError(hex, "Cannot connect to Python API at {BaseUrl}", PYTHON_API_BASE);
+                    return StatusCode(503, new 
+                    { 
+                        error = "Python API unavailable",
+                        details = hex.Message,
+                        hint = $"Ensure Python API is running on {PYTHON_API_BASE}"
+                    });
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogError("Python API request timed out");
+                    return StatusCode(504, new { error = "Python API request timed out" });
+                }
+
+                var resultJson = await response.Content.ReadAsStringAsync();
+                _logger.LogDebug("Python API response status: {Status}", response.StatusCode);
+                _logger.LogDebug("Python API response: {Response}", resultJson);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("Python API error {StatusCode}: {Error}", response.StatusCode, resultJson);
+                    
+                    // Try to parse error response
+                    try
+                    {
+                        var errorDoc = JsonDocument.Parse(resultJson);
+                        return StatusCode((int)response.StatusCode, errorDoc.RootElement);
+                    }
+                    catch
+                    {
+                        return StatusCode((int)response.StatusCode, new 
+                        { 
+                            error = "Python API error",
+                            status = (int)response.StatusCode,
+                            details = resultJson 
+                        });
+                    }
+                }
+
+                // Parse Python response
+                JsonDocument pythonResponse;
+                try
+                {
+                    pythonResponse = JsonDocument.Parse(resultJson);
+                }
+                catch (JsonException jex)
+                {
+                    _logger.LogError(jex, "Failed to parse Python API response");
+                    return StatusCode(500, new 
+                    { 
+                        error = "Invalid JSON from Python API", 
+                        response = resultJson,
+                        details = jex.Message 
+                    });
+                }
+
+                // Transform response for frontend compatibility
+                var transformedResponse = new Dictionary<string, object?>();
+                var root = pythonResponse.RootElement;
+
+                // Always include status
+                transformedResponse["status"] = "success";
+                transformedResponse["category"] = category;
+
+                // GRC values - support both naming conventions
+                if (root.TryGetProperty("initial_grc", out var initialGrc))
+                {
+                    var grcValue = initialGrc.GetInt32();
+                    transformedResponse["initial_grc"] = grcValue;
+                    transformedResponse["intrinsicGRC"] = grcValue; // Legacy support
+                    transformedResponse["initialGRC"] = grcValue; // Alt naming
+                }
+
+                if (root.TryGetProperty("final_grc", out var finalGrc))
+                {
+                    var grcValue = finalGrc.GetInt32();
+                    transformedResponse["final_grc"] = grcValue;
+                    transformedResponse["finalGRC"] = grcValue; // Alt naming
+                }
+
+                // SORA 2.0 specific fields
+                if (category == "SORA-2.0")
+                {
+                    // Mitigation values
+                    if (root.TryGetProperty("m1", out var m1))
+                    {
+                        transformedResponse["m1"] = m1.GetInt32();
+                    }
+
+                    if (root.TryGetProperty("m2", out var m2))
+                    {
+                        transformedResponse["m2"] = m2.GetString();
+                        
+                        // Extract m2_value for correct display
+                        if (root.TryGetProperty("m2_value", out var m2Value))
+                        {
+                            transformedResponse["m2_value"] = m2Value.GetInt32();
+                        }
+                        else
+                        {
+                            // Calculate if missing
+                            var m2Text = m2.GetString()?.ToLower();
+                            transformedResponse["m2_value"] = m2Text switch
+                            {
+                                "low" => -1,
+                                "medium" => -2,
+                                "high" => -3,
+                                _ => 0
+                            };
+                        }
+                    }
+
+                    if (root.TryGetProperty("m3", out var m3))
+                    {
+                        transformedResponse["m3"] = m3.GetInt32();
+                    }
+
+                    if (root.TryGetProperty("calculation", out var calc))
+                    {
+                        transformedResponse["calculation"] = calc.GetString();
+                    }
+
+                    if (root.TryGetProperty("reference", out var reference))
+                    {
+                        transformedResponse["reference"] = reference.GetString();
+                    }
+                }
+
+                // SORA 2.5 specific fields
+                if (category == "SORA-2.5")
+                {
+                    // ARC values
+                    if (root.TryGetProperty("initial_arc", out var initialArc))
+                    {
+                        var arcValue = initialArc.GetInt32();
+                        transformedResponse["initial_arc"] = arcValue;
+                        transformedResponse["initialARC"] = arcValue; // Alt naming
+                    }
+
+                    if (root.TryGetProperty("residual_arc", out var residualArc))
+                    {
+                        var arcValue = residualArc.GetInt32();
+                        transformedResponse["residual_arc"] = arcValue;
+                        transformedResponse["residualARC"] = arcValue; // Alt naming
+                    }
+
+                    // Strategic mitigations
+                    if (root.TryGetProperty("strategic_mitigations", out var mitigations) && 
+                        mitigations.ValueKind == JsonValueKind.Array)
+                    {
+                        var mitigationList = new List<string>();
+                        foreach (var mitigation in mitigations.EnumerateArray())
+                        {
+                            if (mitigation.ValueKind == JsonValueKind.String)
+                            {
+                                mitigationList.Add(mitigation.GetString() ?? "");
+                            }
+                        }
+                        transformedResponse["strategic_mitigations"] = mitigationList;
+                    }
+
+                    // Enhanced risk analysis
+                    if (root.TryGetProperty("enhanced_analysis", out var enhanced))
+                    {
+                        transformedResponse["enhanced_analysis"] = enhanced.GetRawText();
+                    }
+                }
+
+                // Common fields
+                if (root.TryGetProperty("sail", out var sail))
+                {
+                    var sailValue = sail.GetString() ?? "Unknown";
+                    transformedResponse["sail"] = sailValue;
+                    transformedResponse["finalSAIL"] = sailValue; // Alt naming
+                }
+
+                if (root.TryGetProperty("summary", out var summary))
+                {
+                    transformedResponse["summary"] = summary.GetString();
+                }
+
+                // Include raw response for debugging
+                transformedResponse["_raw_response"] = resultJson;
+
+                pythonResponse.Dispose();
+
+                _logger.LogInformation("Successfully processed {Category} assessment", category);
+                return Ok(transformedResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in ForwardToPythonAndTransform");
+                return StatusCode(500, new 
+                { 
+                    error = "Error processing Python API response", 
+                    details = ex.Message,
+                    stackTrace = ex.StackTrace
+                });
+            }
+        }
+
+        // Helper methods
+        private string? ExtractSheltering(JsonElement groundRisk)
+        {
+            if (groundRisk.TryGetProperty("Sheltering", out var shelteringElem))
+            {
+                return shelteringElem.GetString();
+            }
+            
+            // Default based on population density if not specified
+            if (groundRisk.TryGetProperty("PopulationDensity", out var popDensity))
+            {
+                var density = popDensity.GetDouble();
+                if (density < 500) return "High";  // Rural/sparse = good sheltering
+                if (density < 10000) return "Medium"; // Suburban
+                return "Low"; // Urban
+            }
+
+            return "High"; // Safe default
+        }
+
+        private int CalculateInitialGrc(string populationDensity, string sheltering)
+        {
+            // Based on JARUS SORA 2.0 Table 3
+            return (populationDensity.ToLower(), sheltering.ToLower()) switch
+            {
+                ("low", "high") => 1,
+                ("low", "medium") => 2,
+                ("low", "low") => 3,
+                ("medium", "high") => 2,
+                ("medium", "medium") => 3,
+                ("medium", "low") => 4,
+                ("high", "high") => 3,
+                ("high", "medium") => 4,
+                ("high", "low") => 5,
+                _ => 3 // Default
+            };
+        }
+
+        private int CalculateInitialGrc25(string populationDensity)
+        {
+            // SORA 2.5 simplified GRC calculation
+            return populationDensity.ToLower() switch
+            {
+                "low" => 2,
+                "medium" => 3,
+                "high" => 4,
+                _ => 3
+            };
+        }
+
+        private int MapRobustnessToGrcReduction(string robustness)
+        {
+            return robustness.ToLower() switch
+            {
+                "low" => -1,
+                "medium" => -2,
+                "high" => -3,
+                _ => 0
+            };
+        }
+
+        private int MapM3RobustnessToReduction(string robustness)
+        {
+            // M3 typically has no reduction for Low/Medium, -1 for High
+            return robustness.ToLower() switch
+            {
+                "high" => -1,
+                _ => 0
+            };
+        }
+
+        // Model classes with nullable properties
+        private class SoraCompleteRequest
+        {
+            public string? Category { get; set; }
+            public string? PopulationDensity { get; set; }
+            public string? Sheltering { get; set; }
+            public string? Scenario_V2_0 { get; set; }
+            public double? MtomKg { get; set; }
+            public double? KineticEnergy { get; set; }
+            public double? MaxCharacteristicDimension { get; set; }
+            public int? InitialGrc { get; set; }
+            public int? M1 { get; set; }
+            public string? M2 { get; set; }
+            public int? M3 { get; set; }
+            public OperationalVolume? OperationalVolume { get; set; }
+            public string? TrafficDensity { get; set; }
+            public ArcInputs25? ArcInputs25 { get; set; }
+            public GrcInputs? GrcInputs { get; set; }
+        }
+
+        private class OperationalVolume
+        {
+            public double MaxAltitudeFt { get; set; }
+            public double MaxRadiusKm { get; set; }
+            public string? OperationClass { get; set; }
+            public string? Location { get; set; }
+            public string? Environment { get; set; }
+            public string? AirspaceClass { get; set; }
+        }
+
+        private class ArcInputs25
+        {
+            public bool USpaceServices { get; set; }
+            public string? TrafficDensitySource { get; set; }
+            public string? AirspaceContainment { get; set; }
+            public bool TemporalSegregation { get; set; }
+            public bool SpatialSegregation { get; set; }
+        }
+
+        private class GrcInputs
+        {
+            public double PopulationDensity { get; set; }
+            public double MaximumUasDimension { get; set; }
+            public double MtomKg { get; set; }
+        }
+    }
+}
+```
+
+## 2. mission.html JavaScript Updates
+
+### A. Add Sheltering Field (Insert after Population Density field, around line 1200)
+
+```html
+<!-- SORA 2.0 Sheltering Field -->
+<div class="form-group" id="shelteringGroup20" style="display: none;">
+    <label for="sheltering20">Sheltering (JARUS Table 3):</label>
+    <select id="sheltering20" class="form-control">
+        <option value="Low">Low - Urban/Open areas with no sheltering</option>
+        <option value="Medium">Medium - Suburban with some structures</option>
+        <option value="High" selected>High - Industrial/Rural with good sheltering</option>
+    </select>
+    <small class="form-text text-muted">Affects initial GRC calculation per JARUS SORA 2.0 Table 3</small>
+</div>
+```
+
+### B. Complete submitSoraAssessment Function
+
+```javascript
+async function submitSoraAssessment() {
+    try {
+        console.log('[SORA Assessment] Starting submission...');
+        
+        // Get category and version
+        const category = document.getElementById('operationCategory').value;
+        const soraVersion = category === 'SORA-2.5' ? '2.5' : '2.0';
+        
+        console.log(`[SORA Assessment] Category: ${category}, Version: ${soraVersion}`);
+        
+        // Build request body with complete field extraction
+        const requestBody = {
+            SoraVersion: soraVersion,
+            DroneId: document.getElementById('droneSelect')?.value || 'SC15',
+            MissionId: `M-${Date.now()}`,
+            MissionName: document.getElementById('missionName')?.value || 'SORA Assessment',
+            GroundRisk: {},
+            AirRisk: {}
+        };
+        
+        // Ground Risk - Common fields
+        const popDensityElem = document.getElementById('populationDensity');
+        const popDensityValue = popDensityElem ? parseFloat(popDensityElem.value) || 100 : 100;
+        requestBody.GroundRisk.PopulationDensity = popDensityValue;
+        
+        // Get drone data
+        const droneData = getDroneData(requestBody.DroneId);
+        
+        if (soraVersion === '2.0') {
+            // SORA 2.0 specific fields
+            
+            // Sheltering - CRITICAL ADDITION
+            const shelteringElem = document.getElementById('sheltering20');
+            requestBody.GroundRisk.Sheltering = shelteringElem ? shelteringElem.value : 'High';
+            console.log(`[SORA 2.0] Sheltering: ${requestBody.GroundRisk.Sheltering}`);
+            
+            // Scenario
+            const scenarioElem = document.getElementById('scenarioSelect');
+            requestBody.GroundRisk.Scenario_V2_0 = scenarioElem ? scenarioElem.value : 'VLOS_SparselyPopulated';
+            
+            // Drone characteristics
+            requestBody.GroundRisk.KineticEnergy = droneData.kineticEnergy;
+            requestBody.GroundRisk.MaxCharacteristicDimension = droneData.dimension;
+            
+            // Mitigations array
+            const mitigations = [];
+            
+            // M1 - Strategic mitigation
+            const m1Elem = document.getElementById('m1Select');
+            if (m1Elem && m1Elem.value !== 'None') {
+                mitigations.push({
+                    Type: 'M1',
+                    Robustness: m1Elem.value
+                });
+                console.log(`[SORA 2.0] M1: ${m1Elem.value}`);
+            }
+            
+            // M2 - Impact reduction  
+            const m2Elem = document.getElementById('m2Select');
+            if (m2Elem && m2Elem.value !== 'None') {
+                mitigations.push({
+                    Type: 'M2',
+                    Robustness: m2Elem.value
+                });
+                console.log(`[SORA 2.0] M2: ${m2Elem.value}`);
+            }
+            
+            // M3 - Emergency Response Plan
+            const m3Elem = document.getElementById('m3Select');
+            if (m3Elem && m3Elem.value !== 'None') {
+                mitigations.push({
+                    Type: 'M3',
+                    Robustness: m3Elem.value
+                });
+                console.log(`[SORA 2.0] M3: ${m3Elem.value}`);
+            }
+            
+            requestBody.GroundRisk.Mitigations = mitigations;
+        }
+        
+        // Air Risk - Common fields
+        requestBody.AirRisk.Environment = document.getElementById('environment')?.value || 'Rural';
+        requestBody.AirRisk.AirspaceClass = document.getElementById('airspaceClass')?.value || 'G';
+        requestBody.AirRisk.AirspaceControl = document.getElementById('airspaceControl')?.value || 'Uncontrolled';
+        requestBody.AirRisk.TrafficDensity = document.getElementById('trafficDensity')?.value || 'Low';
+        
+        // SORA 2.5 Enhanced Fields
+        if (soraVersion === '2.5') {
+            // U-Space Services checkbox
+            const uSpaceElem = document.getElementById('uSpaceServices');
+            requestBody.AirRisk.USpaceServices = uSpaceElem ? uSpaceElem.checked : false;
+            console.log(`[SORA 2.5] U-Space Services: ${requestBody.AirRisk.USpaceServices}`);
+            
+            // Traffic Density Source dropdown
+            const trafficSourceElem = document.getElementById('trafficDensitySource');
+            requestBody.AirRisk.TrafficDensitySource = trafficSourceElem ? trafficSourceElem.value : 'Empirical';
+            console.log(`[SORA 2.5] Traffic Density Source: ${requestBody.AirRisk.TrafficDensitySource}`);
+            
+            // Airspace Containment dropdown
+            const containmentElem = document.getElementById('airspaceContainment25');
+            requestBody.AirRisk.AirspaceContainment = containmentElem ? containmentElem.value : 'None';
+            console.log(`[SORA 2.5] Airspace Containment: ${requestBody.AirRisk.AirspaceContainment}`);
+            
+            // Temporal Segregation checkbox
+            const temporalElem = document.getElementById('temporalSegregation');
+            requestBody.AirRisk.TemporalSegregation = temporalElem ? temporalElem.checked : false;
+            console.log(`[SORA 2.5] Temporal Segregation: ${requestBody.AirRisk.TemporalSegregation}`);
+            
+            // Spatial Segregation checkbox
+            const spatialElem = document.getElementById('spatialSegregation');
+            requestBody.AirRisk.SpatialSegregation = spatialElem ? spatialElem.checked : false;
+            console.log(`[SORA 2.5] Spatial Segregation: ${requestBody.AirRisk.SpatialSegregation}`);
+        }
+        
+        console.log('[SORA Assessment] Complete request body:', requestBody);
+        
+        // Show loading indicator
+        const resultDiv = document.getElementById('assessmentResult');
+        resultDiv.innerHTML = '<div class="loading">Processing SORA assessment...</div>';
+        resultDiv.style.display = 'block';
+        
+        // Send to backend
+        const response = await fetch('http://localhost:5210/api/SoraProxy/complete', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+        
+        console.log(`[SORA Assessment] Response status: ${response.status}`);
+        
+        const data = await response.json();
+        console.log('[SORA Assessment] Response data:', data);
+        
+        if (!response.ok) {
+            throw new Error(data.error || `Server error: ${response.status}`);
+        }
+        
+        // Display results
+        displaySoraResults(data, soraVersion);
+        
+    } catch (error) {
+        console.error('[SORA Assessment] Error:', error);
+        
+        // Display error message
+        const resultDiv = document.getElementById('assessmentResult');
+        resultDiv.innerHTML = `
+            <div class="error-message">
+                <h4>⚠️ Assessment Error</h4>
+                <p><strong>Error:</strong> ${error.message}</p>
+                <p><small>Check console for details. Ensure backend is running on port 5210.</small></p>
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+    }
+}
+```
+
+### C. Complete displaySoraResults Function
+
+```javascript
+function displaySoraResults(data, soraVersion) {
+    console.log('[Display Results] Data:', data);
+    console.log('[Display Results] SORA Version:', soraVersion);
+    
+    let html = '<div class="sora-results">';
+    
+    // Header with version
+    html += `<div class="result-header">`;
+    html += `<h3>SORA ${soraVersion} Assessment Results</h3>`;
+    html += `</div>`;
+    
+    // Status
+    html += `<div class="result-section status-section">`;
+    html += `<h4>Assessment Status</h4>`;
+    const statusIcon = data.status === 'success' ? '✅' : '❌';
+    const statusText = data.status === 'success' ? 'Completed Successfully' : 'Failed';
+    html += `<p class="status-${data.status}">${statusIcon} ${statusText}</p>`;
+    html += `</div>`;
+    
+    // Risk Values Table
+    html += `<div class="result-section">`;
+    html += `<h4>Risk Assessment Values</h4>`;
+    html += `<table class="result-table">`;
+    html += `<thead><tr><th>Metric</th><th>Value</th></tr></thead>`;
+    html += `<tbody>`;
+    
+    // GRC Values - support multiple naming conventions
+    const initialGRC = data.initial_grc ?? data.intrinsicGRC ?? data.initialGRC ?? '-';
+    const finalGRC = data.final_grc ?? data.finalGRC ?? '-';
+    
+    html += `<tr><td>Initial GRC</td><td class="value-cell grc-${initialGRC}">${initialGRC}</td></tr>`;
+    html += `<tr><td>Final GRC</td><td class="value-cell grc-${finalGRC}"><strong>${finalGRC}</strong></td></tr>`;
+    
+    // ARC Values for SORA 2.5
+    if (soraVersion === '2.5') {
+        const initialARC = data.initial_arc ?? data.initialARC ?? '-';
+        const residualARC = data.residual_arc ?? data.residualARC ?? '-';
+        
+        html += `<tr><td>Initial ARC</td><td class="value-cell arc-${initialARC}">${initialARC}</td></tr>`;
+        html += `<tr><td>Residual ARC</td><td class="value-cell arc-${residualARC}"><strong>${residualARC}</strong></td></tr>`;
+    }
+    
+    // SAIL
+    const sail = data.sail ?? data.finalSAIL ?? '-';
+    html += `<tr class="sail-row"><td>Final SAIL</td><td class="value-cell sail-value"><strong>${sail}</strong></td></tr>`;
+    
+    html += `</tbody>`;
+    html += `</table>`;
+    html += `</div>`;
+    
+    // SORA 2.0 Mitigation Details
+    if (soraVersion === '2.0' && (data.m1 !== undefined || data.m2 !== undefined || data.m3 !== undefined)) {
+        html += `<div class="result-section mitigation-section">`;
+        html += `<h4>GRC Mitigation Analysis</h4>`;
+        html += `<div class="mitigation-breakdown">`;
+        
+        // Initial GRC
+        html += `<div class="mitigation-item">`;
+        html += `<span class="mitigation-label">Initial GRC:</span>`;
+        html += `<span class="mitigation-value">${initialGRC}</span>`;
+        html += `</div>`;
+        
+        // M1 - Strategic
+        if (data.m1 !== undefined && data.m1 !== 0) {
+            html += `<div class="mitigation-item">`;
+            html += `<span class="mitigation-label">M1 (Strategic):</span>`;
+            html += `<span class="mitigation-value reduction">${data.m1} GRC</span>`;
+            html += `</div>`;
+        }
+        
+        // M2 - Impact Reduction - FIXED to use m2_value
+        if (data.m2 !== undefined && data.m2_value !== undefined) {
+            html += `<div class="mitigation-item">`;
+            html += `<span class="mitigation-label">M2 (${data.m2}):</span>`;
+            html += `<span class="mitigation-value reduction">${data.m2_value} GRC</span>`;
+            html += `</div>`;
+        }
+        
+        // M3 - ERP
+        if (data.m3 !== undefined) {
+            html += `<div class="mitigation-item">`;
+            html += `<span class="mitigation-label">M3 (ERP):</span>`;
+            html += `<span class="mitigation-value ${data.m3 === 0 ? 'no-reduction' : 'reduction'}">${data.m3} GRC</span>`;
+            html += `</div>`;
+        }
+        
+        // Total calculation
+        const totalReduction = (data.m1 || 0) + (data.m2_value || 0) + (data.m3 || 0);
+        html += `<div class="mitigation-item total-line">`;
+        html += `<span class="mitigation-label">Total Reduction:</span>`;
+        html += `<span class="mitigation-value">${totalReduction} GRC</span>`;
+        html += `</div>`;
+        
+        // Final result
+        html += `<div class="mitigation-item final-result">`;
+        html += `<span class="mitigation-label">Final GRC:</span>`;
+        html += `<span class="mitigation-value"><strong>${finalGRC}</strong></span>`;
+        html += `</div>`;
+        
+        // Show calculation if available
+        if (data.calculation) {
+            html += `<div class="calculation-display">`;
+            html += `<small>${data.calculation}</small>`;
+            html += `</div>`;
+        }
+        
+        html += `</div>`;
+        html += `</div>`;
+    }
+    
+    // SORA 2.5 Strategic Mitigations
+    if (soraVersion === '2.5' && data.strategic_mitigations && data.strategic_mitigations.length > 0) {
+        html += `<div class="result-section">`;
+        html += `<h4>Strategic Mitigations Applied</h4>`;
+        html += `<ul class="strategic-mitigations">`;
+        
+        for (const mitigation of data.strategic_mitigations) {
+            html += `<li class="mitigation-applied">✓ ${mitigation}</li>`;
+        }
+        
+        html += `</ul>`;
+        html += `</div>`;
+    }
+    
+    // Summary
+    if (data.summary) {
+        html += `<div class="result-section summary-section">`;
+        html += `<h4>Assessment Summary</h4>`;
+        html += `<div class="summary-content">${data.summary}</div>`;
+        
+        if (data.reference) {
+            html += `<div class="reference-note">`;
+            html += `<small><strong>Reference:</strong> ${data.reference}</small>`;
+            html += `</div>`;
+        }
+        
+        html += `</div>`;
+    }
+    
+    // Enhanced Analysis (SORA 2.5)
+    if (soraVersion === '2.5' && data.enhanced_analysis) {
+        html += `<div class="result-section">`;
+        html += `<h4>Enhanced Risk Analysis</h4>`;
+        html += `<div class="enhanced-analysis">${data.enhanced_analysis}</div>`;
+        html += `</div>`;
+    }
+    
+    // Timestamp
+    html += `<div class="result-footer">`;
+    html += `<small>Assessment completed at: ${new Date().toLocaleString()}</small>`;
+    html += `</div>`;
+    
+    html += `</div>`;
+    
+    // Update DOM
+    const resultDiv = document.getElementById('assessmentResult');
+    resultDiv.innerHTML = html;
+    resultDiv.style.display = 'block';
+    
+    // Scroll to results
+    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Helper function for drone data
+function getDroneData(droneId) {
+    const droneDatabase = {
+        'SC15': { 
+            dimension: 1.2, 
+            mass: 32, 
+            speed: 8, 
+            kineticEnergy: 1024,
+            name: 'SkyCommander SC15' 
+        },
+        'SC10': { 
+            dimension: 1.0, 
+            mass: 15, 
+            speed: 10, 
+            kineticEnergy: 750,
+            name: 'SkyCommander SC10' 
+        },
+        'SC5': { 
+            dimension: 0.8, 
+            mass: 7, 
+            speed: 12, 
+            kineticEnergy: 504,
+            name: 'SkyCommander SC5' 
+        }
+    };
+    
+    return droneDatabase[droneId] || droneDatabase['SC15'];
+}
+```
+
+### D. Add CSS Styles for Results Display (add to mission.html <style> section)
+
+```css
+/* SORA Results Styling */
+.sora-results {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.result-header {
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.result-section {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.status-success {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.status-error {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.result-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.result-table th,
+.result-table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.value-cell {
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: 600;
+}
+
+.grc-0, .grc-1 { color: #28a745; }
+.grc-2, .grc-3 { color: #ffc107; }
+.grc-4, .grc-5 { color: #fd7e14; }
+.grc-6, .grc-7 { color: #dc3545; }
+
+.arc-1 { color: #28a745; }
+.arc-2 { color: #ffc107; }
+.arc-3 { color: #fd7e14; }
+.arc-4 { color: #dc3545; }
+
+.sail-value {
+    font-size: 1.3em;
+    color: #007bff;
+}
+
+.sail-row {
+    background-color: #e7f3ff;
+}
+
+.mitigation-breakdown {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 5px;
+    font-family: 'Courier New', monospace;
+}
+
+.mitigation-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+}
+
+.mitigation-value.reduction {
+    color: #28a745;
+}
+
+.mitigation-value.no-reduction {
+    color: #6c757d;
+}
+
+.total-line {
+    border-top: 2px solid #dee2e6;
+    padding-top: 10px;
+    font-weight: bold;
+}
+
+.final-result {
+    background: #e7f3ff;
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 3px;
+    font-size: 1.2em;
+}
+
+.strategic-mitigations {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.mitigation-applied {
+    padding: 5px 0;
+    color: #28a745;
+}
+
+.summary-content {
+    line-height: 1.6;
+    color: #495057;
+}
+
+.reference-note {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #dee2e6;
+    color: #6c757d;
+}
+
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: #007bff;
+}
+
+.error-message {
+    background: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+    padding: 15px;
+    border-radius: 5px;
+}
+```
+
+This complete solution provides:
+
+1. **100% null-safe SoraProxyController** with comprehensive error handling
+2. **Fixed Python API endpoint** for SORA 2.5
+3. **Complete field extraction** including Sheltering and all SORA 2.5 fields
+4. **Proper M2 display** using m2_value instead of text
+5. **Robust error handling** that prevents backend crashes
+6. **Detailed logging** for debugging
+7. **Support for both naming conventions** (snake_case and camelCase)
+
+The backend will now handle all edge cases gracefully and return proper error responses instead of crashing. The UI will display all fields correctly with proper formatting.

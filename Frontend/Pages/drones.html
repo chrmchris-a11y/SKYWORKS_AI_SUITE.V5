@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="el">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title data-i18n="dronesPage.title">Skyworks • Drones Catalog</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu;max-width:1040px;margin:40px auto;padding:0 16px}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px}
+    section{border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:16px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    select,input,button{font-size:16px;padding:8px}
+    table{border-collapse:collapse;width:100%}
+    th,td{border:1px solid #e5e7eb;padding:8px}
+    th{background:#f3f4f6}
+    #out{white-space:pre-wrap;background:#0b1020;color:#d2f4ff;border-radius:8px;padding:12px;max-height:260px;overflow:auto}
+    nav a{margin-right:10px}
+  </style>
+</head>
+<body>
+  <header>
+    <h1 data-i18n="dronesPage.title">Drones Catalog</h1>
+    <nav>
+      <a href="/app/" data-i18n="navigation.home">Home</a>
+      <a href="/app/streaming.html">Streaming ARC</a>
+      <a href="/app/compliance.html" data-i18n="navigation.compliance">Compliance</a>
+    </nav>
+  </header>
+
+  <section>
+    <h2 data-i18n="dronesPage.manufacturers.title">Κατασκευαστές</h2>
+    <div class="row">
+      <button id="btnLoad" data-i18n="dronesPage.manufacturers.load">Φόρτωση</button>
+      <label data-i18n="dronesPage.manufacturers.manufacturer">Manufacturer</label>
+      <select id="manufs"></select>
+      <button id="btnSearch" data-i18n="dronesPage.manufacturers.search">Αναζήτηση</button>
+      <button id="btnStats" data-i18n="dronesPage.manufacturers.stats">Στατιστικά</button>
+    </div>
+    <div id="counts"></div>
+  </section>
+
+  <section>
+    <h2 data-i18n="dronesPage.results.title">Αποτελέσματα</h2>
+    <table id="tbl"><thead><tr><th data-i18n="dronesPage.results.tableHeaders.manufacturer">Κατασκευαστής</th><th data-i18n="dronesPage.results.tableHeaders.model">Μοντέλο</th><th data-i18n="dronesPage.results.tableHeaders.class">C-Class</th><th data-i18n="dronesPage.results.tableHeaders.mtom">MTOM (kg)</th><th data-i18n="dronesPage.results.tableHeaders.remoteId">RemoteID</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section>
+    <h2 data-i18n="dronesPage.output.title">Raw Output</h2>
+    <div id="out"></div>
+  </section>
+
+  <script src="/app/i18n/i18n-loader.js"></script>
+  <script src="/app/i18n/language-switcher.js"></script>
+  <script>
+    async function loadManufacturers(){
+      const r = await fetch('/api/drones/manufacturers');
+      const j = await r.json();
+      const s = document.getElementById('manufs');
+      s.innerHTML = '';
+      (j.manufacturers||[]).forEach(m=>{
+        const opt=document.createElement('option'); opt.value=m; opt.textContent=m; s.appendChild(opt);
+      });
+      document.getElementById('counts').textContent = `Κατασκευαστές: ${j.count}`;
+      log(j);
+    }
+
+    async function searchByManufacturer(){
+      const m = document.getElementById('manufs').value;
+      const r = await fetch('/api/drones/search',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ manufacturer: m })
+      });
+      const j = await r.json();
+      renderTable(j.results||[]);
+      document.getElementById('counts').textContent = `Αποτελέσματα: ${j.count} (πρώτα 10)`;
+      log(j);
+    }
+
+    async function loadStats(){
+      const r = await fetch('/api/drones/stats');
+      const j = await r.json();
+      document.getElementById('counts').textContent = `Σύνολο: ${j.totalDrones}, BVLOS: ${j.bvlosCapable}, RemoteID: ${j.withRemoteID}`;
+      log(j);
+    }
+
+    function renderTable(rows){
+      const tb = document.querySelector('#tbl tbody');
+      tb.innerHTML = '';
+      rows.slice(0,10).forEach(d=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${d.manufacturer}</td><td>${d.model}</td><td>${d.cClass}</td><td>${d.mTOM_kg?.toFixed?.(2) ?? d.mTOM_kg}</td><td>${d.hasRemoteID? '✔' : '—'}</td>`;
+        tb.appendChild(tr);
+      });
+    }
+
+    function log(obj){
+      const box = document.getElementById('out');
+      box.textContent = JSON.stringify(obj, null, 2);
+    }
+
+    document.getElementById('btnLoad').onclick = loadManufacturers;
+    document.getElementById('btnSearch').onclick = searchByManufacturer;
+    document.getElementById('btnStats').onclick = loadStats;
+
+    // auto-load manufacturers initially
+    loadManufacturers();
+  </script>
+</body>
+</html>

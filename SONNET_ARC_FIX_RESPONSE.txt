@@ -1,0 +1,361 @@
+Looking at this issue, the root cause is clear: **422 validation errors occur when required fields are missing or malformed**. The ARC endpoints are failing because they have different validation requirements than GRC endpoints, but there's no detailed error logging to show what's wrong.
+
+Here's the complete fix with enhanced validation error handling:
+
+## Fixed main.py with Detailed Validation Error Logging
+
+```python
+"""
+SKYWORKS AI SUITE - FastAPI Main Entry Point
+Python microservice for SORA calculations
+"""
+
+import logging
+from typing import Any, Dict
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
+import json
+
+from models.sora_models import (
+    GRCRequest_2_0,
+    GRCRequest_2_5,
+    GRCResponse,
+    ARCRequest_2_0,
+    ARCRequest_2_5,
+    ARCResponse,
+    SAILRequest,
+    SAILResponse,
+)
+from calculations.grc_calculator import GRCCalculator
+from calculations.arc_calculator import ARCCalculator
+from calculations.sail_calculator import SAILCalculator
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="SKYWORKS AI SUITE - SORA Calculator API",
+    description="EASA/JARUS SORA 2.0 and 2.5 Calculations",
+    version="1.0.0",
+)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize calculators
+grc_calculator = GRCCalculator()
+arc_calculator = ARCCalculator()
+sail_calculator = SAILCalculator()
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# VALIDATION ERROR HANDLERS
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    Custom validation error handler with detailed logging
+    """
+    # Log the raw request body for debugging
+    try:
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        logger.error(f"VALIDATION ERROR - URL: {request.url}")
+        logger.error(f"VALIDATION ERROR - Raw body: {body_str}")
+    except Exception as e:
+        logger.error(f"Could not read request body: {e}")
+    
+    # Log detailed validation errors
+    logger.error(f"VALIDATION ERROR - Details: {exc.errors()}")
+    
+    # Create user-friendly error response
+    error_details = []
+    for error in exc.errors():
+        field_path = " -> ".join(str(loc) for loc in error["loc"])
+        error_details.append({
+            "field": field_path,
+            "message": error["msg"],
+            "type": error["type"]
+        })
+    
+    return HTTPException(
+        status_code=422,
+        detail={
+            "message": "Validation failed",
+            "errors": error_details,
+            "url": str(request.url)
+        }
+    ).detail
+
+
+def log_request_data(endpoint: str, data: Dict[str, Any]) -> None:
+    """Helper to log incoming request data"""
+    logger.info(f"{endpoint} - Received data: {json.dumps(data, indent=2, default=str)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# HEALTH CHECK
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.get("/")
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "SKYWORKS SORA Calculator",
+        "version": "1.0.0",
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GRC ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/v1/calculate/grc/2.0", response_model=GRCResponse)
+async def calculate_grc_2_0(request: GRCRequest_2_0):
+    """
+    Calculate Ground Risk Class for SORA 2.0
+    
+    Source: JARUS SORA 2.0, Table 2 & 3
+    """
+    try:
+        log_request_data("GRC 2.0", request.dict())
+        result = grc_calculator.calculate_grc_2_0(request)
+        logger.info(f"GRC 2.0 - Success: GRC={result.final_grc}")
+        return result
+    except ValueError as e:
+        error_msg = str(e)
+        logger.error(f"GRC 2.0 - ValueError: {error_msg}")
+        if "OUT_OF_SCOPE" in error_msg:
+            raise HTTPException(status_code=400, detail=error_msg)
+        raise HTTPException(status_code=400, detail=f"Validation error: {error_msg}")
+    except Exception as e:
+        logger.error(f"GRC 2.0 - Internal error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@app.post("/api/v1/calculate/grc/2.5", response_model=GRCResponse)
+async def calculate_grc_2_5(request: GRCRequest_2_5):
+    """
+    Calculate Ground Risk Class for SORA 2.5
+    
+    Source: JARUS SORA 2.5, Table 2 & 3
+    """
+    try:
+        log_request_data("GRC 2.5", request.dict())
+        result = grc_calculator.calculate_grc_2_5(request)
+        logger.info(f"GRC 2.5 - Success: GRC={result.final_grc}")
+        return result
+    except ValueError as e:
+        error_msg = str(e)
+        logger.error(f"GRC 2.5 - ValueError: {error_msg}")
+        if "OUT_OF_SCOPE" in error_msg:
+            raise HTTPException(status_code=400, detail=error_msg)
+        raise HTTPException(status_code=400, detail=f"Validation error: {error_msg}")
+    except Exception as e:
+        logger.error(f"GRC 2.5 - Internal error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# ARC ENDPOINTS - ENHANCED WITH VALIDATION LOGGING
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/v1/calculate/arc/2.0", response_model=ARCResponse)
+async def calculate_arc_2_0(request: Request):
+    """
+    Calculate Air Risk Class for SORA 2.0
+    
+    Source: JARUS SORA 2.0, Section 2.3.2
+    
+    ENHANCED: Added detailed validation error logging
+    """
+    try:
+        # Get raw request body for detailed logging
+        body = await request.body()
+        raw_data = json.loads(body.decode('utf-8'))
+        
+        logger.info("=" * 80)
+        logger.info("ARC 2.0 REQUEST RECEIVED")
+        logger.info("=" * 80)
+        logger.info(f"Raw frontend data: {json.dumps(raw_data, indent=2)}")
+        
+        # Validate required fields before Pydantic validation
+        required_fields = ["airspace_class", "altitude_agl_ft", "environment"]
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in raw_data or raw_data[field] is None:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            logger.error(f"ARC 2.0 - Missing required fields: {missing_fields}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Missing required fields for ARC 2.0: {missing_fields}"
+            )
+        
+        # Validate enum values
+        valid_airspace = ["A", "B", "C", "D", "E", "F", "G"]
+        valid_environment = ["Urban", "Suburban", "Rural"]
+        
+        if raw_data["airspace_class"] not in valid_airspace:
+            logger.error(f"ARC 2.0 - Invalid airspace_class: {raw_data['airspace_class']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid airspace_class. Must be one of: {valid_airspace}"
+            )
+            
+        if raw_data["environment"] not in valid_environment:
+            logger.error(f"ARC 2.0 - Invalid environment: {raw_data['environment']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid environment. Must be one of: {valid_environment}"
+            )
+        
+        # Now attempt Pydantic validation
+        try:
+            arc_request = ARCRequest_2_0(**raw_data)
+            logger.info(f"ARC 2.0 - Validation successful: {arc_request.dict()}")
+        except ValidationError as ve:
+            logger.error(f"ARC 2.0 - Pydantic validation failed: {ve}")
+            error_details = []
+            for error in ve.errors():
+                field_path = " -> ".join(str(loc) for loc in error["loc"])
+                error_details.append(f"{field_path}: {error['msg']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"ARC 2.0 validation errors: {'; '.join(error_details)}"
+            )
+        
+        # Calculate ARC
+        result = arc_calculator.calculate_arc_2_0(arc_request)
+        logger.info(f"ARC 2.0 - Success: {result.residual_arc}")
+        logger.info("=" * 80)
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ARC 2.0 - Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+@app.post("/api/v1/calculate/arc/2.5", response_model=ARCResponse)
+async def calculate_arc_2_5(request: Request):
+    """
+    Calculate Air Risk Class for SORA 2.5
+    
+    Source: JARUS SORA 2.5, Annex B
+    
+    ENHANCED: Added detailed validation error logging
+    """
+    try:
+        # Get raw request body for detailed logging
+        body = await request.body()
+        raw_data = json.loads(body.decode('utf-8'))
+        
+        logger.info("=" * 80)
+        logger.info("ARC 2.5 REQUEST RECEIVED")
+        logger.info("=" * 80)
+        logger.info(f"Raw frontend data: {json.dumps(raw_data, indent=2)}")
+        
+        # Validate required fields before Pydantic validation
+        required_fields = ["airspace_class", "altitude_agl_m", "environment"]
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in raw_data or raw_data[field] is None:
+                missing_fields.append(field)
+        
+        if missing_fields:
+            logger.error(f"ARC 2.5 - Missing required fields: {missing_fields}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Missing required fields for ARC 2.5: {missing_fields}"
+            )
+        
+        # Check for common field name mistakes
+        if "altitude_agl_ft" in raw_data:
+            logger.warning("ARC 2.5 - Found altitude_agl_ft instead of altitude_agl_m, converting...")
+            # Convert feet to meters
+            altitude_ft = raw_data["altitude_agl_ft"]
+            raw_data["altitude_agl_m"] = altitude_ft * 0.3048
+            logger.info(f"Converted {altitude_ft} ft to {raw_data['altitude_agl_m']} m")
+        
+        # Validate enum values
+        valid_airspace = ["A", "B", "C", "D", "E", "F", "G"]
+        valid_environment = ["Urban", "Suburban", "Rural"]
+        
+        if raw_data["airspace_class"] not in valid_airspace:
+            logger.error(f"ARC 2.5 - Invalid airspace_class: {raw_data['airspace_class']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid airspace_class. Must be one of: {valid_airspace}"
+            )
+            
+        if raw_data["environment"] not in valid_environment:
+            logger.error(f"ARC 2.5 - Invalid environment: {raw_data['environment']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Invalid environment. Must be one of: {valid_environment}"
+            )
+        
+        # Now attempt Pydantic validation
+        try:
+            arc_request = ARCRequest_2_5(**raw_data)
+            logger.info(f"ARC 2.5 - Validation successful: {arc_request.dict()}")
+        except ValidationError as ve:
+            logger.error(f"ARC 2.5 - Pydantic validation failed: {ve}")
+            error_details = []
+            for error in ve.errors():
+                field_path = " -> ".join(str(loc) for loc in error["loc"])
+                error_details.append(f"{field_path}: {error['msg']}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"ARC 2.5 validation errors: {'; '.join(error_details)}"
+            )
+        
+        # Calculate ARC
+        result = arc_calculator.calculate_arc_2_5(arc_request)
+        logger.info(f"ARC 2.5 - Success: {result.residual_arc}")
+        logger.info("=" * 80)
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"ARC 2.5 - Unexpected error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SAIL ENDPOINT
+# ═══════════════════════════════════════════════════════════════════════════
+
+@app.post("/api/v1/calculate/sail", response_model=SAILResponse)
+async def calculate_sail(request: SAILRequest):
+    """
+    Calculate SAIL from Final GRC and Residual ARC
+    
+    Source: JARUS SORA Table 6
+    """
+    try:
+        log_request_data("SAIL", request.dict())
+        result = sail_calculator.calculate_sail(request)
+        logger.info(f"SAIL - Success: SAIL={result.sail}")
+        return result
+    except ValueError as e:
+        logger.error(f"SAIL - ValueError: {str(e)}")
+        raise HTTPException

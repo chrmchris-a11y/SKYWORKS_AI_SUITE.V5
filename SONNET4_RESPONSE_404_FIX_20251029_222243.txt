@@ -1,0 +1,166 @@
+# MISSION PLANNER UI 404 FIX ANALYSIS
+
+## ROOT CAUSE CONFIRMATION ✅
+
+**Confirmed Issue:** RequestPath mapping creates incorrect directory nesting.
+
+**Current Mapping:**
+- URL: `/app/Pages/mission.html`
+- RequestPath: `/app` 
+- FileProvider: `Frontend/Pages`
+- **Result:** Looks for `Frontend/Pages/Pages/mission.html` ❌
+
+**Expected Mapping:**
+- URL: `/app/Pages/mission.html`
+- Should resolve to: `Frontend/Pages/mission.html` ✅
+
+## RECOMMENDED SOLUTION
+
+**Option 2 is BEST** - Serve from Frontend Root for these reasons:
+
+1. **Architecture Alignment:** Frontend has multiple subdirectories (`Pages/`, `assets/`, `Components/`)
+2. **Future-Proof:** Supports CSS, JS, images without additional configuration
+3. **Clean URL Structure:** Maintains logical `/app/Pages/`, `/app/assets/` paths
+4. **Avoids Duplication:** Single configuration serves entire frontend
+
+## COMPLETE CORRECTED CODE
+
+Replace lines 252-275 in Program.cs:
+
+```csharp
+// Serve Frontend from /app (Frontend/ root directory)
+var frontendRoot = Path.Combine(workspaceRoot, "Frontend");
+if (Directory.Exists(frontendRoot))
+{
+    var fp = new PhysicalFileProvider(frontendRoot);
+    app.UseDefaultFiles(new DefaultFilesOptions
+    {
+        RequestPath = "/app",
+        FileProvider = fp,
+        DefaultFileNames = new[] { "index.html" }
+    });
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        RequestPath = "/app",
+        FileProvider = fp,
+        ServeUnknownFileTypes = false,
+        OnPrepareResponse = ctx =>
+        {
+            // Cache static files for 1 hour (optional performance optimization)
+            ctx.Context.Response.Headers.Append("Cache-Control", "public,max-age=3600");
+        }
+    });
+}
+
+// Remove the separate i18n configuration - now served by main frontend config
+// REMOVE THIS BLOCK (lines ~277-286):
+/*
+var frontendI18n = Path.Combine(workspaceRoot, "Frontend", "i18n");
+if (Directory.Exists(frontendI18n))
+{
+  var i18nProvider = new PhysicalFileProvider(frontendI18n);
+  app.UseStaticFiles(new StaticFileOptions
+  {
+    RequestPath = "/app/i18n",
+    FileProvider = i18nProvider
+  });
+}
+*/
+```
+
+## URL MAPPING AFTER FIX
+
+| URL | Physical Path | Status |
+|-----|---------------|--------|
+| `/app/Pages/mission.html` | `Frontend/Pages/mission.html` | ✅ |
+| `/app/Pages/index.html` | `Frontend/Pages/index.html` | ✅ |
+| `/app/assets/style.css` | `Frontend/assets/style.css` | ✅ |
+| `/app/Components/drone.js` | `Frontend/Components/drone.js` | ✅ |
+| `/app/i18n/en.json` | `Frontend/i18n/en.json` | ✅ |
+
+## MIDDLEWARE ORDERING CHECK
+
+Your current order is **CORRECT**:
+
+```csharp
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseCors("DevAll");
+
+// Static files (Frontend) - CORRECT POSITION
+app.UseStaticFiles(...);
+
+// Routing - CORRECT POSITION (after static files)
+app.MapGet("/", () => Results.Redirect("/app/", permanent: false));
+app.MapHub<Skyworks.Api.Hubs.StreamingHub>("/hubs/arc");
+app.MapControllers();
+```
+
+**No middleware reordering needed.**
+
+## ADDITIONAL RECOMMENDATIONS
+
+### 1. Content-Type Headers (Optional Enhancement)
+Add explicit MIME type mapping for better browser compatibility:
+
+```csharp
+app.UseStaticFiles(new StaticFileOptions
+{
+    RequestPath = "/app",
+    FileProvider = fp,
+    ContentTypeProvider = new FileExtensionContentTypeProvider(new Dictionary<string, string>
+    {
+        { ".html", "text/html; charset=utf-8" },
+        { ".css", "text/css; charset=utf-8" },
+        { ".js", "application/javascript; charset=utf-8" },
+        { ".json", "application/json; charset=utf-8" }
+    })
+});
+```
+
+### 2. Error Handling Enhancement
+Add fallback for SPA-like behavior:
+
+```csharp
+// Add BEFORE MapControllers()
+app.MapFallback("/app/{**path}", async context =>
+{
+    // For any unmatched /app/* route, try serving index.html (SPA fallback)
+    context.Request.Path = "/app/Pages/index.html";
+    await context.Response.SendFileAsync(
+        Path.Combine(workspaceRoot, "Frontend", "Pages", "index.html"));
+});
+```
+
+## VALIDATION TESTS
+
+After applying the fix, these should work:
+
+```bash
+# Primary target
+✅ http://localhost:5210/app/Pages/mission.html
+
+# Verify other resources
+✅ http://localhost:5210/app/Pages/index.html
+✅ http://localhost:5210/app/assets/[any-css-file]
+✅ http://localhost:5210/app/i18n/[language-file]
+✅ http://localhost:5210/app/Components/[any-js-file]
+```
+
+## RISK ASSESSMENT
+
+**Risk Level:** 🟢 **LOW**
+- **No breaking changes** to existing API endpoints
+- **No database impact**
+- **No authentication changes**
+- **Backward compatible** - existing `/app/` redirect still works
+- **Python API untouched** - SORA calculations remain functional
+
+## IMPLEMENTATION PRIORITY
+
+**CRITICAL** - This fix is required for:
+- 20 official SORA test scenarios
+- User acceptance testing via web interface
+- Project completion milestone
+
+The configuration change is minimal and safe. Python API backend is confirmed working, so this purely resolves the static file serving layer.

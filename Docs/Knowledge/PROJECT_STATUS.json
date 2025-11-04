@@ -1,0 +1,46 @@
+{
+  "currentPhase": 6,
+  "phaseTitle": "Mission Planning & Maps",
+  "currentStep": 51,
+  "currentStepStatus": "Requirements Complete - Implementation Ready",
+  "nextStep": "51-Implementation",
+  "notes": "Phase 6 Step 51 REQUIREMENTS COMPLETE. Researched official SORA docs (OSO #17/18/19, Annex A/B/C). Created comprehensive requirements doc (STEP_51_GIS_REQUIREMENTS.md, 600+ lines) with 6 core GIS components, dual SORA compliance (2.0 + 2.5), and 14-day implementation roadmap. Phase 5 complete: 7 services, 8 docs, 256/257 tests passing. Ready to implement GIS models/services/controllers.",
+  "updatedAt": "2025-01-27T15:30:00.000Z",
+  "pendingJobs": {
+    "arcCalculatorFixes": {
+      "priority": "LOW",
+      "status": "CODE_COMPLETE",
+      "completedItems": 23,
+      "totalItems": 26,
+      "completionPercent": 88,
+      "description": "ARC Calculator CSV Fixes - All critical calculator logic implemented and verified against EASA/JARUS Annex C",
+      "remainingTasks": [
+        {
+          "task": "Fix model/test field name mismatch",
+          "detail": "ARCRequest_2_5 expects altitude_agl_m but tests use max_height_agl_m - add Pydantic Field alias",
+          "file": "Backend_Python/models/sora_models.py",
+          "estimatedTime": "5 minutes"
+        },
+        {
+          "task": "Update Test 7",
+          "detail": "Change expected_initial_arc from ARC-a to ARC-b for atypical/segregated case",
+          "file": "Backend_Python/tests/test_arc25_tree.py",
+          "estimatedTime": "2 minutes"
+        },
+        {
+          "task": "Add new unit tests",
+          "detail": "Mode-S precedence over near-aerodrome, uncontrolled ≥120m authority flag, SUBURBAN→URBAN normalization, unknown SM tokens ignored",
+          "file": "Backend_Python/tests/test_arc25_tree.py",
+          "estimatedTime": "15-20 minutes"
+        }
+      ],
+      "references": [
+        "ARC_CSV_FIXES_IMPLEMENTATION_REPORT.md",
+        "Backend_Python/incoming/ARC_Code_Review_Corrections.csv",
+        "Backend_Python/incoming/ARC_Calculator_Code_Review.csv"
+      ],
+      "completedDate": "2025-01-31",
+      "notes": "All 23 code fixes applied successfully. Strategic mitigations, AEC 1-12 mapping, FL600+ handling, 150m pivot, airport/heliport logic, SUBURBAN normalization, SM validation, 120m authority flag - all verified against official EASA Easy Access Rules (Jul 2024) and JARUS SORA 2.0/2.5 Annex C. Remaining work is test-only."
+    }
+  }
+}

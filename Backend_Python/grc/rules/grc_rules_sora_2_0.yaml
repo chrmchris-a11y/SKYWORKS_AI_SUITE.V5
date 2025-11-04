@@ -1,0 +1,107 @@
+version: "EASA_SORA_2.0_AMC_2024-07"
+source: "EASA Easy Access Rules for UAS (AMC/GM) - Step 2 & 3"
+doc_id: "EASA_AMC_GM_UAS_2024"
+standard: "SORA 2.0"
+
+# Validation and scope gates
+validations:
+  scope_gate_final_grc_max: 7  # SPECIFIC category scope: Final GRC must be ≤ 7
+
+# iGRC determination (from official Step 2 tables)
+igrc_table:
+  # Scenario-based iGRC per SORA 2.0 Table 2
+  # Columns: [<=1m, <=3m, <=8m, >8m]
+  VLOS_Controlled: [1, 2, 3, 4]
+  BVLOS_Controlled: [1, 2, 3, 4]
+  VLOS_Sparsely: [2, 3, 4, 5]
+  BVLOS_Sparsely: [3, 4, 5, 6]
+  VLOS_Populated: [4, 5, 6, 8]
+  BVLOS_Populated: [5, 6, 8, 10]
+  VLOS_Gathering: [7, 7, 7, 7]
+  BVLOS_Gathering: [8, 8, 8, 8]
+
+# (Deprecated) population mapping kept for backward compatibility; calculators should use igrc_table
+igrc_mapping:
+  population_ranges:
+    - range: [0, 10]
+      base_igrc: 1
+    - range: [10, 100]
+      base_igrc: 2
+    - range: [100, 500]
+      base_igrc: 3
+    - range: [500, 1000]
+      base_igrc: 4
+    - range: [1000, 2500]
+      base_igrc: 5
+    - range: [2500, 5000]
+      base_igrc: 6
+    - range: [5000, 10000]
+      base_igrc: 7
+    - range: [10000, 999999]
+      base_igrc: 8
+
+# Environment adjustments (if applicable)
+environment_adjustments:
+  Rural: 0
+  Suburban: 0
+  Urban: 0
+  Industrial: 0
+  Controlled: -1
+
+# M1 strategic mitigation reductions (EXACT values from EASA tables)
+m1_reductions:
+  None: 0
+  Low: -1
+  Medium: -2
+  High: -4
+
+# M1 floor caps by containment quality and iGRC (CRITICAL for floor cap algorithm)
+m1_floor_caps:
+  Poor:
+    1: 1
+    2: 2
+    3: 3
+    4: 4
+    5: 4
+    6: 5
+    7: 5
+    8: 6
+  Adequate:
+    1: 1
+    2: 1
+    3: 2
+    4: 3
+    5: 3
+    6: 4
+    7: 4
+    8: 5
+  Good:
+    1: 1
+    2: 1
+    3: 1
+    4: 2
+    5: 2
+    6: 3
+    7: 3
+    8: 4
+
+# M2 impact effects reductions (EXACT values from EASA tables)
+m2_reductions:
+  None: 0
+  Low: -1
+  High: -2
+
+# M3 ERP adjustments (EXACT values from EASA tables)
+m3_adjustments:
+  None: 1
+  Low: 1
+  Medium: 0
+  High: -1
+
+# Documentation references
+doc_references:
+  igrc_determination: "EASA_SORA_2.0_AMC_Step2_Table"
+  m1_strategic: "EASA_SORA_2.0_M1_Strategic_Table"
+  m1_floor_cap: "EASA_SORA_2.0_M1_Floor_Cap_Rules"
+  m2_impact: "EASA_SORA_2.0_M2_Impact_Table"
+  m3_erp: "EASA_SORA_2.0_M3_ERP_Table"

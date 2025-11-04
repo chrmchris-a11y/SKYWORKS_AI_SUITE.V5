@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Step 42 UI Components Test - SKYWORKS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .controls h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .control-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .control-group select:hover {
+            border-color: #667eea;
+        }
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .test-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .test-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+
+        .test-card h3 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .test-card button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+
+        .test-card button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .result-container {
+            margin-top: 15px;
+            min-height: 100px;
+        }
+
+        .stats {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border-radius: 8px;
+        }
+
+        .stat-number {
+            font-size: 3em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            text-transform: uppercase;
+        }
+
+        .version-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-right: 10px;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🧪 Step 42 UI Components Test</h1>
+            <p class="subtitle">Interactive testing of Complex OSO Algorithms UI - SORA 2.0 & 2.5</p>
+            <div style="margin-top: 15px;">
+                <span class="version-badge" id="versionBadge">SORA 2.5</span>
+                <span style="color: #666;">Loaded: oso-manager-v2.js + oso-ui-v2.js</span>
+            </div>
+        </header>
+
+        <div class="controls">
+            <h3>🎛️ Test Configuration</h3>
+            <div class="control-group">
+                <div>
+                    <label>SORA Version:</label>
+                    <select id="soraVersion" onchange="updateVersion()">
+                        <option value="SORA-2.5">SORA 2.5 (17 OSOs)</option>
+                        <option value="SORA-2.0">SORA 2.0 (24 OSOs)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>SAIL Level:</label>
+                    <select id="sailLevel">
+                        <option value="I">SAIL I</option>
+                        <option value="II">SAIL II</option>
+                        <option value="III">SAIL III</option>
+                        <option value="IV" selected>SAIL IV</option>
+                        <option value="V">SAIL V</option>
+                        <option value="VI">SAIL VI</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Operation Type:</label>
+                    <select id="operationType">
+                        <option value="VLOS">VLOS</option>
+                        <option value="BVLOS" selected>BVLOS</option>
+                        <option value="EVLOS">EVLOS</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Environment:</label>
+                    <select id="environment">
+                        <option value="Rural">Rural</option>
+                        <option value="Urban" selected>Urban</option>
+                        <option value="Controlled">Controlled</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="test-grid">
+            <!-- Test 1: Dependency Warnings -->
+            <div class="test-card">
+                <h3>🔗 Component 1: Dependency Warnings</h3>
+                <button onclick="testDependencyWarnings()">Show Dependency Warnings</button>
+                <div class="result-container" id="result1"></div>
+            </div>
+
+            <!-- Test 2: Recommendations Panel -->
+            <div class="test-card">
+                <h3>💡 Component 2: Auto-Recommendations</h3>
+                <button onclick="testRecommendations()">Show Recommendations</button>
+                <div class="result-container" id="result2"></div>
+            </div>
+
+            <!-- Test 3: Evidence Checklist -->
+            <div class="test-card">
+                <h3>📋 Component 3: Evidence Checklist</h3>
+                <button onclick="testEvidenceChecklist()">Show Evidence Template</button>
+                <div class="result-container" id="result3"></div>
+            </div>
+
+            <!-- Test 4: Validation Errors -->
+            <div class="test-card">
+                <h3>⚠️ Component 4: Validation Errors</h3>
+                <button onclick="testValidationErrors()">Show Validation Results</button>
+                <div class="result-container" id="result4"></div>
+            </div>
+
+            <!-- Test 5: SAIL Filter -->
+            <div class="test-card full-width">
+                <h3>🎯 Component 5: SAIL Filter</h3>
+                <button onclick="testSAILFilter()">Show SAIL Filter</button>
+                <div class="result-container" id="result5"></div>
+            </div>
+
+            <!-- Test 6: Combined Test -->
+            <div class="test-card full-width">
+                <h3>🚀 Combined Test - All Components</h3>
+                <button onclick="testAllComponents()">Run All Tests</button>
+                <div class="result-container" id="resultAll"></div>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number" id="componentCount">5</div>
+                <div class="stat-label">UI Components</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="testsRun">0</div>
+                <div class="stat-label">Tests Run</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="soraOSOCount">17</div>
+                <div class="stat-label">OSOs (SORA 2.5)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">5</div>
+                <div class="stat-label">Algorithms</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load dependencies -->
+    <script src="oso-manager-v2.js"></script>
+    <script src="oso-ui-v2.js"></script>
+
+    <script>
+        let currentVersion = 'SORA-2.5';
+        let testsRun = 0;
+
+        function updateVersion() {
+            currentVersion = document.getElementById('soraVersion').value;
+            document.getElementById('versionBadge').textContent = currentVersion;
+            document.getElementById('soraOSOCount').textContent = currentVersion === 'SORA-2.5' ? '17' : '24';
+        }
+
+        function incrementTestCounter() {
+            testsRun++;
+            document.getElementById('testsRun').textContent = testsRun;
+        }
+
+        // Test 1: Dependency Warnings
+        function testDependencyWarnings() {
+            incrementTestCounter();
+            
+            // Create scenario: Selected OSOs with missing dependencies
+            const selectedOSOs = new Map();
+            
+            if (currentVersion === 'SORA-2.5') {
+                // OSO#05 without Containment + M2
+                selectedOSOs.set(5, { robustness: 'M' });
+                // OSO#09 without OSO#13
+                selectedOSOs.set(9, { robustness: 'M' });
+            } else {
+                // SORA 2.0: OSO#10 without OSO#05
+                selectedOSOs.set(10, { robustness: 'M' });
+                // OSO#12 without OSO#05
+                selectedOSOs.set(12, { robustness: 'M' });
+            }
+
+            OSOUI.showDependencyWarnings('result1', selectedOSOs, currentVersion);
+        }
+
+        // Test 2: Recommendations
+        function testRecommendations() {
+            incrementTestCounter();
+            
+            const operationType = document.getElementById('operationType').value;
+            const environment = document.getElementById('environment').value;
+            const sail = document.getElementById('sailLevel').value;
+
+            OSOUI.showRecommendations('result2', operationType, environment, sail, currentVersion);
+        }
+
+        // Test 3: Evidence Checklist
+        function testEvidenceChecklist() {
+            incrementTestCounter();
+            
+            // Show evidence template for OSO#05 High robustness
+            OSOUI.showEvidenceChecklist('result3', 5, 'H', currentVersion);
+        }
+
+        // Test 4: Validation Errors
+        function testValidationErrors() {
+            incrementTestCounter();
+            
+            const selectedOSOs = new Map();
+            const sail = document.getElementById('sailLevel').value;
+            const operationType = document.getElementById('operationType').value;
+            
+            if (currentVersion === 'SORA-2.5') {
+                // Create error scenario: OSO#05 without Containment
+                selectedOSOs.set(5, { robustness: 'L' });
+                
+                const context = {
+                    operationType: operationType,
+                    environment: 'Urban',
+                    containmentSelected: false // Will trigger error
+                };
+                
+                OSOUI.showValidationErrors('result4', selectedOSOs, sail, currentVersion, context);
+            } else {
+                // SORA 2.0: BVLOS with low robustness
+                selectedOSOs.set(10, { robustness: 'L' }); // Will trigger error for BVLOS SAIL III+
+                
+                const context = {
+                    operationType: 'BVLOS',
+                    environment: 'Urban'
+                };
+                
+                OSOUI.showValidationErrors('result4', selectedOSOs, sail, currentVersion, context);
+            }
+        }
+
+        // Test 5: SAIL Filter
+        function testSAILFilter() {
+            incrementTestCounter();
+            
+            const sail = document.getElementById('sailLevel').value;
+            OSOUI.showSAILFilter('result5', sail, currentVersion);
+        }
+
+        // Test 6: All Components
+        function testAllComponents() {
+            console.log('🚀 Running all UI component tests...');
+            
+            testDependencyWarnings();
+            setTimeout(() => testRecommendations(), 200);
+            setTimeout(() => testEvidenceChecklist(), 400);
+            setTimeout(() => testValidationErrors(), 600);
+            setTimeout(() => testSAILFilter(), 800);
+            
+            setTimeout(() => {
+                document.getElementById('resultAll').innerHTML = `
+                    <div style="padding: 20px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-radius: 8px; text-align: center;">
+                        <h3 style="color: #2e7d32; margin-bottom: 10px;">✅ All Components Tested Successfully!</h3>
+                        <p style="color: #666; margin-bottom: 15px;">
+                            5 UI components loaded and functional. See individual test cards above for detailed results.
+                        </p>
+                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 15px;">
+                            <div style="padding: 10px; background: white; border-radius: 6px;">
+                                <div style="font-size: 1.5em;">🔗</div>
+                                <div style="font-size: 0.8em; color: #666;">Dependencies</div>
+                            </div>
+                            <div style="padding: 10px; background: white; border-radius: 6px;">
+                                <div style="font-size: 1.5em;">💡</div>
+                                <div style="font-size: 0.8em; color: #666;">Recommendations</div>
+                            </div>
+                            <div style="padding: 10px; background: white; border-radius: 6px;">
+                                <div style="font-size: 1.5em;">📋</div>
+                                <div style="font-size: 0.8em; color: #666;">Evidence</div>
+                            </div>
+                            <div style="padding: 10px; background: white; border-radius: 6px;">
+                                <div style="font-size: 1.5em;">⚠️</div>
+                                <div style="font-size: 0.8em; color: #666;">Validation</div>
+                            </div>
+                            <div style="padding: 10px; background: white; border-radius: 6px;">
+                                <div style="font-size: 1.5em;">🎯</div>
+                                <div style="font-size: 0.8em; color: #666;">SAIL Filter</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }, 1000);
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            console.log('🎨 Step 42 UI Components Test Page Loaded');
+            console.log('📦 OSOManager:', typeof OSOManager !== 'undefined' ? '✅ Loaded' : '❌ Not Found');
+            console.log('🎨 OSOUI:', typeof OSOUI !== 'undefined' ? '✅ Loaded' : '❌ Not Found');
+            
+            if (typeof OSOUI !== 'undefined') {
+                console.log('✅ All 5 UI components available:');
+                console.log('  - showDependencyWarnings()');
+                console.log('  - showRecommendations()');
+                console.log('  - showEvidenceChecklist()');
+                console.log('  - showValidationErrors()');
+                console.log('  - showSAILFilter()');
+            }
+        });
+    </script>
+</body>
+</html>

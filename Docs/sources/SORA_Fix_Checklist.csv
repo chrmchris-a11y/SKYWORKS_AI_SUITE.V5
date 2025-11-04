@@ -1,0 +1,9 @@
+Fix,Area,Change,API/File,Status,Reference
+Indentation bug,Python GRC 2.5,Ορισμός intrinsic/final εντός κύριου block πριν mitigations και return,/Backend_Python/main.py ✔,Done,EASA AMC Step #2/#3; JARUS v2.5 Annex A/B
+Remove micro-UAS cap,SORA 2.0,Αφαίρεση κανόνα "<250 g + <19 m/s ⇒ cap GRC=2" (δεν ισχύει στο 2.0),/Backend_Python/main.py ✔,Done,EASA AMC Step #8 (Containment) – όχι GRC cap στο 2.0
+Stabilize JSON,SORA 2.0/2.5,Χρήση snake_case (intrinsic_grc, final_grc, notes, source),/Backend_Python/main.py ✔,Done,Engineering hygiene / .NET client compat
+Official bands,SORA 2.5,Χρήση επίσημων bands πληθυσμιακής πυκνότητας (όχι ad-hoc),Calculator (authoritative) ✔,Ongoing,JARUS v2.5 Annex A/B
+Mitigations & floor,SORA 2.0 & 2.5,Σειρά M1A→M1B→M1C→M2 και floor κατά Annex B/Table 5,calculations/grc_calculator.py ✔,Done,EASA AMC Annex B; JARUS Annex B Table 5
+SAIL mapping,SAIL,Επιβεβαίωση ότι GRC=5 + ARC=c ⇒ SAIL IV,/Backend_Python/main.py ✔,Done,EASA AMC Step #5 (SAIL Table)
+ARC normalization,ARC,Suburban → Urban normalization + σημείωση στα docs,/Backend_Python/main.py ✔,Done,JARUS Annex C mapping (engineering note)
+Scope guardrails,SAIL,SAIL VI κάτω από SPECIFIC ⇒ out-of-scope (CERTIFIED),.NET/Python SAIL paths,To Review,EASA AMC Step #7 context

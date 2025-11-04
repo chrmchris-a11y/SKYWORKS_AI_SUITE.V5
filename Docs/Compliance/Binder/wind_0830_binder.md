@@ -1,0 +1,59 @@
+# Compliance Binder — Wind Turbine Cleaning (08:30)
+
+Generated: 2025-10-22 00:32
+
+---
+
+## Mission Briefing
+# Mission Briefing — Wind_Turbine
+
+- Time window: 08:30
+- Zone: rural | Airspace: G
+- Target SAIL: II
+- Recommended Operation Mode: VLOS
+
+## Crew plan
+- Remote Pilot in Command (PIC): 1 — Υπεύθυνος ασφαλούς εκτέλεσης πτήσης και αποφάσεων
+- Observer(s): 1 — Κάλυψη γωνιών/τυφλών σημείων και διατήρηση LOS
+- Marshal(s): 1 — Έλεγχος εισόδων/πεζών και ασφαλών διαδρόμων
+- Safety Manager: 1 — Εποπτεία κινδύνων, Go/No-Go, και ERP
+- Tooling/Payload Technician: 1 — Έλεγχος αντλιών/βαλβίδων, διαρροών και διαμόρφωσης
+
+## Approvals / Notifications (by zone/airspace)
+- Άδεια ιδιοκτήτη/διαχειριστή χώρου (site owner permission)
+- Έλεγχος NOTAM/UTM και τοπικών περιορισμών (FRZ/ΝΟΤΑΜ)
+
+## ERP (Emergency Response Plan)
+### Triggers
+- Απώλεια C2 (RSSI/latency εκτός ορίων)
+- Είσοδος τρίτων στο CGA
+- Υπέρβαση ορίων ανέμου/καιρού
+- Διαρροή ή αστοχία εξοπλισμού (αντλία/βαλβίδες)
+
+### Actions
+- Άμεσο abort callout και εκτέλεση διαδικασίας επιστροφής/τερματισμού
+- Κατεύθυνση σε προκαθορισμένη ELS εντός CGA
+- Ενημέρωση marshals για εκκένωση διαδρόμων
+- Καταγραφή συμβάντος και φωτογραφική τεκμηρίωση μετά το ασφαλές τέλος
+
+### Muster points
+- Muster point A (πλησίον εισόδου συνεργείου)
+- Muster point B (εναλλακτικό, υπήνεμο σημείο)
+
+### ELS (Emergency Landing Sites)
+- 2+ προκαθορισμένα ELS εντός CGA, με αποτύπωση στο διάγραμμα χώρου
+
+## Notes
+- Εισαγωγή στο `Docs/Compliance/OSO_to_Evidence_Matrix.md` για τις αντίστοιχες OSO και τεκμήρια.
+- Ενημέρωσε τους ιδιοκτήτες/διαχειριστές για ώρες, πρόσβαση και προσωρινά μέτρα CGA.
+
+---
+
+## Approvals (from mission)
+- Άδεια ιδιοκτήτη/διαχειριστή χώρου (site owner permission)
+- Έλεγχος NOTAM/UTM και τοπικών περιορισμών (FRZ/ΝΟΤΑΜ)
+
+---
+
+## OSO Matrix — Scenario Excerpt
+_No matching Scenario Pack found in OSO matrix._

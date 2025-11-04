@@ -1,0 +1,401 @@
+=== FILE: Backend/src/Skyworks.Api/Controllers/DronesController.cs ===
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using Skyworks.Core.Interfaces;
+using Skyworks.Core.Models;
+
+namespace Skyworks.Api.Controllers
+{
+    [ApiController]
+    [Route("api/drones")]
+    public class DronesController : ControllerBase
+    {
+        private readonly IDroneCatalogService _droneCatalogService;
+        private readonly ILogger<DronesController> _logger;
+
+        public DronesController(IDroneCatalogService droneCatalogService, ILogger<DronesController> logger)
+        {
+            _droneCatalogService = droneCatalogService;
+            _logger = logger;
+        }
+
+        [HttpGet("catalog")]
+        public async Task<ActionResult<List<DroneSpecification>>> GetCatalog()
+        {
+            try
+            {
+                var drones = await _droneCatalogService.GetAllDronesAsync();
+                return Ok(drones);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting drone catalog");
+                return StatusCode(500, new { error = "Failed to get drone catalog" });
+            }
+        }
+
+        [HttpGet("dropdown")]
+        public async Task<ActionResult<object>> GetDropdownList()
+        {
+            try
+            {
+                var drones = await _droneCatalogService.GetAllDronesAsync();
+                var dropdownData = new
+                {
+                    drones = drones.Select(d => new
+                    {
+                        id = d.Id,
+                        displayName = d.DisplayName,
+                        cClass = d.CClass,
+                        mTOM_kg = d.MTOM_kg,
+                        characteristicDimension_m = d.CharacteristicDimension_m,
+                        maxSpeed_mps = d.MaxSpeed_mps
+                    }).ToList()
+                };
+                return Ok(dropdownData);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting drone dropdown list");
+                return StatusCode(500, new { error = "Failed to get drone dropdown list" });
+            }
+        }
+
+        [HttpGet("{droneId}")]
+        public async Task<ActionResult<DroneSpecification>> GetDrone(string droneId)
+        {
+            try
+            {
+                var drone = await _droneCatalogService.GetDroneByIdAsync(droneId);
+                if (drone == null)
+                {
+                    return NotFound(new { error = $"Drone with ID '{droneId}' not found" });
+                }
+                return Ok(drone);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting drone {DroneId}", droneId);
+                return StatusCode(500, new { error = "Failed to get drone" });
+            }
+        }
+
+        [HttpPost("search")]
+        public async Task<ActionResult<List<DroneSpecification>>> SearchDrones([FromBody] DroneCatalogFilter filter)
+        {
+            try
+            {
+                if (filter == null)
+                {
+                    return BadRequest(new { error = "Filter is required" });
+                }
+
+                var drones = await _droneCatalogService.SearchDronesAsync(filter);
+                return Ok(drones);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error searching drones");
+                return StatusCode(500, new { error = "Failed to search drones" });
+            }
+        }
+    }
+}
+```
+
+=== FILE: Backend/src/Skyworks.Api/Controllers/SORAController.cs ===
+```csharp
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Localization;
+using Skyworks.Core.Interfaces;
+using Skyworks.Core.Models.SORA;
+
+namespace Skyworks.Api.Controllers
+{
+    [ApiController]
+    [Route("api/sora")]
+    public class SORAController : ControllerBase
+    {
+        private readonly ISORAOrchestrationService _orchestration;
+        private readonly ILogger<SORAController> _logger;
+        private readonly IStringLocalizer<SORAController> _localizer;
+
+        public SORAController(
+            ISORAOrchestrationService orchestration,
+            ILogger<SORAController> logger,
+            IStringLocalizer<SORAController> localizer)
+        {
+            _orchestration = orchestration;
+            _logger = logger;
+            _localizer = localizer;
+        }
+
+        [HttpPost("complete")]
+        public ActionResult<SORACompleteResult> ExecuteComplete([FromBody] SORACompleteRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("SORA complete calculation requested");
+
+                if (request == null)
+                {
+                    _logger.LogWarning("SORA request body is null");
+                    return BadRequest(new { error = _localizer["RequestBodyRequired"].Value ?? "Request body is required" });
+                }
+
+                _logger.LogInformation("SORA Version: {SoraVersion}", request.SoraVersion);
+
+                if (request.SoraVersion != "2.0" && request.SoraVersion != "2.5")
+                {
+                    _logger.LogWarning("Invalid SORA version: {SoraVersion}", request.SoraVersion);
+                    return BadRequest(new { error = _localizer["InvalidSoraVersion"].Value ?? "Invalid SORA version" });
+                }
+
+                if (_orchestration == null)
+                {
+                    _logger.LogError("SORA orchestration service is null");
+                    return StatusCode(500, new { error = "SORA orchestration service is not available" });
+                }
+
+                var result = _orchestration.ExecuteComplete(request);
+
+                if (result == null)
+                {
+                    _logger.LogError("SORA orchestration returned null result");
+                    return StatusCode(500, new { error = "Failed to execute SORA calculation" });
+                }
+
+                if (!result.IsSuccessful)
+                {
+                    _logger.LogWarning("SORA calculation failed: {Errors}", string.Join(", ", result.Errors ?? new List<string>()));
+                    return BadRequest(result);
+                }
+
+                _logger.LogInformation("SORA calculation completed successfully");
+                return Ok(result);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                _logger.LogError(ex, "JSON deserialization error in SORA complete");
+                return BadRequest(new { error = "Invalid JSON format in request", details = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Argument error in SORA complete");
+                return BadRequest(new { error = "Invalid argument", details = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in SORA complete calculation");
+                return StatusCode(500, new { error = "An unexpected error occurred during SORA calculation", details = ex.Message });
+            }
+        }
+
+        [HttpPost("ground-risk")]
+        public ActionResult<SORAGroundRiskResult> ExecuteGroundRisk([FromBody] SORAGroundRiskRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("SORA ground risk calculation requested");
+
+                if (request == null)
+                {
+                    _logger.LogWarning("SORA ground risk request body is null");
+                    return BadRequest(new { error = _localizer["RequestBodyRequired"].Value ?? "Request body is required" });
+                }
+
+                if (request.SoraVersion != "2.0" && request.SoraVersion != "2.5")
+                {
+                    _logger.LogWarning("Invalid SORA version for ground risk: {SoraVersion}", request.SoraVersion);
+                    return BadRequest(new { error = _localizer["InvalidSoraVersion"].Value ?? "Invalid SORA version" });
+                }
+
+                var result = _orchestration.ExecuteGroundRisk(request);
+
+                if (result == null)
+                {
+                    _logger.LogError("SORA ground risk orchestration returned null result");
+                    return StatusCode(500, new { error = "Failed to execute SORA ground risk calculation" });
+                }
+
+                if (!result.IsSuccessful)
+                {
+                    _logger.LogWarning("SORA ground risk calculation failed: {Errors}", string.Join(", ", result.Errors ?? new List<string>()));
+                    return BadRequest(result);
+                }
+
+                _logger.LogInformation("SORA ground risk calculation completed successfully");
+                return Ok(result);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                _logger.LogError(ex, "JSON deserialization error in SORA ground risk");
+                return BadRequest(new { error = "Invalid JSON format in request", details = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Argument error in SORA ground risk");
+                return BadRequest(new { error = "Invalid argument", details = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in SORA ground risk calculation");
+                return StatusCode(500, new { error = "An unexpected error occurred during SORA ground risk calculation", details = ex.Message });
+            }
+        }
+
+        [HttpPost("air-risk")]
+        public ActionResult<SORAirRiskResult> ExecuteAirRisk([FromBody] SORAirRiskRequest request)
+        {
+            try
+            {
+                _logger.LogInformation("SORA air risk calculation requested");
+
+                if (request == null)
+                {
+                    _logger.LogWarning("SORA air risk request body is null");
+                    return BadRequest(new { error = _localizer["RequestBodyRequired"].Value ?? "Request body is required" });
+                }
+
+                if (request.SoraVersion != "2.0" && request.SoraVersion != "2.5")
+                {
+                    _logger.LogWarning("Invalid SORA version for air risk: {SoraVersion}", request.SoraVersion);
+                    return BadRequest(new { error = _localizer["InvalidSoraVersion"].Value ?? "Invalid SORA version" });
+                }
+
+                var result = _orchestration.ExecuteAirRisk(request);
+
+                if (result == null)
+                {
+                    _logger.LogError("SORA air risk orchestration returned null result");
+                    return StatusCode(500, new { error = "Failed to execute SORA air risk calculation" });
+                }
+
+                if (!result.IsSuccessful)
+                {
+                    _logger.LogWarning("SORA air risk calculation failed: {Errors}", string.Join(", ", result.Errors ?? new List<string>()));
+                    return BadRequest(result);
+                }
+
+                _logger.LogInformation("SORA air risk calculation completed successfully");
+                return Ok(result);
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                _logger.LogError(ex, "JSON deserialization error in SORA air risk");
+                return BadRequest(new { error = "Invalid JSON format in request", details = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogError(ex, "Argument error in SORA air risk");
+                return BadRequest(new { error = "Invalid argument", details = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error in SORA air risk calculation");
+                return StatusCode(500, new { error = "An unexpected error occurred during SORA air risk calculation", details = ex.Message });
+            }
+        }
+    }
+}
+```
+
+=== FILE: Backend/src/Skyworks.Api/Program.cs ===
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Skyworks.Core.Interfaces;
+using Skyworks.Core.Models;
+using Skyworks.Infrastructure.Data;
+using Skyworks.Infrastructure.Services;
+using System.Globalization;
+using Microsoft.AspNetCore.Localization;
+using System.Text.Json.Serialization;
+using System.Text.Json;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+builder.Services.AddDbContext<SkyworksDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Add localization services
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+// Add services
+builder.Services.AddScoped<IDroneCatalogService, DroneCatalogService>();
+builder.Services.AddScoped<ISORAOrchestrationService, SORAOrchestrationService>();
+builder.Services.AddScoped<ISORACalculationService, SORACalculationService>();
+builder.Services.AddScoped<IMissionPlanningService, MissionPlanningService>();
+builder.Services.AddScoped<IGeographicService, GeographicService>();
+builder.Services.AddScoped<IWeatherService, WeatherService>();
+
+// Add CORS
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
+// Add controllers with JSON configuration
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+        options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+        options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+        options.JsonSerializerOptions.AllowTrailingCommas = true;
+        options.JsonSerializerOptions.ReadCommentHandling = JsonCommentHandling.Skip;
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+
+// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Configure supported cultures
+var supportedCultures = new[]
+{
+    new CultureInfo("en-US"),
+    new CultureInfo("el-GR")
+};
+
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    options.DefaultRequestCulture = new RequestCulture("en-US");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+});
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+// Add localization middleware
+app.UseRequestLocalization(app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>().Value);
+
+app.UseCors("AllowAll");
+
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+// Serve static files and default route
+app.MapFallbackToFile("app/Pages/index.html");
+
+app.Run();
+```

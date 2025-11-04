@@ -1,0 +1,485 @@
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Http;
+
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// HTTP Client for Python Calculation Microservice
+/// Calls Python FastAPI service on port 8001 for accurate EASA/JARUS calculations
+/// </summary>
+public interface IPythonCalculationClient
+{
+    Task<PythonGRCResponse?> CalculateGRC_2_0(PythonGRCRequest_2_0 request);
+    Task<PythonGRCResponse?> CalculateGRC_2_5(PythonGRCRequest_2_5 request);
+    Task<PythonARCResponse?> CalculateARC_2_0(PythonARCRequest_2_0 request);
+    Task<PythonARCResponse?> CalculateARC_2_5(PythonARCRequest_2_5 request);
+    Task<PythonSAILResponse?> CalculateSAIL(PythonSAILRequest request);
+    Task<bool> HealthCheck();
+}
+
+public class PythonCalculationClient : IPythonCalculationClient
+{
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<PythonCalculationClient> _logger;
+    private readonly string _baseUrl;
+
+    public PythonCalculationClient(IHttpClientFactory httpClientFactory, ILogger<PythonCalculationClient> logger, IConfiguration configuration)
+    {
+        _httpClient = httpClientFactory.CreateClient("PythonService");
+        _logger = logger;
+        _baseUrl = configuration.GetValue<string>("PythonService:BaseUrl") ?? "http://localhost:8001";
+        _httpClient.BaseAddress = new Uri(_baseUrl);
+        _httpClient.Timeout = TimeSpan.FromSeconds(10);
+    }
+
+    public async Task<bool> HealthCheck()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/health");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Python service health check failed");
+            return false;
+        }
+    }
+
+    public async Task<PythonGRCResponse?> CalculateGRC_2_0(PythonGRCRequest_2_0 request)
+    {
+        try
+        {
+            // Normalize request: lowercase mitigation enums + scenario name conversion for Python compatibility
+            var normalizedReq = new
+            {
+                max_dimension_m = request.MaxDimensionM,
+                operational_scenario = ToScenarioString(request.OperationalScenario),
+                m1_strategic = ToTitleCase(request.M1Strategic),
+                m2_ground_impact = ToTitleCase(request.M2GroundImpact),
+                m3_emergency_response = ToTitleCase(request.M3EmergencyResponse),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/grc/2.0", content);
+            response.EnsureSuccessStatusCode();
+            
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python GRC 2.0 calculation");
+            throw;
+        }
+    }
+
+    public async Task<PythonGRCResponse?> CalculateGRC_2_5(PythonGRCRequest_2_5 request)
+    {
+        try
+        {
+            // Normalize request: lowercase mitigation enums for Python compatibility
+            var normalizedReq = new
+            {
+                max_dimension_m = request.MaxDimensionM,
+                max_speed_ms = request.MaxSpeedMs,
+                weight_kg = request.WeightKg,
+                population_density = request.PopulationDensity,
+                is_controlled_ground = request.IsControlledGround,
+                m1_strategic = ToTitleCase(request.M1Strategic),
+                m2_ground_impact = ToTitleCase(request.M2GroundImpact),
+                m3_emergency_response = ToTitleCase(request.M3EmergencyResponse),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/grc/2.5", content);
+            
+            // Read response body before checking status (for error message extraction)
+            var responseJson = await response.Content.ReadAsStringAsync();
+            
+            // If error response, try to extract structured error message
+            if (!response.IsSuccessStatusCode)
+            {
+                // Try to parse error detail: {"detail": "OUT_OF_SCOPE|iGRC=9|..."}
+                try
+                {
+                    var errorDoc = JsonDocument.Parse(responseJson);
+                    if (errorDoc.RootElement.TryGetProperty("detail", out var detailProp))
+                    {
+                        var detailMsg = detailProp.GetString() ?? string.Empty;
+                        throw new HttpRequestException($"Python GRC 2.5 returned {(int)response.StatusCode}: {detailMsg}");
+                    }
+                }
+                catch (JsonException)
+                {
+                    // If JSON parsing fails, use raw response
+                }
+                response.EnsureSuccessStatusCode(); // Will throw with status code message
+            }
+            
+            return JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python GRC 2.5 calculation");
+            throw;
+        }
+    }
+
+    public async Task<PythonARCResponse?> CalculateARC_2_0(PythonARCRequest_2_0 request)
+    {
+        try
+        {
+            // Normalize request: title-case enums for Python compatibility
+            var normalizedReq = new
+            {
+                max_height_agl_m = request.MaxHeightAglM,
+                max_height_amsl_m = request.MaxHeightAmslM,
+                airspace_class = request.AirspaceClass,
+                is_controlled = request.IsControlled,
+                is_modes_veil = request.IsModesVeil,
+                is_tmz = request.IsTmz,
+                environment = ToTitleCase(request.Environment),
+                is_airport_heliport = request.IsAirportHeliport,
+                is_atypical_segregated = request.IsAtypicalSegregated,
+                tactical_mitigation_level = ToTitleCase(request.TacticalMitigationLevel),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/arc/2.0", content);
+            response.EnsureSuccessStatusCode();
+            
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<PythonARCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python ARC 2.0 calculation");
+            throw;
+        }
+    }
+
+    public async Task<PythonARCResponse?> CalculateARC_2_5(PythonARCRequest_2_5 request)
+    {
+        try
+        {
+            // Normalize request: title-case enums for Python compatibility
+            var normalizedReq = new
+            {
+                max_height_agl_m = request.MaxHeightAglM,
+                max_speed_ms = request.MaxSpeedMs,
+                airspace_class = request.AirspaceClass,
+                is_controlled = request.IsControlled,
+                is_modes_veil = request.IsModesVeil,
+                is_tmz = request.IsTmz,
+                environment = ToTitleCase(request.Environment),
+                is_airport_heliport = request.IsAirportHeliport,
+                is_atypical_segregated = request.IsAtypicalSegregated,
+                tactical_mitigation_level = ToTitleCase(request.TacticalMitigationLevel),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/arc/2.5", content);
+            response.EnsureSuccessStatusCode();
+            
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<PythonARCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python ARC 2.5 calculation");
+            throw;
+        }
+    }
+
+    public async Task<PythonSAILResponse?> CalculateSAIL(PythonSAILRequest request)
+    {
+        try
+        {
+            // Normalize request: SAIL expects ARC enums like "ARC-a" (hyphens, lowercase) and version strings
+            var normalizedReq = new
+            {
+                sora_version = request.SoraVersion,
+                final_grc = request.FinalGRC,
+                final_arc = ToARCEnum(request.FinalARC),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            
+            var response = await _httpClient.PostAsync("/api/v1/calculate/sail", content);
+            response.EnsureSuccessStatusCode();
+            
+            var responseJson = await response.Content.ReadAsStringAsync();
+            return JsonSerializer.Deserialize<PythonSAILResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calling Python SAIL calculation");
+            throw;
+        }
+    }
+
+    // Normalize uppercase enum strings to title-case for Python
+    private string ToTitleCase(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return s ?? string.Empty;
+        var lower = s.ToLowerInvariant();
+        if (lower == "none") return "None";
+        if (lower == "low") return "Low";
+        if (lower == "medium") return "Medium";
+        if (lower == "high") return "High";
+        // Environments
+        if (lower == "rural") return "Rural";
+        if (lower == "urban") return "Urban";
+        if (lower == "suburban") return "Suburban";
+        if (lower == "controlled") return "Controlled";
+        if (lower == "industrial") return "Industrial";
+        // Default: capitalize first letter
+        return char.ToUpperInvariant(s[0]) + s.Substring(1).ToLowerInvariant();
+    }
+
+    // Normalize ARC enum from e.g., "ARC_a" -> "ARC-a"
+    private string ToARCEnum(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return s ?? string.Empty;
+        // Python ARCRating uses lowercase suffix with hyphens: ARC-a, ARC-b, ARC-c, ARC-d
+        return s.Replace("_", "-");
+    }
+
+    // Convert .NET OperationalScenario enum to Python scenario string
+    // Based on JARUS SORA 2.0 Table 2 scenario names
+    private string ToScenarioString(string dotnetScenario)
+    {
+        return dotnetScenario switch
+        {
+            "VLOS_SparselyPopulated" => "VLOS_Sparsely",
+            "BVLOS_SparselyPopulated" => "BVLOS_Sparsely",
+            "VLOS_Populated" => "VLOS_Populated",
+            "BVLOS_Populated" => "BVLOS_Populated",
+            "VLOS_GatheringOfPeople" => "VLOS_Gathering",
+            "BVLOS_GatheringOfPeople" => "BVLOS_Gathering",
+            "ControlledGroundArea" => "VLOS_Controlled",
+            _ => dotnetScenario // Pass through if already correct
+        };
+    }
+}
+
+// ============================================================================
+// PYTHON API REQUEST/RESPONSE MODELS
+// ============================================================================
+
+#region GRC Models
+
+public class PythonGRCRequest_2_0
+{
+    [JsonPropertyName("max_dimension_m")]
+    public double MaxDimensionM { get; set; }
+
+    [JsonPropertyName("operational_scenario")]
+    public string OperationalScenario { get; set; } = string.Empty;
+
+    [JsonPropertyName("m1_strategic")]
+    public string M1Strategic { get; set; } = "None";
+
+    [JsonPropertyName("m2_ground_impact")]
+    public string M2GroundImpact { get; set; } = "Medium";
+
+    [JsonPropertyName("m3_emergency_response")]
+    public string M3EmergencyResponse { get; set; } = "Medium";
+}
+
+public class PythonGRCRequest_2_5
+{
+    [JsonPropertyName("max_dimension_m")]
+    public double MaxDimensionM { get; set; }
+
+    [JsonPropertyName("max_speed_ms")]
+    public double MaxSpeedMs { get; set; }
+
+    [JsonPropertyName("weight_kg")]
+    public double? WeightKg { get; set; }
+
+    [JsonPropertyName("population_density")]
+    public double PopulationDensity { get; set; }
+
+    [JsonPropertyName("is_controlled_ground")]
+    public bool IsControlledGround { get; set; }
+
+    [JsonPropertyName("m1_strategic")]
+    public string M1Strategic { get; set; } = "None";
+
+    [JsonPropertyName("m2_ground_impact")]
+    public string M2GroundImpact { get; set; } = "Medium";
+
+    [JsonPropertyName("m3_emergency_response")]
+    public string M3EmergencyResponse { get; set; } = "Medium";
+}
+
+public class PythonGRCResponse
+{
+    [JsonPropertyName("intrinsic_grc")]
+    public int IntrinsicGRC { get; set; }
+
+    [JsonPropertyName("final_grc")]
+    public int FinalGRC { get; set; }
+
+    [JsonPropertyName("m1_effect")]
+    public int M1Effect { get; set; }
+
+    [JsonPropertyName("m2_effect")]
+    public int M2Effect { get; set; }
+
+    [JsonPropertyName("m3_effect")]
+    public int M3Effect { get; set; }
+
+    [JsonPropertyName("dimension_category")]
+    public string DimensionCategory { get; set; } = string.Empty;
+
+    [JsonPropertyName("notes")]
+    public string Notes { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty;
+}
+
+#endregion
+
+#region ARC Models
+
+public class PythonARCRequest_2_0
+{
+    [JsonPropertyName("max_height_agl_m")]
+    public double MaxHeightAglM { get; set; }
+
+    [JsonPropertyName("max_height_amsl_m")]
+    public double MaxHeightAmslM { get; set; }
+
+    [JsonPropertyName("airspace_class")]
+    public string AirspaceClass { get; set; } = "G";
+
+    [JsonPropertyName("is_controlled")]
+    public bool IsControlled { get; set; }
+
+    [JsonPropertyName("is_modes_veil")]
+    public bool IsModesVeil { get; set; }
+
+    [JsonPropertyName("is_tmz")]
+    public bool IsTmz { get; set; }
+
+    [JsonPropertyName("environment")]
+    public string Environment { get; set; } = "Rural";
+
+    [JsonPropertyName("is_airport_heliport")]
+    public bool IsAirportHeliport { get; set; }
+
+    [JsonPropertyName("is_atypical_segregated")]
+    public bool IsAtypicalSegregated { get; set; }
+
+    [JsonPropertyName("tactical_mitigation_level")]
+    public string TacticalMitigationLevel { get; set; } = "None";
+}
+
+public class PythonARCRequest_2_5
+{
+    [JsonPropertyName("max_height_agl_m")]
+    public double MaxHeightAglM { get; set; }
+
+    [JsonPropertyName("max_speed_ms")]
+    public double MaxSpeedMs { get; set; }
+
+    [JsonPropertyName("airspace_class")]
+    public string AirspaceClass { get; set; } = "G";
+
+    [JsonPropertyName("is_controlled")]
+    public bool IsControlled { get; set; }
+
+    [JsonPropertyName("is_modes_veil")]
+    public bool IsModesVeil { get; set; }
+
+    [JsonPropertyName("is_tmz")]
+    public bool IsTmz { get; set; }
+
+    [JsonPropertyName("environment")]
+    public string Environment { get; set; } = "Rural";
+
+    [JsonPropertyName("is_airport_heliport")]
+    public bool IsAirportHeliport { get; set; }
+
+    [JsonPropertyName("is_atypical_segregated")]
+    public bool IsAtypicalSegregated { get; set; }
+
+    [JsonPropertyName("tactical_mitigation_level")]
+    public string TacticalMitigationLevel { get; set; } = "None";
+}
+
+public class PythonARCResponse
+{
+    [JsonPropertyName("initial_arc")]
+    public string InitialARC { get; set; } = string.Empty;
+
+    [JsonPropertyName("final_arc")]
+    public string FinalARC { get; set; } = string.Empty;
+
+    [JsonPropertyName("aec")]
+    public int AEC { get; set; }
+
+    [JsonPropertyName("density_rating")]
+    public int DensityRating { get; set; }
+
+    [JsonPropertyName("tactical_mitigation_effect")]
+    public int TacticalMitigationEffect { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string Notes { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty;
+}
+
+#endregion
+
+#region SAIL Models
+
+public class PythonSAILRequest
+{
+    [JsonPropertyName("sora_version")]
+    public string SoraVersion { get; set; } = "2.0";
+
+    [JsonPropertyName("final_grc")]
+    public int FinalGRC { get; set; }
+
+    [JsonPropertyName("final_arc")]
+    public string FinalARC { get; set; } = string.Empty;
+}
+
+public class PythonSAILResponse
+{
+    [JsonPropertyName("sail")]
+    public string SAIL { get; set; } = string.Empty;
+
+    [JsonPropertyName("final_grc")]
+    public int FinalGRC { get; set; }
+
+    [JsonPropertyName("final_arc")]
+    public string FinalARC { get; set; } = string.Empty;
+
+    [JsonPropertyName("sora_version")]
+    public string SoraVersion { get; set; } = string.Empty;
+
+    [JsonPropertyName("notes")]
+    public string Notes { get; set; } = string.Empty;
+
+    [JsonPropertyName("source")]
+    public string Source { get; set; } = string.Empty;
+}
+
+#endregion

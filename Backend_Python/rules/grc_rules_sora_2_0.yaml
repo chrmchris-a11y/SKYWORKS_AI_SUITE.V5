@@ -1,0 +1,35 @@
+# GRC SORA 2.0 - Table 2 qualitative mapping (authoritative)
+version: "2.0"
+
+igrc_table_by_scenario:
+  VLOS_Controlled: [1, 2, 3, 4]
+  BVLOS_Controlled: [1, 2, 3, 4]
+  VLOS_Sparsely: [2, 3, 4, 5]
+  BVLOS_Sparsely: [3, 4, 5, 6]
+  VLOS_Populated: [4, 5, 6, 8]
+  BVLOS_Populated: [5, 6, 8, 10]
+  VLOS_Gathering: [7, 7, 7, 7]
+  BVLOS_Gathering: [8, 8, 8, 8]
+
+mitigations:
+  M1:
+    None: 0
+    Low: -1
+    Medium: -2
+    High: -4
+  M2:
+    None: 0
+    Low: 0
+    Medium: -1
+    High: -2
+  M3:
+    None: 1
+    Low: 1
+    Medium: 0
+    High: -1
+
+notes:
+  source: "JARUS SORA 2.0 (JAR-DEL-WG6-D.04 Edition 2.0), Section 2.3.1"
+  comments:
+    - "M1 floor applies only to column minimum; M2/M3 may cross below."
+    - "Gathering rows are dimension-agnostic constants."

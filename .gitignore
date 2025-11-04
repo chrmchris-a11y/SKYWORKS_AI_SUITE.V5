@@ -1,0 +1,25 @@
+bin/
+obj/
+.vscode/*
+!.vscode/extensions/
+node_modules/
+# Phase1 Step2 — Skyworks V5
+.continue/
+KnowledgeBase/**
+!KnowledgeBase/Index/
+!KnowledgeBase/Index/.gitkeep
+!KnowledgeBase/README.md
+
+# Environment files (do not commit secrets)
+.env
+.env.local
+Backend_Python/.env
+
+# Training Center generated artifacts
+# Ignore agent memory contents but keep directory via .gitkeep
+Tools/TrainingCenter/agent_memory/*
+!Tools/TrainingCenter/agent_memory/
+!Tools/TrainingCenter/agent_memory/.gitkeep
+Tools/TrainingCenter/logs/*
+!Tools/TrainingCenter/logs/
+!Tools/TrainingCenter/logs/.gitkeep

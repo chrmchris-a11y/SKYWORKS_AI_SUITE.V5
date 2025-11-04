@@ -1,0 +1,48 @@
+[
+  {
+    "id": "SORA25_LOW_A",
+    "soraVersion": "2.5",
+    "drone": { "dimension_m": 0.2, "maxSpeed_mps": 20, "mass_kg": 0.25 },
+    "groundRisk": { "populationDensity": 10, "isControlledGroundArea": false },
+    "airRisk": { "explicitARC": "ARC_a", "strategicMitigations": [] },
+    "mitigations": [],
+    "expected": { "iGRC": 1, "finalGRC": 1, "residualARC": "ARC_a", "sail": "I" }
+  },
+  {
+    "id": "SORA20_GRC5_ARC_c_IV",
+    "soraVersion": "2.0",
+    "drone": { "dimension_m": 3.0, "maxSpeed_mps": 35, "mass_kg": 5 },
+    "groundRisk": { "scenario_V2_0": "VLOS_Populated" },
+    "airRisk": { "explicitARC": "ARC_c", "strategicMitigations": [] },
+    "mitigations": [ { "type": "M3", "robustness": "Medium" } ],
+    "expected": { "iGRC": 5, "finalGRC": 5, "residualARC": "ARC_c", "sail": "IV" }
+  },
+  {
+    "id": "SORA25_GREY_CELL_WARN",
+    "soraVersion": "2.5",
+    "drone": { "dimension_m": 20, "maxSpeed_mps": 120, "mass_kg": 100 },
+    "groundRisk": { "populationDensity": 60000, "isControlledGroundArea": false },
+    "airRisk": { "explicitARC": "ARC_b", "strategicMitigations": [] },
+    "mitigations": [],
+    "expected": { "iGRC": 7, "finalGRC": 7, "residualARC": "ARC_b", "sail": "III" },
+    "notes": "Population density > 50k triggers grey cell"
+  },
+  {
+    "id": "SORA25_OUT_OF_SCOPE",
+    "soraVersion": "2.5",
+    "drone": { "dimension_m": 40, "maxSpeed_mps": 200, "mass_kg": 250 },
+    "groundRisk": { "populationDensity": 50000, "isControlledGroundArea": false },
+    "airRisk": { "explicitARC": "ARC_d", "strategicMitigations": [] },
+    "mitigations": [],
+    "expected": { "errorContains": "out of the scope" }
+  },
+  {
+    "id": "SORA20_NO_M3_PENALTY",
+    "soraVersion": "2.0",
+    "drone": { "dimension_m": 1.0, "maxSpeed_mps": 25, "mass_kg": 1.0 },
+    "groundRisk": { "scenario_V2_0": "VLOS_SparselyPopulated" },
+    "airRisk": { "explicitARC": "ARC_b", "strategicMitigations": [] },
+    "mitigations": [],
+    "expected": { "finalGRC_delta_vs_iGRC": 1, "noteContains": "ERP" }
+  }
+]

@@ -1,0 +1,144 @@
+{
+  "testMissions": [
+    {
+      "id": "STS01_URBAN_001",
+      "name": "STS-01: Urban Building Inspection",
+      "category": "STS-01",
+      "description": "VLOS inspection of tall building facade in city center",
+      "parameters": {
+        "uasClass": "C5",
+        "maxDimension": 2.5,
+        "mtom": 8.0,
+        "maxSpeed": 4.5,
+        "maxHeight": 80,
+        "populationDensity": 3000,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 20,
+        "vlos": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true
+      }
+    },
+    {
+      "id": "STS02_PIPELINE_001",
+      "name": "STS-02: Rural Pipeline Inspection",
+      "category": "STS-02",
+      "description": "BVLOS pipeline inspection with 2 airspace observers",
+      "parameters": {
+        "uasClass": "C6",
+        "maxDimension": 2.8,
+        "mtom": 20,
+        "maxHeight": 100,
+        "flightRange": 1800,
+        "populationDensity": 50,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 80,
+        "meteorologicalVisibility": 8,
+        "airspaceObservers": 2,
+        "launchRecoveryVlos": true,
+        "bvlos": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "emergencyResponsePlan": true,
+        "directRemoteID": true,
+        "geoFencing": true
+      }
+    },
+    {
+      "id": "PDRA_S01_URBAN_001",
+      "name": "PDRA-S01: Custom UAS Urban Survey",
+      "category": "PDRA-S01",
+      "description": "VLOS survey with custom (non-C5) UAS in populated area",
+      "parameters": {
+        "uasClass": "Custom",
+        "maxDimension": 2.8,
+        "mtom": 10,
+        "maxHeight": 100,
+        "populationDensity": 1200,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 25,
+        "vlos": true,
+        "automaticMode": false,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "riskAssessment": true
+      }
+    },
+    {
+      "id": "PDRA_S02_SURVEY_001",
+      "name": "PDRA-S02: Custom UAS BVLOS Survey",
+      "category": "PDRA-S02",
+      "description": "BVLOS aerial survey with custom UAS and 2 AOs",
+      "parameters": {
+        "uasClass": "Custom",
+        "maxDimension": 3,
+        "mtom": 23,
+        "maxHeight": 120,
+        "flightRange": 1900,
+        "populationDensity": 45,
+        "sparselyPopulated": true,
+        "controlledGroundArea": true,
+        "groundRiskBuffer": 90,
+        "airspaceObservers": 2,
+        "bvlos": true,
+        "remotePilotCertified": true,
+        "operationsManual": true,
+        "riskAssessment": true
+      }
+    },
+    {
+      "id": "PDRA_G01_MAPPING_001",
+      "name": "PDRA-G01: Aerial Survey BVLOS",
+      "category": "PDRA-G01",
+      "description": "Agricultural mapping survey in sparsely populated area",
+      "parameters": {
+        "maxDimension": 2.5,
+        "mtom": 18,
+        "maxHeight": 100,
+        "populationDensity": 30,
+        "operationalArea": "Agricultural zone A-23",
+        "bvlos": true,
+        "surveyType": "Aerial mapping"
+      }
+    },
+    {
+      "id": "SORA20_URBAN_001",
+      "name": "SORA 2.0: Urban Delivery",
+      "category": "SORA-2.0",
+      "description": "Classic SORA 2.0 assessment for urban delivery scenario",
+      "parameters": {
+        "soraVersion": "2.0",
+        "scenario": "VLOS_Populated",
+        "maxDimension": 1.2,
+        "mtom": 5,
+        "sheltering": true,
+        "controlledArea": true,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 300,
+        "controlledAirspace": false,
+        "urbanAir": true
+      }
+    },
+    {
+      "id": "SORA25_RURAL_001",
+      "name": "SORA 2.5: Rural BVLOS",
+      "category": "SORA-2.5",
+      "description": "SORA 2.5 assessment for rural BVLOS operation",
+      "parameters": {
+        "soraVersion": "2.5",
+        "populationDensity": 45,
+        "isControlledGroundArea": true,
+        "maxDimension": 2.8,
+        "maxSpeed": 15,
+        "sheltering": false,
+        "isAtypicalSegregated": false,
+        "altitudeAGL_ft": 350,
+        "controlledAirspace": false,
+        "urbanAir": false
+      }
+    }
+  ]
+}

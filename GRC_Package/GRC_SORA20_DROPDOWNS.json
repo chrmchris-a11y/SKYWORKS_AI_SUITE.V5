@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "standard": "SORA 2.0 (EASA AMC/GM) — GRC UI",
+  "generated_utc": "2025-10-30T09:42:25.045761Z",
+  "inputs": [
+    {
+      "name": "population_density_p_km2",
+      "label": "Population Density (people/km²)",
+      "type": "number",
+      "required": true
+    },
+    {
+      "name": "environment_type",
+      "label": "Environment Type",
+      "type": "enum",
+      "enum": [
+        "Rural",
+        "Suburban",
+        "Urban",
+        "Industrial",
+        "Controlled"
+      ],
+      "required": false
+    },
+    {
+      "name": "containment_quality",
+      "label": "Containment / Footprint Control",
+      "type": "enum",
+      "enum": [
+        "Poor",
+        "Adequate",
+        "Good"
+      ],
+      "required": false
+    },
+    {
+      "name": "m1_strategic",
+      "label": "M1 Strategic Mitigation Level",
+      "type": "enum",
+      "enum": [
+        "None",
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "required": true
+    },
+    {
+      "name": "m2_impact",
+      "label": "M2 Impact Effects Level",
+      "type": "enum",
+      "enum": [
+        "None",
+        "Low",
+        "High"
+      ],
+      "required": true
+    },
+    {
+      "name": "m3_erp",
+      "label": "M3 ERP Level (validated & effective)",
+      "type": "enum",
+      "enum": [
+        "None",
+        "Low",
+        "Medium",
+        "High"
+      ],
+      "required": true
+    }
+  ],
+  "outputs": [
+    {
+      "name": "initial_grc",
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    },
+    {
+      "name": "final_grc",
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ]
+    }
+  ],
+  "calculation_notes": [
+    "Compute iGRC via Step 2 mapping table.",
+    "Apply M1 with floor cap; then M2; then M3 (+1/0/−1 rule).",
+    "Clamp final GRC to >= 1."
+  ]
+}

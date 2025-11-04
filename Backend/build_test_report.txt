@@ -1,0 +1,10 @@
+Skyworks Build/Test Report - 2025-10-24 21:14:45
+Workspace: C:\\Users\\chrmc\\Desktop\\SKYWORKS_AI_SUITE.V5\\Backend
+Solution: C:\\Users\\chrmc\\Desktop\\SKYWORKS_AI_SUITE.V5\\Backend\\Skyworks.sln
+
+[Build] Status=PASS Exit=0 Duration=4.99s
+[Tests] Status=FAIL Exit=1 Duration=15.66s Total=0 Passed=0 Failed=0 Skipped=0
+
+Build log: C:\\Users\\chrmc\\Desktop\\SKYWORKS_AI_SUITE.V5\\Backend\build_output.txt
+Test log:  C:\\Users\\chrmc\\Desktop\\SKYWORKS_AI_SUITE.V5\\Backend\test_output.txt
+TRX:       C:\\Users\\chrmc\\Desktop\\SKYWORKS_AI_SUITE.V5\\Backend\TestResults.trx

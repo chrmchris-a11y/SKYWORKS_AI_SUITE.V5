@@ -1,0 +1,1290 @@
+I'll implement the complete SAIL calculation system according to the specification. Let me generate all required files with full implementation.
+
+=== FILE: sail/models/sail_models.py ===
+"""SAIL calculation data models using Pydantic V2."""
+
+from datetime import datetime, timezone
+from enum import Enum
+from typing import Any, Dict, List, Literal, Optional
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class SAILValue(str, Enum):
+    """SAIL categories I through VI."""
+    I = "I"
+    II = "II"
+    III = "III"
+    IV = "IV"
+    V = "V"
+    VI = "VI"
+
+
+class ARCValue(str, Enum):
+    """Air Risk Class values."""
+    A = "a"
+    B = "b"
+    C = "c"
+    D = "d"
+
+
+class RobustnessLevel(str, Enum):
+    """OSO robustness/assurance levels."""
+    NONE = "None"
+    LOW = "Low"
+    MEDIUM = "Medium"
+    HIGH = "High"
+
+
+class DocReference(BaseModel):
+    """Document reference for traceability."""
+    doc_id: str = Field(description="Document identifier")
+    standard: str = Field(description="Standard name (SORA_2.0 or SORA_2.5)")
+    section: str = Field(description="Document section/clause")
+    page: Optional[str] = Field(None, description="Page reference")
+    url: Optional[str] = Field(None, description="Document URL")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "doc_id": "EASA_EAR_UAS_2024",
+                "standard": "SORA_2.0",
+                "section": "Annex D, Table D.1",
+                "page": "Annex D-3"
+            }
+        }
+    )
+
+
+class TraceEntry(BaseModel):
+    """Calculation trace entry for full traceability."""
+    step: str = Field(description="Calculation step name")
+    inputs: Dict[str, Any] = Field(description="Input parameters")
+    result: str = Field(description="Step result")
+    rule_ref: str = Field(description="Rule reference")
+    doc_ref: DocReference = Field(description="Document reference")
+    timestamp: str = Field(
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
+        description="Calculation timestamp"
+    )
+    notes: Optional[str] = Field(None, description="Additional notes")
+    
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "step": "sail_determination",
+                "inputs": {"grc": 4, "arc": "c"},
+                "result": "III",
+                "rule_ref": "EASA_AMC_Table_D1_GRC3-4_ARCC",
+                "doc_ref": {
+                    "doc_id": "EASA_EAR_UAS_2024",
+                    "standard": "SORA_2.0",
+                    "section": "Annex D, Table D.1"
+                },
+                "notes": "GRC 4 (range 3-4) × ARC C → SAIL III"
+            }
+        }
+    )
+
+
+class SAILInputs20(BaseModel):
+    """SORA 2.0 SAIL calculation inputs."""
+    version: Literal["SORA_2.0"] = "SORA_2.0"
+    final_grc: int = Field(ge=1, le=8, description="Final GRC after all mitigations")
+    final_arc: ARCValue = Field(description="Final/Residual ARC")
+    
+    model_config = ConfigDict(
+        use_enum_values=True,
+        json_schema_extra={
+            "example": {
+                "version": "SORA_2.0",
+                "final_grc": 4,
+                "final_arc": "c"
+            }
+        }
+    )
+    
+    @field_validator('final_grc')
+    @classmethod
+    def validate_grc_range(cls, v: int) -> int:
+        """Validate GRC is in range 1-8."""
+        if not 1 <= v <= 8:
+            raise ValueError(f"GRC must be between 1 and 8, got {v}")
+        return v
+
+
+class SAILInputs25(BaseModel):
+    """SORA 2.5 SAIL calculation inputs."""
+    version: Literal["SORA_2.5"] = "SORA_2.5"
+    final_grc: int = Field(ge=1, le=8, description="Final GRC after all mitigations")
+    final_arc: ARCValue = Field(description="Final/Residual ARC")
+    
+    model_config = ConfigDict(
+        use_enum_values=True,
+        json_schema_extra={
+            "example": {
+                "version": "SORA_2.5",
+                "final_grc": 6,
+                "final_arc": "b"
+            }
+        }
+    )
+    
+    @field_validator('final_grc')
+    @classmethod
+    def validate_grc_range(cls, v: int) -> int:
+        """Validate GRC is in range 1-8."""
+        if not 1 <= v <= 8:
+            raise ValueError(f"GRC must be between 1 and 8, got {v}")
+        return v
+
+
+class SAILResult(BaseModel):
+    """SAIL calculation result with full traceability."""
+    version: str = Field(description="SORA version used")
+    sail: SAILValue = Field(description="Determined SAIL level")
+    final_grc: int = Field(ge=1, le=8, description="Input GRC")
+    final_arc: ARCValue = Field(description="Input ARC")
+    
+    # OSO requirements
+    oso_requirements: List[str] = Field(description="Required OSO identifiers")
+    oso_count: int = Field(description="Total number of OSOs required")
+    robustness_levels: Dict[str, str] = Field(
+        description="OSO -> robustness level mapping"
+    )
+    
+    # Traceability
+    calculation_trace: List[TraceEntry] = Field(description="Full calculation trace")
+    
+    model_config = ConfigDict(
+        use_enum_values=True,
+        json_schema_extra={
+            "example": {
+                "version": "SORA_2.0",
+                "sail": "III",
+                "final_grc": 4,
+                "final_arc": "c",
+                "oso_requirements": [
+                    "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+                    "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+                    "OSO#13", "OSO#14", "OSO#15"
+                ],
+                "oso_count": 15,
+                "robustness_levels": {
+                    "OSO#01": "Medium",
+                    "OSO#02": "Medium",
+                    "OSO#03": "Low"
+                },
+                "calculation_trace": []
+            }
+        }
+    )
+
+
+class SAILCalculationError(Exception):
+    """Base exception for SAIL calculation errors."""
+    pass
+
+
+class InvalidGRCError(SAILCalculationError):
+    """GRC value out of valid range 1-8."""
+    pass
+
+
+class InvalidARCError(SAILCalculationError):
+    """ARC value not in {a, b, c, d}."""
+    pass
+
+
+class SAILMappingError(SAILCalculationError):
+    """Error during SAIL table lookup."""
+    pass
+=== END FILE ===
+
+=== FILE: sail/calculators/sail_calculator.py ===
+"""SAIL calculators for SORA 2.0 and SORA 2.5."""
+
+from typing import Dict, List, Tuple, Union
+from ..models.sail_models import (
+    SAILValue, ARCValue, SAILInputs20, SAILInputs25, SAILResult,
+    TraceEntry, DocReference, InvalidGRCError, InvalidARCError, SAILMappingError
+)
+from ..data.sail_tables_20 import SAIL_TABLE_20, OSO_BY_SAIL_20
+from ..data.sail_tables_25 import SAIL_TABLE_25, OSO_BY_SAIL_25
+from ..data.oso_requirements import OSO_ROBUSTNESS_MATRIX
+
+
+class SAILCalculator20:
+    """SORA 2.0 SAIL calculator with full traceability."""
+    
+    def __init__(self):
+        """Initialize SORA 2.0 calculator."""
+        self.sail_table = SAIL_TABLE_20
+        self.oso_by_sail = OSO_BY_SAIL_20
+        self.version = "SORA_2.0"
+    
+    def calculate(self, inputs: SAILInputs20) -> SAILResult:
+        """
+        Calculate SAIL from GRC and ARC using SORA 2.0.
+        
+        Args:
+            inputs: SORA 2.0 SAIL calculation inputs
+            
+        Returns:
+            SAILResult with determined SAIL, OSO requirements, and trace
+            
+        Raises:
+            InvalidGRCError: If GRC is out of range
+            InvalidARCError: If ARC is invalid
+            SAILMappingError: If SAIL lookup fails
+        """
+        trace = []
+        
+        try:
+            # Step 1: Validate inputs
+            self._validate_inputs(inputs.final_grc, inputs.final_arc, trace)
+            
+            # Step 2: Determine SAIL from table
+            sail = self._determine_sail(inputs.final_grc, inputs.final_arc, trace)
+            
+            # Step 3: Get OSO requirements
+            oso_requirements = self._get_oso_requirements(sail, trace)
+            
+            # Step 4: Get robustness levels
+            robustness_levels = self._get_robustness_levels(sail, oso_requirements, trace)
+            
+            return SAILResult(
+                version=self.version,
+                sail=sail,
+                final_grc=inputs.final_grc,
+                final_arc=inputs.final_arc,
+                oso_requirements=oso_requirements,
+                oso_count=len(oso_requirements),
+                robustness_levels=robustness_levels,
+                calculation_trace=trace
+            )
+            
+        except Exception as e:
+            trace.append(TraceEntry(
+                step="error",
+                inputs={"grc": inputs.final_grc, "arc": inputs.final_arc.value},
+                result=f"Error: {str(e)}",
+                rule_ref="ERROR_HANDLING",
+                doc_ref=DocReference(
+                    doc_id="EASA_EAR_UAS_2024",
+                    standard="SORA_2.0",
+                    section="Error Handling"
+                ),
+                notes=f"Calculation failed: {str(e)}"
+            ))
+            raise
+    
+    def _validate_inputs(self, grc: int, arc: ARCValue, trace: List[TraceEntry]) -> None:
+        """Validate SAIL calculation inputs."""
+        if not 1 <= grc <= 8:
+            raise InvalidGRCError(f"GRC must be 1-8, got {grc}")
+        
+        if arc.value.lower() not in ["a", "b", "c", "d"]:
+            raise InvalidARCError(f"ARC must be a/b/c/d, got {arc.value}")
+        
+        trace.append(TraceEntry(
+            step="input_validation",
+            inputs={"grc": grc, "arc": arc.value},
+            result="Valid inputs",
+            rule_ref="SORA20_INPUT_VALIDATION",
+            doc_ref=DocReference(
+                doc_id="EASA_EAR_UAS_2024",
+                standard="SORA_2.0",
+                section="Step 9 - SAIL Determination"
+            ),
+            notes=f"GRC {grc} and ARC {arc.value.upper()} are valid"
+        ))
+    
+    def _determine_sail(self, grc: int, arc: ARCValue, trace: List[TraceEntry]) -> SAILValue:
+        """Determine SAIL from GRC and ARC using SORA 2.0 lookup table."""
+        arc_lower = arc.value.lower()
+        
+        # Find matching GRC range
+        for grc_range, arc_map in self.sail_table.items():
+            if isinstance(grc_range, tuple):
+                if grc_range[0] <= grc <= grc_range[1]:
+                    sail = arc_map[arc_lower]
+                    grc_ref = f"{grc_range[0]}-{grc_range[1]}"
+                    break
+            else:
+                if grc == grc_range:
+                    sail = arc_map[arc_lower]
+                    grc_ref = str(grc_range)
+                    break
+        else:
+            raise SAILMappingError(f"No SAIL mapping found for GRC {grc}, ARC {arc.value}")
+        
+        trace.append(TraceEntry(
+            step="sail_determination",
+            inputs={"grc": grc, "arc": arc.value},
+            result=sail.value,
+            rule_ref=f"EASA_AMC_Table_D1_GRC{grc_ref}_ARC{arc.value.upper()}",
+            doc_ref=DocReference(
+                doc_id="EASA_EAR_UAS_2024",
+                standard="SORA_2.0",
+                section="Annex D, Table D.1",
+                page="Annex D-3"
+            ),
+            notes=f"GRC {grc} (range {grc_ref}) × ARC {arc.value.upper()} → SAIL {sail.value}"
+        ))
+        
+        return sail
+    
+    def _get_oso_requirements(self, sail: SAILValue, trace: List[TraceEntry]) -> List[str]:
+        """Get OSO requirements for the determined SAIL."""
+        oso_requirements = self.oso_by_sail[sail]
+        
+        trace.append(TraceEntry(
+            step="oso_requirements",
+            inputs={"sail": sail.value},
+            result=f"{len(oso_requirements)} OSOs required",
+            rule_ref=f"EASA_AMC_OSO_SAIL_{sail.value}",
+            doc_ref=DocReference(
+                doc_id="EASA_EAR_UAS_2024",
+                standard="SORA_2.0",
+                section="Annex D, OSO Requirements"
+            ),
+            notes=f"SAIL {sail.value} requires {len(oso_requirements)} OSOs"
+        ))
+        
+        return oso_requirements
+    
+    def _get_robustness_levels(self, sail: SAILValue, oso_requirements: List[str], 
+                             trace: List[TraceEntry]) -> Dict[str, str]:
+        """Get robustness levels for each OSO based on SAIL."""
+        robustness = {}
+        
+        for oso in oso_requirements:
+            if oso in OSO_ROBUSTNESS_MATRIX and sail.value in OSO_ROBUSTNESS_MATRIX[oso]:
+                level = OSO_ROBUSTNESS_MATRIX[oso][sail.value]
+            else:
+                # Fallback heuristic
+                if sail in [SAILValue.I, SAILValue.II]:
+                    level = "Low"
+                elif sail in [SAILValue.III, SAILValue.IV]:
+                    level = "Medium"
+                else:
+                    level = "High"
+            
+            robustness[oso] = level
+        
+        trace.append(TraceEntry(
+            step="robustness_determination",
+            inputs={"sail": sail.value, "oso_count": len(oso_requirements)},
+            result=f"Robustness levels assigned for {len(oso_requirements)} OSOs",
+            rule_ref="EASA_AMC_Table_D2_Robustness",
+            doc_ref=DocReference(
+                doc_id="EASA_EAR_UAS_2024",
+                standard="SORA_2.0",
+                section="Annex D, Table D.2"
+            ),
+            notes=f"Robustness levels determined for SAIL {sail.value}"
+        ))
+        
+        return robustness
+
+
+class SAILCalculator25:
+    """SORA 2.5 SAIL calculator with full traceability."""
+    
+    def __init__(self):
+        """Initialize SORA 2.5 calculator."""
+        self.sail_table = SAIL_TABLE_25
+        self.oso_by_sail = OSO_BY_SAIL_25
+        self.version = "SORA_2.5"
+    
+    def calculate(self, inputs: SAILInputs25) -> SAILResult:
+        """
+        Calculate SAIL from GRC and ARC using SORA 2.5.
+        
+        Args:
+            inputs: SORA 2.5 SAIL calculation inputs
+            
+        Returns:
+            SAILResult with determined SAIL, OSO requirements, and trace
+            
+        Raises:
+            InvalidGRCError: If GRC is out of range
+            InvalidARCError: If ARC is invalid
+            SAILMappingError: If SAIL lookup fails
+        """
+        trace = []
+        
+        try:
+            # Step 1: Validate inputs
+            self._validate_inputs(inputs.final_grc, inputs.final_arc, trace)
+            
+            # Step 2: Determine SAIL from table
+            sail = self._determine_sail(inputs.final_grc, inputs.final_arc, trace)
+            
+            # Step 3: Get OSO requirements
+            oso_requirements = self._get_oso_requirements(sail, trace)
+            
+            # Step 4: Get robustness levels
+            robustness_levels = self._get_robustness_levels(sail, oso_requirements, trace)
+            
+            return SAILResult(
+                version=self.version,
+                sail=sail,
+                final_grc=inputs.final_grc,
+                final_arc=inputs.final_arc,
+                oso_requirements=oso_requirements,
+                oso_count=len(oso_requirements),
+                robustness_levels=robustness_levels,
+                calculation_trace=trace
+            )
+            
+        except Exception as e:
+            trace.append(TraceEntry(
+                step="error",
+                inputs={"grc": inputs.final_grc, "arc": inputs.final_arc.value},
+                result=f"Error: {str(e)}",
+                rule_ref="ERROR_HANDLING",
+                doc_ref=DocReference(
+                    doc_id="JARUS_SORA_MB_2.5",
+                    standard="SORA_2.5",
+                    section="Error Handling"
+                ),
+                notes=f"Calculation failed: {str(e)}"
+            ))
+            raise
+    
+    def _validate_inputs(self, grc: int, arc: ARCValue, trace: List[TraceEntry]) -> None:
+        """Validate SAIL calculation inputs."""
+        if not 1 <= grc <= 8:
+            raise InvalidGRCError(f"GRC must be 1-8, got {grc}")
+        
+        if arc.value.lower() not in ["a", "b", "c", "d"]:
+            raise InvalidARCError(f"ARC must be a/b/c/d, got {arc.value}")
+        
+        trace.append(TraceEntry(
+            step="input_validation",
+            inputs={"grc": grc, "arc": arc.value},
+            result="Valid inputs",
+            rule_ref="SORA25_INPUT_VALIDATION",
+            doc_ref=DocReference(
+                doc_id="JARUS_SORA_MB_2.5",
+                standard="SORA_2.5",
+                section="Main Body - SAIL Determination"
+            ),
+            notes=f"GRC {grc} and ARC {arc.value.upper()} are valid"
+        ))
+    
+    def _determine_sail(self, grc: int, arc: ARCValue, trace: List[TraceEntry]) -> SAILValue:
+        """Determine SAIL using SORA 2.5 table."""
+        arc_lower = arc.value.lower()
+        
+        # SORA 2.5 specific logic with different GRC groupings
+        if grc in (1, 2):
+            sail = self.sail_table[(1, 2)][arc_lower]
+            grc_ref = "1-2"
+        elif grc in (3, 4):
+            sail = self.sail_table[(3, 4)][arc_lower]
+            grc_ref = "3-4"
+        elif grc == 5:
+            sail = self.sail_table[5][arc_lower]
+            grc_ref = "5"
+        elif grc == 6:
+            sail = self.sail_table[6][arc_lower]
+            grc_ref = "6"
+        elif grc in (7, 8):
+            sail = self.sail_table[(7, 8)][arc_lower]
+            grc_ref = "7-8"
+        else:
+            raise SAILMappingError(f"GRC {grc} out of valid range 1-8")
+        
+        trace.append(TraceEntry(
+            step="sail_determination",
+            inputs={"grc": grc, "arc": arc.value},
+            result=sail.value,
+            rule_ref=f"JARUS_SORA25_Annex_D_Table_GRC{grc_ref}_ARC{arc.value.upper()}",
+            doc_ref=DocReference(
+                doc_id="JARUS_SORA_MB_2.5",
+                standard="SORA_2.5",
+                section="Annex D v1.0, SAIL Table"
+            ),
+            notes=f"GRC {grc} × ARC {arc.value.upper()} → SAIL {sail.value} (SORA 2.5)"
+        ))
+        
+        return sail
+    
+    def _get_oso_requirements(self, sail: SAILValue, trace: List[TraceEntry]) -> List[str]:
+        """Get OSO requirements for the determined SAIL."""
+        oso_requirements = self.oso_by_sail[sail]
+        
+        trace.append(TraceEntry(
+            step="oso_requirements",
+            inputs={"sail": sail.value},
+            result=f"{len(oso_requirements)} OSOs required",
+            rule_ref=f"JARUS_SORA25_OSO_SAIL_{sail.value}",
+            doc_ref=DocReference(
+                doc_id="JARUS_SORA_MB_2.5",
+                standard="SORA_2.5",
+                section="Annex D v1.0, OSO Requirements"
+            ),
+            notes=f"SAIL {sail.value} requires {len(oso_requirements)} OSOs"
+        ))
+        
+        return oso_requirements
+    
+    def _get_robustness_levels(self, sail: SAILValue, oso_requirements: List[str],
+                             trace: List[TraceEntry]) -> Dict[str, str]:
+        """Get robustness levels for SORA 2.5."""
+        robustness = {}
+        
+        for oso in oso_requirements:
+            if oso in OSO_ROBUSTNESS_MATRIX and sail.value in OSO_ROBUSTNESS_MATRIX[oso]:
+                level = OSO_ROBUSTNESS_MATRIX[oso][sail.value]
+            else:
+                # Fallback heuristic
+                if sail in [SAILValue.I, SAILValue.II]:
+                    level = "Low"
+                elif sail in [SAILValue.III, SAILValue.IV]:
+                    level = "Medium"
+                else:
+                    level = "High"
+            
+            robustness[oso] = level
+        
+        trace.append(TraceEntry(
+            step="robustness_determination",
+            inputs={"sail": sail.value, "oso_count": len(oso_requirements)},
+            result=f"Robustness levels assigned for {len(oso_requirements)} OSOs",
+            rule_ref="JARUS_SORA25_Annex_D_Robustness",
+            doc_ref=DocReference(
+                doc_id="JARUS_SORA_MB_2.5",
+                standard="SORA_2.5",
+                section="Annex D v1.0, Robustness Requirements"
+            ),
+            notes=f"Robustness levels determined for SAIL {sail.value}"
+        ))
+        
+        return robustness
+=== END FILE ===
+
+=== FILE: sail/calculators/oso_mapper.py ===
+"""OSO requirements mapper for SAIL levels."""
+
+from typing import Dict, List
+from ..models.sail_models import SAILValue, RobustnessLevel
+from ..data.oso_requirements import (
+    OSO_DESCRIPTIONS, OSO_ROBUSTNESS_MATRIX, 
+    ROBUSTNESS_DESCRIPTIONS, OSO_CATEGORIES
+)
+
+
+class OSOMapper:
+    """Maps SAIL levels to OSO requirements and robustness levels."""
+    
+    def __init__(self):
+        """Initialize OSO mapper."""
+        self.oso_descriptions = OSO_DESCRIPTIONS
+        self.robustness_matrix = OSO_ROBUSTNESS_MATRIX
+        self.robustness_descriptions = ROBUSTNESS_DESCRIPTIONS
+        self.oso_categories = OSO_CATEGORIES
+    
+    def get_oso_requirements(self, sail: SAILValue) -> List[str]:
+        """
+        Get OSO requirements for a SAIL level.
+        
+        Args:
+            sail: SAIL level (I-VI)
+            
+        Returns:
+            List of required OSO identifiers
+        """
+        # OSO requirements are cumulative
+        if sail == SAILValue.I:
+            return ["OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06"]
+        elif sail == SAILValue.II:
+            return [
+                "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+                "OSO#07", "OSO#08", "OSO#09", "OSO#10"
+            ]
+        elif sail == SAILValue.III:
+            return [
+                "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+                "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+                "OSO#13", "OSO#14", "OSO#15"
+            ]
+        elif sail == SAILValue.IV:
+            return [
+                "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+                "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+                "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18"
+            ]
+        elif sail == SAILValue.V:
+            return [
+                "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+                "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+                "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18",
+                "OSO#19", "OSO#20", "OSO#21"
+            ]
+        elif sail == SAILValue.VI:
+            return [
+                "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+                "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+                "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18",
+                "OSO#19", "OSO#20", "OSO#21", "OSO#22", "OSO#23", "OSO#24"
+            ]
+        else:
+            raise ValueError(f"Invalid SAIL value: {sail}")
+    
+    def get_robustness_levels(self, sail: SAILValue, oso_list: List[str]) -> Dict[str, str]:
+        """
+        Get robustness levels for OSOs based on SAIL.
+        
+        Args:
+            sail: SAIL level (I-VI)
+            oso_list: List of OSO identifiers
+            
+        Returns:
+            Dictionary mapping OSO to robustness level
+        """
+        robustness = {}
+        
+        for oso in oso_list:
+            if oso in self.robustness_matrix and sail.value in self.robustness_matrix[oso]:
+                robustness[oso] = self.robustness_matrix[oso][sail.value]
+            else:
+                # Fallback based on SAIL level
+                robustness[oso] = self._get_default_robustness(sail)
+        
+        return robustness
+    
+    def _get_default_robustness(self, sail: SAILValue) -> str:
+        """Get default robustness level for a SAIL."""
+        if sail in [SAILValue.I, SAILValue.II]:
+            return "Low"
+        elif sail in [SAILValue.III, SAILValue.IV]:
+            return "Medium"
+        else:
+            return "High"
+    
+    def get_oso_description(self, oso_id: str) -> str:
+        """Get description for an OSO."""
+        return self.oso_descriptions.get(oso_id, f"Description not available for {oso_id}")
+    
+    def get_oso_category(self, oso_id: str) -> str:
+        """Get category for an OSO."""
+        return self.oso_categories.get(oso_id, "Uncategorized")
+    
+    def get_robustness_description(self, level: str) -> str:
+        """Get description for a robustness level."""
+        return self.robustness_descriptions.get(level, f"Description not available for {level}")
+    
+    def validate_oso_count(self, sail: SAILValue, oso_count: int) -> bool:
+        """
+        Validate that OSO count matches expected for SAIL.
+        
+        Args:
+            sail: SAIL level
+            oso_count: Number of OSOs
+            
+        Returns:
+            True if count is correct, False otherwise
+        """
+        expected_counts = {
+            SAILValue.I: 6,
+            SAILValue.II: 10,
+            SAILValue.III: 15,
+            SAILValue.IV: 18,
+            SAILValue.V: 21,
+            SAILValue.VI: 24
+        }
+        
+        return oso_count == expected_counts.get(sail, 0)
+    
+    def get_expected_oso_count(self, sail: SAILValue) -> int:
+        """Get expected OSO count for a SAIL level."""
+        expected_counts = {
+            SAILValue.I: 6,
+            SAILValue.II: 10,
+            SAILValue.III: 15,
+            SAILValue.IV: 18,
+            SAILValue.V: 21,
+            SAILValue.VI: 24
+        }
+        
+        return expected_counts.get(sail, 0)
+    
+    def get_all_osos(self) -> List[str]:
+        """Get all available OSO identifiers."""
+        return [f"OSO#{i:02d}" for i in range(1, 25)]
+    
+    def get_osos_by_category(self, category: str) -> List[str]:
+        """Get OSOs belonging to a specific category."""
+        return [oso for oso, cat in self.oso_categories.items() if cat == category]
+    
+    def get_available_categories(self) -> List[str]:
+        """Get all available OSO categories."""
+        return list(set(self.oso_categories.values()))
+=== END FILE ===
+
+=== FILE: sail/validators/sail_validator.py ===
+"""SAIL calculation input and output validators."""
+
+from typing import List, Dict, Any
+from ..models.sail_models import (
+    SAILValue, ARCValue, SAILInputs20, SAILInputs25, SAILResult,
+    InvalidGRCError, InvalidARCError, SAILCalculationError
+)
+
+
+class SAILValidator:
+    """Validator for SAIL calculation inputs and outputs."""
+    
+    @staticmethod
+    def validate_sail_inputs(grc: int, arc: str) -> None:
+        """
+        Validate SAIL calculation inputs.
+        
+        Args:
+            grc: Ground Risk Class value
+            arc: Air Risk Class value
+            
+        Raises:
+            InvalidGRCError: If GRC is out of range
+            InvalidARCError: If ARC is invalid
+        """
+        # GRC range check
+        if not isinstance(grc, int):
+            raise InvalidGRCError(f"GRC must be an integer, got {type(grc).__name__}")
+        
+        if not 1 <= grc <= 8:
+            raise InvalidGRCError(f"GRC must be 1-8, got {grc}")
+        
+        # ARC value check
+        if not isinstance(arc, str):
+            raise InvalidARCError(f"ARC must be a string, got {type(arc).__name__}")
+        
+        valid_arcs = ["a", "b", "c", "d"]
+        if arc.lower() not in valid_arcs:
+            raise InvalidARCError(f"ARC must be a/b/c/d, got '{arc}'")
+    
+    @staticmethod
+    def validate_sail_inputs_20(inputs: SAILInputs20) -> None:
+        """
+        Validate SORA 2.0 SAIL inputs.
+        
+        Args:
+            inputs: SORA 2.0 SAIL inputs
+            
+        Raises:
+            InvalidGRCError: If GRC is invalid
+            InvalidARCError: If ARC is invalid
+        """
+        SAILValidator.validate_sail_inputs(inputs.final_grc, inputs.final_arc.value)
+        
+        if inputs.version != "SORA_2.0":
+            raise SAILCalculationError(f"Expected SORA_2.0 version, got {inputs.version}")
+    
+    @staticmethod
+    def validate_sail_inputs_25(inputs: SAILInputs25) -> None:
+        """
+        Validate SORA 2.5 SAIL inputs.
+        
+        Args:
+            inputs: SORA 2.5 SAIL inputs
+            
+        Raises:
+            InvalidGRCError: If GRC is invalid
+            InvalidARCError: If ARC is invalid
+        """
+        SAILValidator.validate_sail_inputs(inputs.final_grc, inputs.final_arc.value)
+        
+        if inputs.version != "SORA_2.5":
+            raise SAILCalculationError(f"Expected SORA_2.5 version, got {inputs.version}")
+    
+    @staticmethod
+    def validate_sail_result(result: SAILResult) -> None:
+        """
+        Validate SAIL calculation result.
+        
+        Args:
+            result: SAIL calculation result
+            
+        Raises:
+            SAILCalculationError: If result is invalid
+        """
+        # SAIL value check
+        valid_sails = [e.value for e in SAILValue]
+        if result.sail.value not in valid_sails:
+            raise SAILCalculationError(f"Invalid SAIL: {result.sail}")
+        
+        # OSO count check
+        expected_counts = {
+            "I": 6, "II": 10, "III": 15,
+            "IV": 18, "V": 21, "VI": 24
+        }
+        expected = expected_counts[result.sail.value]
+        if result.oso_count != expected:
+            raise SAILCalculationError(
+                f"SAIL {result.sail.value} should have {expected} OSOs, got {result.oso_count}"
+            )
+        
+        # OSO list length check
+        if len(result.oso_requirements) != result.oso_count:
+            raise SAILCalculationError(
+                f"OSO list length {len(result.oso_requirements)} doesn't match "
+                f"oso_count {result.oso_count}"
+            )
+        
+        # Robustness levels check
+        if len(result.robustness_levels) != result.oso_count:
+            raise SAILCalculationError(
+                f"Robustness levels count {len(result.robustness_levels)} doesn't match "
+                f"oso_count {result.oso_count}"
+            )
+        
+        # Trace validation
+        if not result.calculation_trace:
+            raise SAILCalculationError("Calculation trace cannot be empty")
+        
+        # Check trace has required steps
+        trace_steps = [entry.step for entry in result.calculation_trace]
+        required_steps = ["input_validation", "sail_determination"]
+        missing_steps = [step for step in required_steps if step not in trace_steps]
+        if missing_steps:
+            raise SAILCalculationError(f"Missing required trace steps: {missing_steps}")
+        
+        # Version check
+        valid_versions = ["SORA_2.0", "SORA_2.5"]
+        if result.version not in valid_versions:
+            raise SAILCalculationError(f"Invalid version: {result.version}")
+        
+        # Input consistency check
+        if not 1 <= result.final_grc <= 8:
+            raise SAILCalculationError(f"Invalid final_grc in result: {result.final_grc}")
+        
+        valid_arcs = [e.value for e in ARCValue]
+        if result.final_arc.value not in valid_arcs:
+            raise SAILCalculationError(f"Invalid final_arc in result: {result.final_arc}")
+    
+    @staticmethod
+    def validate_oso_requirements(sail: SAILValue, oso_list: List[str]) -> None:
+        """
+        Validate OSO requirements for a SAIL level.
+        
+        Args:
+            sail: SAIL level
+            oso_list: List of OSO identifiers
+            
+        Raises:
+            SAILCalculationError: If OSO list is invalid
+        """
+        expected_counts = {
+            SAILValue.I: 6, SAILValue.II: 10, SAILValue.III: 15,
+            SAILValue.IV: 18, SAILValue.V: 21, SAILValue.VI: 24
+        }
+        
+        expected_count = expected_counts[sail]
+        if len(oso_list) != expected_count:
+            raise SAILCalculationError(
+                f"SAIL {sail.value} should have {expected_count} OSOs, got {len(oso_list)}"
+            )
+        
+        # Check OSO format
+        valid_oso_pattern = r"^OSO#\d{2}$"
+        import re
+        for oso in oso_list:
+            if not re.match(valid_oso_pattern, oso):
+                raise SAILCalculationError(f"Invalid OSO format: {oso}")
+        
+        # Check for duplicates
+        if len(set(oso_list)) != len(oso_list):
+            duplicates = [oso for oso in set(oso_list) if oso_list.count(oso) > 1]
+            raise SAILCalculationError(f"Duplicate OSOs found: {duplicates}")
+        
+        # Check OSO numbers are in valid range (01-24)
+        for oso in oso_list:
+            oso_num = int(oso.split('#')[1])
+            if not 1 <= oso_num <= 24:
+                raise SAILCalculationError(f"OSO number out of range: {oso}")
+    
+    @staticmethod
+    def validate_robustness_levels(robustness_dict: Dict[str, str]) -> None:
+        """
+        Validate robustness levels dictionary.
+        
+        Args:
+            robustness_dict: OSO -> robustness level mapping
+            
+        Raises:
+            SAILCalculationError: If robustness levels are invalid
+        """
+        valid_levels = ["None", "Low", "Medium", "High"]
+        
+        for oso, level in robustness_dict.items():
+            # Check OSO format
+            if not re.match(r"^OSO#\d{2}$", oso):
+                raise SAILCalculationError(f"Invalid OSO format in robustness: {oso}")
+            
+            # Check robustness level
+            if level not in valid_levels:
+                raise SAILCalculationError(
+                    f"Invalid robustness level '{level}' for {oso}. "
+                    f"Valid levels: {valid_levels}"
+                )
+    
+    @staticmethod
+    def validate_grc_arc_combination(grc: int, arc: str, version: str) -> None:
+        """
+        Validate GRC-ARC combination for specific SORA version.
+        
+        Args:
+            grc: Ground Risk Class
+            arc: Air Risk Class
+            version: SORA version
+            
+        Raises:
+            SAILCalculationError: If combination is invalid
+        """
+        SAILValidator.validate_sail_inputs(grc, arc)
+        
+        valid_versions = ["SORA_2.0", "SORA_2.5"]
+        if version not in valid_versions:
+            raise SAILCalculationError(f"Invalid SORA version: {version}")
+        
+        # All GRC-ARC combinations are valid for both versions
+        # No additional validation needed beyond basic input validation
+
+
+def validate_calculation_trace(trace: List[Dict[str, Any]]) -> None:
+    """
+    Validate calculation trace entries.
+    
+    Args:
+        trace: List of trace entries
+        
+    Raises:
+        SAILCalculationError: If trace is invalid
+    """
+    if not trace:
+        raise SAILCalculationError("Calculation trace cannot be empty")
+    
+    required_fields = ["step", "inputs", "result", "rule_ref", "doc_ref", "timestamp"]
+    
+    for i, entry in enumerate(trace):
+        # Check required fields
+        missing_fields = [field for field in required_fields if field not in entry]
+        if missing_fields:
+            raise SAILCalculationError(
+                f"Trace entry {i} missing required fields: {missing_fields}"
+            )
+        
+        # Check doc_ref structure
+        doc_ref = entry["doc_ref"]
+        if not isinstance(doc_ref, dict):
+            raise SAILCalculationError(f"Trace entry {i} doc_ref must be a dict")
+        
+        required_doc_fields = ["doc_id", "standard", "section"]
+        missing_doc_fields = [field for field in required_doc_fields if field not in doc_ref]
+        if missing_doc_fields:
+            raise SAILCalculationError(
+                f"Trace entry {i} doc_ref missing fields: {missing_doc_fields}"
+            )
+
+
+# Import re at the top level for all functions
+import re
+=== END FILE ===
+
+=== FILE: sail/data/sail_tables_20.py ===
+"""SORA 2.0 SAIL lookup tables and OSO requirements."""
+
+from ..models.sail_models import SAILValue
+
+# SORA 2.0 SAIL mapping table (EASA AMC/GM Annex D, Table D.1)
+SAIL_TABLE_20 = {
+    # GRC 1-2: Same SAIL mappings
+    (1, 2): {
+        "a": SAILValue.I,
+        "b": SAILValue.I,
+        "c": SAILValue.II,
+        "d": SAILValue.III
+    },
+    # GRC 3-4: Same SAIL mappings
+    (3, 4): {
+        "a": SAILValue.II,
+        "b": SAILValue.II,
+        "c": SAILValue.III,
+        "d": SAILValue.IV
+    },
+    # GRC 5-6: Same SAIL mappings
+    (5, 6): {
+        "a": SAILValue.III,
+        "b": SAILValue.III,
+        "c": SAILValue.IV,
+        "d": SAILValue.V
+    },
+    # GRC 7-8: Same SAIL mappings
+    (7, 8): {
+        "a": SAILValue.IV,
+        "b": SAILValue.IV,
+        "c": SAILValue.V,
+        "d": SAILValue.VI
+    }
+}
+
+# OSO requirements by SAIL (cumulative)
+OSO_BY_SAIL_20 = {
+    SAILValue.I: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06"
+    ],
+    SAILValue.II: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10"
+    ],
+    SAILValue.III: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15"
+    ],
+    SAILValue.IV: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18"
+    ],
+    SAILValue.V: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18",
+        "OSO#19", "OSO#20", "OSO#21"
+    ],
+    SAILValue.VI: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18",
+        "OSO#19", "OSO#20", "OSO#21", "OSO#22", "OSO#23", "OSO#24"
+    ]
+}
+
+# Verification data for testing
+SORA_20_TEST_CASES = [
+    # (GRC, ARC, Expected SAIL)
+    (1, "a", "I"), (1, "b", "I"), (1, "c", "II"), (1, "d", "III"),
+    (2, "a", "I"), (2, "b", "I"), (2, "c", "II"), (2, "d", "III"),
+    (3, "a", "II"), (3, "b", "II"), (3, "c", "III"), (3, "d", "IV"),
+    (4, "a", "II"), (4, "b", "II"), (4, "c", "III"), (4, "d", "IV"),
+    (5, "a", "III"), (5, "b", "III"), (5, "c", "IV"), (5, "d", "V"),
+    (6, "a", "III"), (6, "b", "III"), (6, "c", "IV"), (6, "d", "V"),
+    (7, "a", "IV"), (7, "b", "IV"), (7, "c", "V"), (7, "d", "VI"),
+    (8, "a", "IV"), (8, "b", "IV"), (8, "c", "V"), (8, "d", "VI"),
+]
+
+# Expected OSO counts by SAIL
+EXPECTED_OSO_COUNTS_20 = {
+    "I": 6, "II": 10, "III": 15, "IV": 18, "V": 21, "VI": 24
+}
+
+# SAIL matrix for easy reference
+SAIL_MATRIX_20 = """
+SORA 2.0 SAIL Matrix (EASA AMC/GM Annex D, Table D.1)
+
+GRC ↓ / ARC → │  a  │  b  │  c  │  d  │
+──────────────┼─────┼─────┼─────┼─────┤
+      1       │  I  │  I  │  II │ III │
+      2       │  I  │  I  │  II │ III │
+      3       │  II │  II │ III │  IV │
+      4       │  II │  II │ III │  IV │
+      5       │ III │ III │  IV │  V  │
+      6       │ III │ III │  IV │  V  │
+      7       │  IV │  IV │  V  │  VI │
+      8       │  IV │  IV │  V  │  VI │
+"""
+
+def get_sail_20(grc: int, arc: str) -> str:
+    """
+    Get SAIL value for SORA 2.0.
+    
+    Args:
+        grc: Ground Risk Class (1-8)
+        arc: Air Risk Class (a-d)
+        
+    Returns:
+        SAIL value (I-VI)
+        
+    Raises:
+        ValueError: If GRC or ARC is invalid
+    """
+    if not 1 <= grc <= 8:
+        raise ValueError(f"GRC must be 1-8, got {grc}")
+    
+    arc_lower = arc.lower()
+    if arc_lower not in ["a", "b", "c", "d"]:
+        raise ValueError(f"ARC must be a/b/c/d, got {arc}")
+    
+    # Find matching GRC range
+    for grc_range, arc_map in SAIL_TABLE_20.items():
+        if grc_range[0] <= grc <= grc_range[1]:
+            return arc_map[arc_lower].value
+    
+    raise ValueError(f"No SAIL mapping found for GRC {grc}, ARC {arc}")
+
+def get_oso_requirements_20(sail: str) -> list:
+    """
+    Get OSO requirements for SORA 2.0 SAIL.
+    
+    Args:
+        sail: SAIL value (I-VI)
+        
+    Returns:
+        List of required OSO identifiers
+        
+    Raises:
+        ValueError: If SAIL is invalid
+    """
+    try:
+        sail_enum = SAILValue(sail)
+        return OSO_BY_SAIL_20[sail_enum]
+    except ValueError:
+        raise ValueError(f"Invalid SAIL value: {sail}")
+
+def validate_sail_mapping_20(grc: int, arc: str, expected_sail: str) -> bool:
+    """
+    Validate SORA 2.0 SAIL mapping.
+    
+    Args:
+        grc: Ground Risk Class
+        arc: Air Risk Class
+        expected_sail: Expected SAIL value
+        
+    Returns:
+        True if mapping is correct, False otherwise
+    """
+    try:
+        actual_sail = get_sail_20(grc, arc)
+        return actual_sail == expected_sail
+    except ValueError:
+        return False
+=== END FILE ===
+
+=== FILE: sail/data/sail_tables_25.py ===
+"""SORA 2.5 SAIL lookup tables and OSO requirements."""
+
+from ..models.sail_models import SAILValue
+
+# SORA 2.5 SAIL mapping table (JARUS SORA v2.5 Annex D)
+SAIL_TABLE_25 = {
+    # GRC 1-2: Same as SORA 2.0
+    (1, 2): {
+        "a": SAILValue.I,
+        "b": SAILValue.I,
+        "c": SAILValue.II,
+        "d": SAILValue.III
+    },
+    # GRC 3-4: Same as SORA 2.0
+    (3, 4): {
+        "a": SAILValue.II,
+        "b": SAILValue.II,
+        "c": SAILValue.III,
+        "d": SAILValue.IV
+    },
+    # GRC 5: Same as SORA 2.0
+    5: {
+        "a": SAILValue.III,
+        "b": SAILValue.III,
+        "c": SAILValue.IV,
+        "d": SAILValue.V
+    },
+    # GRC 6: Different from SORA 2.0 (increased by 1 SAIL level)
+    6: {
+        "a": SAILValue.IV,   # Was III in SORA 2.0
+        "b": SAILValue.IV,   # Was III in SORA 2.0
+        "c": SAILValue.V,    # Was IV in SORA 2.0
+        "d": SAILValue.VI    # Was V in SORA 2.0
+    },
+    # GRC 7-8: Different from SORA 2.0 (increased by 1 SAIL level)
+    (7, 8): {
+        "a": SAILValue.V,    # Was IV in SORA 2.0
+        "b": SAILValue.V,    # Was IV in SORA 2.0
+        "c": SAILValue.VI,   # Was V in SORA 2.0
+        "d": SAILValue.VI    # Was VI in SORA 2.0 (same)
+    }
+}
+
+# OSO requirements by SAIL (same as SORA 2.0 - cumulative)
+OSO_BY_SAIL_25 = {
+    SAILValue.I: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06"
+    ],
+    SAILValue.II: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10"
+    ],
+    SAILValue.III: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15"
+    ],
+    SAILValue.IV: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18"
+    ],
+    SAILValue.V: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18",
+        "OSO#19", "OSO#20", "OSO#21"
+    ],
+    SAILValue.VI: [
+        "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06",
+        "OSO#07", "OSO#08", "OSO#09", "OSO#10", "OSO#11", "OSO#12",
+        "OSO#13", "OSO#14", "OSO#15", "OSO#16", "OSO#17", "OSO#18",
+        "OSO#19", "OSO#20", "OSO#21", "OSO#22", "OSO#23", "OSO#24"
+    ]
+}
+
+# Verification data for testing
+SORA_25_TEST_CASES = [
+    # (GRC, ARC, Expected SAIL)
+    (1, "a", "I"), (1, "b", "I"), (1, "c", "II"), (1, "d", "III"),
+    (2, "a", "I"), (2, "b", "I"), (2, "c", "II"), (2, "d", "III"),
+    (3, "a", "II"), (3, "b", "II"), (3, "c", "III"), (3, "d", "IV"),
+    (4, "a", "II"), (4, "b", "II"), (4, "c", "III"), (4, "d", "IV"),
+    (5, "a", "III"), (5, "b", "III"), (5, "c", "IV"), (5, "d", "V"),
+    (6, "a", "IV"), (6, "b", "IV"), (6, "c", "V"), (6, "d", "VI"),   # Different from SORA 2.0
+    (7, "a", "V"), (7, "b", "V"), (7, "c", "VI"), (7, "d", "VI"),     # Different from SORA 2.0
+    (8, "a", "V"), (8, "b", "V"), (8, "c", "VI"), (8, "d", "VI"),     # Different from SORA 2.0
+]
+
+# Expected OSO counts by SAIL (same as SORA 2.0)
+EXPECTED_OSO_COUNTS_25 = {
+    "I": 6, "II": 10, "III": 15, "IV": 18, "V": 21, "VI": 24
+}
+
+# Key differences from SORA 2.0
+SORA_25_DIFFERENCES = {
+    (6, "a"): {"sora_20": "III", "sora_25": "IV", "change": "+1"},
+    (6, "b"): {"sora_20": "III", "sora_25": "IV", "change": "+1"},
+    (6, "c"): {"sora_20": "IV", "sora_25": "V", "change": "+1"},
+    (6, "d"): {"sora_20": "V", "sora_25": "VI", "change": "+1"},
+    (7, "a"): {"sora_20": "IV", "sora_25": "V", "change": "+1"},
+    (7, "b"): {"sora_20": "IV", "sora_25": "V", "change": "+1"},
+    (7, "c"): {"sora_20": "V", "sora_25": "VI", "change": "+1"},
+    (8, "a"): {"sora_20": "IV", "sora_25": "V", "change": "+1"},
+    (8, "b"): {"sora_20": "IV", "sora_25": "V", "change": "+1"},
+    (8, "c"): {"sora_20": "V", "sora_25": "VI", "change": "+1"},
+    # (7, "d") and (8, "d") remain VI in both versions
+}
+
+# SAIL matrix for easy reference
+SAIL_MATRIX_25 = """
+SORA 2.5 SAIL Matrix (JARUS SORA v2.5 Annex D)
+
+GRC ↓ / ARC → │  a  │  b  │  c  │  d  │
+──────────────┼─────┼─────┼─────┼─────┤
+      1       │  I  │  I  │  II │ III │
+      2       │  I  │  I  │  II │ III │
+      3       │  II │  II │ III │  IV │
+      4       │  II │  II │ III │  IV │
+      5       │ III │ III │  IV │  V  │
+      6       │ *IV │ *IV │ *V  │ *VI │  * Different from SORA 2.0
+      7       │ *V  │ *V  │ *VI │  VI │  * Different from SORA 2.0
+      8       │ *V  │ *V  │ *VI │  VI │  * Different from

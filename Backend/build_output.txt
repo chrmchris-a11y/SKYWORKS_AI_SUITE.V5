@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Skyworks.Core -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Core\bin\Debug\net8.0\Skyworks.Core.dll
+  Skyworks.AgentComm -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.AgentComm\bin\Debug\net8.0\Skyworks.AgentComm.dll
+  Skyworks.Infrastructure -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Infrastructure\bin\Debug\net8.0\Skyworks.Infrastructure.dll
+  Skyworks.Api -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\src\Skyworks.Api\bin\Debug\net8.0\Skyworks.Api.dll
+  Skyworks.Api.Tests -> C:\Users\chrmc\Desktop\SKYWORKS_AI_SUITE.V5\Backend\tests\Skyworks.Api.Tests\bin\Debug\net8.0\Skyworks.Api.Tests.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:04.18

@@ -1,0 +1,269 @@
+{
+  "metadata_version": "1.0",
+  "description": "Metadata for each step: files to read, EASA references, Copilot MCP tools",
+  "steps": {
+    "41": {
+      "title": "OSO Βασικό Framework",
+      "phase": 5,
+      "agent": "Copilot",
+      "files_to_read": [
+        "Backend/Services/OSOService.cs",
+        "Backend/Models/OSORequirement.cs",
+        "ContextPacks/OSO/OSO_FRAMEWORK_STEP41_REPORT.txt"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_B", "JARUS_SORA_ANNEX_B"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'OSO basic framework requirements'",
+        "@workspace /tools get_oso_requirements operation_type=VLOS"
+      ],
+      "complexity": "medium"
+    },
+    "42": {
+      "title": "Σύνθετοι OSO Αλγόριθμοι",
+      "phase": 5,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/OSOService.cs",
+        "Backend/Models/OSORequirement.cs",
+        "ContextPacks/OSO/OSO_COMPLEX_ALGORITHMS_STEP42_REPORT.txt",
+        "Backend/Services/SAILCalculator.cs"
+      ],
+      "easa_references": ["JARUS_25_TABLE2", "SORA_2.5_ANNEX_B"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'OSO complex algorithms M3 penalty'",
+        "@workspace /tools get_grc_table SAIL_III",
+        "@workspace /tools calculate_sail operation_id=TEST_OP_001"
+      ],
+      "complexity": "very_high"
+    },
+    "43": {
+      "title": "OSO Compliance Validation",
+      "phase": 5,
+      "agent": "Copilot",
+      "files_to_read": [
+        "Backend/Services/OSOService.cs",
+        "Backend/Services/ValidationService.cs",
+        "tests/OSOServiceTests.cs"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_B"],
+      "copilot_mcp_tools": [
+        "@workspace /tools validate_floor_rule operation_id=TEST_OP_001",
+        "@workspace /tools knowledge_check 'OSO compliance validation criteria'"
+      ],
+      "complexity": "medium"
+    },
+    "44": {
+      "title": "OSO Implementation Guides",
+      "phase": 5,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/OSOService.cs",
+        "Docs/API/OSO_IMPLEMENTATION_GUIDE.md",
+        "ContextPacks/OSO/OSO_COMPLEX_ALGORITHMS_STEP42_REPORT.txt"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_B", "AMC_UAS_SORA_10"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'OSO implementation guidelines EASA'",
+        "@workspace /tools get_oso_requirements operation_type=BVLOS"
+      ],
+      "complexity": "high"
+    },
+    "45": {
+      "title": "Tactical Mitigations (TMPR)",
+      "phase": 5,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/TacticalMitigationService.cs",
+        "Backend/Models/TacticalMitigation.cs",
+        "ContextPacks/OSO/TMPR_REFERENCE.md"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_C", "JARUS_TMPR_GUIDELINES"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'TMPR tactical mitigations SORA 2.5'",
+        "@workspace /tools apply_mitigation mitigation_type=TMPR operation_id=TEST"
+      ],
+      "complexity": "very_high"
+    },
+    "46": {
+      "title": "Detailed OSO Rules",
+      "phase": 5,
+      "agent": "Copilot",
+      "files_to_read": [
+        "Backend/Services/OSOService.cs",
+        "Backend/Models/OSORule.cs",
+        "ContextPacks/OSO/OSO_DETAILED_RULES.md"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_B"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'Detailed OSO rules SORA 2.5'",
+        "@workspace /tools get_oso_requirements operation_type=VLOS"
+      ],
+      "complexity": "medium"
+    },
+    "47": {
+      "title": "Risk Mitigation Algorithms",
+      "phase": 5,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/RiskMitigationService.cs",
+        "Backend/Models/RiskMitigation.cs",
+        "ContextPacks/GRC/ARC_CALCULATION_AUTHORITATIVE_REFERENCE.md"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_D", "JARUS_GRC_ARC_TABLES"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'Risk mitigation algorithms GRC ARC'",
+        "@workspace /tools get_grc_table SAIL_IV",
+        "@workspace /tools apply_mitigation mitigation_type=STRATEGIC operation_id=TEST"
+      ],
+      "complexity": "very_high"
+    },
+    "48": {
+      "title": "OSO Comments Addressing",
+      "phase": 5,
+      "agent": "Copilot",
+      "files_to_read": [
+        "Backend/Services/OSOService.cs",
+        "Backend/Models/OSOComment.cs",
+        "Docs/Compliance/OSO_COMMENTS_LOG.md"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_B"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'OSO comment resolution process'"
+      ],
+      "complexity": "low"
+    },
+    "49": {
+      "title": "Best Practices Documentation",
+      "phase": 5,
+      "agent": "Claude",
+      "files_to_read": [
+        "Docs/Knowledge/OSO_BEST_PRACTICES.md",
+        "Backend/Services/OSOService.cs",
+        "ContextPacks/OSO/OSO_FRAMEWORK_STEP41_REPORT.txt"
+      ],
+      "easa_references": ["SORA_2.5_COMPLETE", "AMC_UAS_SORA_10"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'OSO best practices EASA JARUS'"
+      ],
+      "complexity": "high"
+    },
+    "50": {
+      "title": "Complete OSO System",
+      "phase": 5,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/OSOService.cs",
+        "Backend/Services/SAILCalculator.cs",
+        "Backend/Services/TacticalMitigationService.cs",
+        "Backend/Services/RiskMitigationService.cs",
+        "tests/OSOServiceTests.cs"
+      ],
+      "easa_references": ["SORA_2.5_COMPLETE", "JARUS_COMPLETE"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'Complete OSO system validation'",
+        "@workspace /tools validate_floor_rule operation_id=FINAL_TEST",
+        "@workspace /tools calculate_sail operation_id=FINAL_TEST"
+      ],
+      "complexity": "very_high"
+    },
+    "61": {
+      "title": "Generate SORA I Operational Manual (30-40 pages PDF)",
+      "phase": 7,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/SORAPDFService.cs",
+        "Backend/Models/OperationManualData.cs",
+        "ContextPacks/SORA_25_MainBody/SORA_2.5_COMPLETE.md",
+        "ContextPacks/SORA_25_AnnexA/SORA_I_TEMPLATE.md"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_A", "AMC_UAS_SORA_10"],
+      "copilot_mcp_tools": [
+        "@workspace /tools knowledge_check 'SORA I operational manual structure'",
+        "@workspace /tools get_grc_table SAIL_I"
+      ],
+      "complexity": "very_high"
+    },
+    "62": {
+      "title": "Generate SORA II Operational Manual (30-40 pages PDF)",
+      "phase": 7,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/SORAPDFService.cs",
+        "ContextPacks/SORA_25_AnnexA/SORA_II_TEMPLATE.md"
+      ],
+      "easa_references": ["SORA_2.5_ANNEX_A"],
+      "copilot_mcp_tools": [
+        "@workspace /tools get_grc_table SAIL_II"
+      ],
+      "complexity": "very_high"
+    },
+    "71": {
+      "title": "Multilingual Support — Greek (EL)",
+      "phase": 8,
+      "agent": "Copilot",
+      "files_to_read": [
+        "Frontend/i18n/en.json",
+        "Frontend/i18n/el.json"
+      ],
+      "easa_references": [],
+      "copilot_mcp_tools": [],
+      "complexity": "low"
+    },
+    "81": {
+      "title": "Final Report Generation — GREEN/YELLOW/RED Approval",
+      "phase": 9,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/FinalReportService.cs",
+        "Backend/Models/FinalReport.cs",
+        "ContextPacks/SORA_25_MainBody/SORA_2.5_COMPLETE.md"
+      ],
+      "easa_references": ["SORA_2.5_COMPLETE", "AMC_UAS_SORA_10"],
+      "copilot_mcp_tools": [
+        "@workspace /tools calculate_sail operation_id=FINAL_OP",
+        "@workspace /tools knowledge_check 'SORA approval criteria'"
+      ],
+      "complexity": "very_high"
+    },
+    "91": {
+      "title": "Unit Testing — OSO & SAIL Services",
+      "phase": 10,
+      "agent": "Copilot",
+      "files_to_read": [
+        "Backend/Services/OSOService.cs",
+        "Backend/Services/SAILCalculator.cs",
+        "tests/OSOServiceTests.cs",
+        "tests/SAILCalculatorTests.cs"
+      ],
+      "easa_references": [],
+      "copilot_mcp_tools": [],
+      "complexity": "medium"
+    },
+    "101": {
+      "title": "Docker Configuration & Deployment",
+      "phase": 11,
+      "agent": "Claude",
+      "files_to_read": [
+        "Dockerfile",
+        "docker-compose.yml",
+        "Backend/Skyworks.sln"
+      ],
+      "easa_references": [],
+      "copilot_mcp_tools": [],
+      "complexity": "high"
+    },
+    "111": {
+      "title": "Subscription System — Payment Integration (Stripe)",
+      "phase": 12,
+      "agent": "Claude",
+      "files_to_read": [
+        "Backend/Services/SubscriptionService.cs",
+        "Backend/Models/Subscription.cs",
+        "Frontend/Pages/Pricing.html"
+      ],
+      "easa_references": [],
+      "copilot_mcp_tools": [],
+      "complexity": "very_high"
+    }
+  }
+}

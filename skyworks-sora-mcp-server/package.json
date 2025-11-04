@@ -1,0 +1,22 @@
+{
+  "name": "skyworks-sora-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP Server with full JARUS SORA 2.0/2.5 expertise for SKYWORKS AI Suite",
+  "type": "module",
+  "main": "build/index.js",
+  "scripts": {
+    "build": "tsc && node build/index.js",
+    "prepare": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": ["mcp", "sora", "drone", "compliance", "jarus", "easa"],
+  "author": "SKYWORKS Team",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

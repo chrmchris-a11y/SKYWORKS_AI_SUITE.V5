@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 4 Improvements - Test Suite</title>
+  <style>
+    body { 
+      font-family: system-ui, -apple-system, sans-serif; 
+      max-width: 1200px; 
+      margin: 0 auto; 
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { color: #0d47a1; border-bottom: 3px solid #2196f3; padding-bottom: 10px; }
+    .test-section {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-section h2 {
+      color: #1976d2;
+      margin-top: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .status {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .status.pending { background: #fff3e0; color: #f57c00; }
+    .status.pass { background: #e8f5e9; color: #2e7d32; }
+    .status.fail { background: #ffebee; color: #c62828; }
+    
+    .test-card {
+      background: #fafafa;
+      border-left: 4px solid #2196f3;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+    }
+    .test-card h3 {
+      margin: 0 0 10px 0;
+      color: #424242;
+      font-size: 16px;
+    }
+    .test-steps {
+      list-style: none;
+      padding: 0;
+      margin: 10px 0;
+    }
+    .test-steps li {
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .test-steps li:last-child { border-bottom: none; }
+    .test-steps li::before {
+      content: '▸ ';
+      color: #2196f3;
+      font-weight: bold;
+    }
+    
+    .expected {
+      background: #e3f2fd;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .expected strong { color: #0d47a1; }
+    
+    button {
+      background: #2196f3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    button:hover { background: #1976d2; }
+    button:active { background: #0d47a1; }
+    
+    .iframe-container {
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      margin-top: 15px;
+      overflow: hidden;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    
+    @media (max-width: 768px) {
+      body { padding: 10px; }
+      .test-card { padding: 10px; }
+      iframe { height: 400px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Phase 4 Improvements - Comprehensive Test Suite</h1>
+  <p style="color: #666; font-size: 14px;">
+    Test all 4 major improvements systematically. Follow each test case step-by-step and verify expected behavior.
+  </p>
+
+  <!-- Test 1: PDRA/STS Validation -->
+  <div class="test-section">
+    <h2>
+      <span>1️⃣</span>
+      PDRA/STS Field Validation
+      <span class="status pending" id="status1">PENDING</span>
+    </h2>
+    
+    <div class="test-card">
+      <h3>Test Case 1.1: STS-01 UAS Class Validation</h3>
+      <ul class="test-steps">
+        <li>Open Mission Planner below</li>
+        <li>Select <strong>Operation Category: STS-01</strong></li>
+        <li>Leave UAS Class as <strong>C5</strong> (readonly field should be greyed out with lock icon 🔒)</li>
+        <li>Click <strong>Run Evaluation</strong></li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ✅ UAS Class field should be disabled (grey background)<br>
+        ✅ Lock icon (🔒) visible with text "Fixed value per JARUS specification"<br>
+        ✅ Evaluation should succeed with valid PDRA/STS response
+      </div>
+    </div>
+
+    <div class="test-card">
+      <h3>Test Case 1.2: Required Field Validation</h3>
+      <ul class="test-steps">
+        <li>Select <strong>Operation Category: STS-02</strong></li>
+        <li>Verify UAS Class is <strong>C6</strong> (readonly)</li>
+        <li>All readonly fields should have grey background + lock icon</li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ✅ All "info" fields show with blue left border (📋 icon)<br>
+        ✅ Readonly selects have grey background with cursor: not-allowed<br>
+        ✅ Console shows validation success before API call
+      </div>
+    </div>
+  </div>
+
+  <!-- Test 2: Grey Cell Detection -->
+  <div class="test-section">
+    <h2>
+      <span>2️⃣</span>
+      Grey Cell Detection (Assembly >50k/km²)
+      <span class="status pending" id="status2">PENDING</span>
+    </h2>
+    
+    <div class="test-card">
+      <h3>Test Case 2.1: Trigger Grey Cell Warning</h3>
+      <ul class="test-steps">
+        <li>Select <strong>Operation Category: SORA-2.5</strong></li>
+        <li>Select <strong>Population Density: Assemblies > 50,000 people/km²</strong></li>
+        <li>Observe help text below the dropdown</li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ⚠️ Orange warning banner appears: "GREY CELL AREA - INCREASED SCRUTINY REQUIRED"<br>
+        📍 Reference to JARUS Annex F §3.2 displayed<br>
+        ⚠️ Console warning: "[Grey Cell] Population density > 50,000/km² detected"
+      </div>
+    </div>
+
+    <div class="test-card">
+      <h3>Test Case 2.2: Grey Cell in Results</h3>
+      <ul class="test-steps">
+        <li>Keep Population Density at Assemblies > 50k/km²</li>
+        <li>Select any drone (e.g., Sky Tech SC15)</li>
+        <li>Click <strong>Run Evaluation</strong></li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ⚠️ Warning section shows orange box with "GREY CELL OPERATION DETECTED"<br>
+        📄 Message: "This operation involves assemblies > 50,000 people/km². Additional regulatory scrutiny required"<br>
+        ✅ Results still calculated correctly alongside warning
+      </div>
+    </div>
+  </div>
+
+  <!-- Test 3: Error Handling & Loading States -->
+  <div class="test-section">
+    <h2>
+      <span>3️⃣</span>
+      Error Handling & User Feedback
+      <span class="status pending" id="status3">PENDING</span>
+    </h2>
+    
+    <div class="test-card">
+      <h3>Test Case 3.1: Loading State</h3>
+      <ul class="test-steps">
+        <li>Select <strong>SORA-2.5</strong> with any valid configuration</li>
+        <li>Click <strong>Run Evaluation</strong></li>
+        <li>Observe button and status area immediately</li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        🔄 Spinning animation appears in Status area<br>
+        💬 Text: "Running evaluation..." in blue<br>
+        🚫 Run Evaluation button becomes disabled (opacity 0.6, cursor: not-allowed)<br>
+        ✅ Button re-enables after completion
+      </div>
+    </div>
+
+    <div class="test-card">
+      <h3>Test Case 3.2: Network Error Handling (Simulated)</h3>
+      <ul class="test-steps">
+        <li>Open browser DevTools (F12) → Network tab</li>
+        <li>Set throttling to "Offline"</li>
+        <li>Try to run evaluation</li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ❌ Status shows "Network Connection Failed" with red background<br>
+        📋 Error message box with:<br>
+        &nbsp;&nbsp;• "Verify backend is running: http://localhost:5210"<br>
+        &nbsp;&nbsp;• "Check network connectivity"<br>
+        &nbsp;&nbsp;• "Review browser console for details"<br>
+        ✅ Button re-enabled via finally block
+      </div>
+    </div>
+  </div>
+
+  <!-- Test 4: Accessibility & Responsive Design -->
+  <div class="test-section">
+    <h2>
+      <span>4️⃣</span>
+      UI Polish (Accessibility & Responsive)
+      <span class="status pending" id="status4">PENDING</span>
+    </h2>
+    
+    <div class="test-card">
+      <h3>Test Case 4.1: ARIA Labels & Screen Reader Support</h3>
+      <ul class="test-steps">
+        <li>Inspect <strong>Run Evaluation</strong> button in DevTools</li>
+        <li>Check for aria-label and title attributes</li>
+        <li>Inspect Status, Summary, Warnings divs</li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ✅ Button has aria-label="Run SORA evaluation with current inputs"<br>
+        ✅ Status div has role="status" aria-live="polite"<br>
+        ✅ Summary div has role="status" aria-live="polite"<br>
+        ✅ Warnings div has role="alert" aria-live="assertive"
+      </div>
+    </div>
+
+    <div class="test-card">
+      <h3>Test Case 4.2: Keyboard Navigation</h3>
+      <ul class="test-steps">
+        <li>Tab through all form fields</li>
+        <li>Verify focus indicators are visible (2px blue outline)</li>
+        <li>Navigate to OSO grid items</li>
+        <li>Press Enter on focused OSO badge</li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ✅ All interactive elements receive visible focus outline<br>
+        ✅ OSO badges are keyboard accessible (tabindex="0")<br>
+        ✅ Enter key triggers OSO tooltip display<br>
+        ✅ Focus order follows logical document flow
+      </div>
+    </div>
+
+    <div class="test-card">
+      <h3>Test Case 4.3: Responsive Design (Mobile View)</h3>
+      <ul class="test-steps">
+        <li>Open browser DevTools (F12) → Device Toolbar</li>
+        <li>Select "iPhone 12 Pro" or resize to 375px width</li>
+        <li>Check layout, header, grids</li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ✅ Header stacks vertically (logo, clock below title)<br>
+        ✅ 2-column grids become single column<br>
+        ✅ Rows (.row class) stack vertically<br>
+        ✅ All text remains readable, no horizontal scroll<br>
+        ✅ Buttons full width on mobile
+      </div>
+    </div>
+
+    <div class="test-card">
+      <h3>Test Case 4.4: High Contrast Mode</h3>
+      <ul class="test-steps">
+        <li>Enable Windows High Contrast mode (Alt+Shift+PrtScr)</li>
+        <li>Or use browser DevTools → Rendering → Emulate CSS prefers-contrast: more</li>
+        <li>Check result boxes and buttons</li>
+      </ul>
+      <div class="expected">
+        <strong>Expected Result:</strong><br>
+        ✅ Result boxes have 2px borders (enhanced from 1px)<br>
+        ✅ Buttons have 2px solid borders<br>
+        ✅ All text maintains sufficient contrast<br>
+        ✅ Focus indicators clearly visible
+      </div>
+    </div>
+  </div>
+
+  <!-- Embedded Mission Planner -->
+  <div class="test-section">
+    <h2>🖥️ Live Testing Environment</h2>
+    <p style="color: #666; margin-bottom: 10px;">
+      Mission Planner loaded below. Use this to perform all test cases above.
+      <button onclick="document.getElementById('missionFrame').src = document.getElementById('missionFrame').src">
+        🔄 Reload Mission Planner
+      </button>
+    </p>
+    <div class="iframe-container">
+      <iframe id="missionFrame" src="http://localhost:8080/Pages/mission.html"></iframe>
+    </div>
+  </div>
+
+  <!-- Test Results Summary -->
+  <div class="test-section">
+    <h2>📊 Test Results Summary</h2>
+    <table style="width: 100%; border-collapse: collapse;">
+      <thead style="background: #e3f2fd;">
+        <tr>
+          <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Test Category</th>
+          <th style="padding: 10px; text-align: center; border: 1px solid #ddd;">Status</th>
+          <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd;">1. PDRA/STS Validation</td>
+          <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">
+            <span class="status pending" id="result1">PENDING</span>
+          </td>
+          <td style="padding: 10px; border: 1px solid #ddd;" id="notes1">-</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd;">2. Grey Cell Detection</td>
+          <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">
+            <span class="status pending" id="result2">PENDING</span>
+          </td>
+          <td style="padding: 10px; border: 1px solid #ddd;" id="notes2">-</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd;">3. Error Handling & Loading</td>
+          <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">
+            <span class="status pending" id="result3">PENDING</span>
+          </td>
+          <td style="padding: 10px; border: 1px solid #ddd;" id="notes3">-</td>
+        </tr>
+        <tr>
+          <td style="padding: 10px; border: 1px solid #ddd;">4. UI Polish & Accessibility</td>
+          <td style="padding: 10px; text-align: center; border: 1px solid #ddd;">
+            <span class="status pending" id="result4">PENDING</span>
+          </td>
+          <td style="padding: 10px; border: 1px solid #ddd;" id="notes4">-</td>
+        </tr>
+      </tbody>
+    </table>
+    
+    <div style="margin-top: 20px; padding: 15px; background: #fff3e0; border-radius: 4px;">
+      <strong>📝 Manual Testing Instructions:</strong><br>
+      1. Go through each test case systematically<br>
+      2. Mark results as PASS/FAIL using browser console or notes<br>
+      3. Document any issues found<br>
+      4. Test on multiple browsers (Chrome, Firefox, Edge) if possible<br>
+      5. Test on actual mobile device for best responsive results
+    </div>
+  </div>
+
+  <script>
+    console.log('%c🧪 Phase 4 Test Suite Loaded', 'color: #2196f3; font-size: 16px; font-weight: bold;');
+    console.log('%cUse this console to monitor test execution', 'color: #666;');
+    
+    // Helper to mark test results
+    window.markTestResult = function(testNum, status, notes) {
+      const statusEl = document.getElementById('status' + testNum);
+      const resultEl = document.getElementById('result' + testNum);
+      const notesEl = document.getElementById('notes' + testNum);
+      
+      statusEl.className = 'status ' + status.toLowerCase();
+      statusEl.textContent = status.toUpperCase();
+      resultEl.className = 'status ' + status.toLowerCase();
+      resultEl.textContent = status.toUpperCase();
+      notesEl.textContent = notes || '-';
+      
+      console.log(`%c✓ Test ${testNum} marked as ${status}`, 'color: ' + (status === 'pass' ? '#2e7d32' : '#c62828'));
+    };
+    
+    // Example usage (from browser console):
+    // markTestResult(1, 'pass', 'All validation working correctly');
+    // markTestResult(2, 'fail', 'Grey cell warning not appearing');
+  </script>
+</body>
+</html>

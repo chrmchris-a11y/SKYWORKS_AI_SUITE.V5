@@ -1,0 +1,90 @@
+{
+  "schema_version": "1.0",
+  "generated_utc": "2025-10-30T09:51:50.020945Z",
+  "sail_dropdowns": {
+    "inputs": [
+      {
+        "name": "final_grc",
+        "label": "Final GRC",
+        "type": "enum",
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8
+        ],
+        "required": true
+      },
+      {
+        "name": "final_arc",
+        "label": "Final ARC",
+        "type": "enum",
+        "enum": [
+          "a",
+          "b",
+          "c",
+          "d"
+        ],
+        "required": true
+      },
+      {
+        "name": "operation_type",
+        "label": "Operation Type",
+        "type": "enum",
+        "enum": [
+          "VLOS",
+          "EVLOS",
+          "BVLOS"
+        ],
+        "required": false
+      },
+      {
+        "name": "segregation_type",
+        "label": "Segregation Type",
+        "type": "enum",
+        "enum": [
+          "None",
+          "Partial",
+          "Full (Certified)"
+        ],
+        "required": false
+      },
+      {
+        "name": "evidence_set_provided",
+        "label": "Evidence Set Provided",
+        "type": "boolean",
+        "required": false
+      }
+    ],
+    "outputs": [
+      {
+        "name": "sail",
+        "type": "enum",
+        "enum": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V",
+          "VI"
+        ]
+      },
+      {
+        "name": "oso_matrix_id",
+        "type": "string"
+      },
+      {
+        "name": "robustness_profile",
+        "type": "object",
+        "example": {
+          "OSO01": "L",
+          "OSO02": "M"
+        }
+      }
+    ]
+  }
+}

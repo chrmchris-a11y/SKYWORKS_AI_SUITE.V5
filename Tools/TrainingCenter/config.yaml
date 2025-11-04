@@ -1,0 +1,104 @@
+# Phase1 Step5 — Skyworks V5
+version: "1.0"
+
+# Corpus source (relative to repo root)
+corpus_path: "KnowledgeBase/EASA DOCS SPLIT CHUNKS"
+
+# Output directory (relative to repo root)
+output_path: "ContextPacks"
+
+# Topic definitions
+topics:
+  - name: "GRC"
+    keywords:
+      - "risk"
+      - "ground"
+      - "assessment"
+    max_chars: 50000
+
+  - name: "ARC"
+    keywords:
+      - "risk"
+      - "air"
+      - "assessment"
+    max_chars: 50000
+
+  - name: "SAIL"
+    keywords:
+      - "risk"
+      - "assurance"
+      - "level"
+    max_chars: 50000
+
+  - name: "OSO"
+    keywords:
+      - "OSO-"
+      - "operational safety objective"
+      - "robustness level"
+      - "SAIL"
+    max_chars: 50000
+
+  - name: "PDRA"
+    keywords:
+      - "pdra"
+      - "pre-defined risk"
+      - "pdra-01"
+      - "pdra-02"
+    max_chars: 40000
+
+  - name: "STS"
+    keywords:
+      - "sts"
+      - "standard scenario"
+      - "sts-01"
+      - "sts-02"
+    max_chars: 40000
+
+  - name: "SORA_25_AnnexA"
+    keywords:
+      - "sora"
+      - "annex"
+      - "ground"
+      - "risk"
+      - "grc"
+    max_chars: 60000
+
+  - name: "SORA_25_AnnexB"
+    keywords:
+      - "sora"
+      - "annex"
+      - "air"
+      - "risk"
+      - "arc"
+    max_chars: 60000
+
+  - name: "SORA_25_AnnexC"
+    keywords:
+      - "sora"
+      - "annex"
+      - "sail"
+      - "assurance"
+    max_chars: 60000
+
+  - name: "SORA_25_AnnexD"
+    keywords:
+      - "sora"
+      - "annex"
+      - "oso"
+      - "safety"
+    max_chars: 60000
+
+  - name: "SORA_25_MainBody"
+    keywords:
+      - "sora"
+      - "specific"
+      - "category"
+      - "operation"
+    max_chars: 70000
+
+# File extensions to process
+supported_extensions:
+  - ".md"
+  - ".txt"
+  - ".jsonl"
+  - ".csv"

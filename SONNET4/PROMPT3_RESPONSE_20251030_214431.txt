@@ -1,0 +1,726 @@
+This is an excellent and comprehensive specification for integrating the SORA 2.5 ARC calculation engine. I can see the critical integration points needed to make the 5 new ARC fields functional in the backend calculations.
+
+Let me implement these changes systematically:
+
+## 1. First, let's create the Python FastAPI calculation files
+
+### Backend_Python/arc/calculators/initial_arc_calculator_v25.py
+
+```python
+from typing import Tuple, Dict, Any
+from models.arc_models import ARCInputs25, TrafficDensityDataSource
+from dataclasses import dataclass
+import logging
+
+logger = logging.getLogger(__name__)
+
+@dataclass
+class ValidationResult:
+    is_valid: bool
+    error_message: str = ""
+    
+    @classmethod
+    def Success(cls):
+        return cls(is_valid=True)
+    
+    @classmethod
+    def Fail(cls, message: str):
+        return cls(is_valid=False, error_message=message)
+
+def calculate_initial_arc_v25(
+    operational_volume: Dict[str, Any],
+    traffic_density: str,
+    arc_inputs: ARCInputs25
+) -> Tuple[int, str]:
+    """
+    Calculate Initial ARC for SORA 2.5
+    
+    Official Reference: JAR_doc_25 Step #4
+    
+    Initial ARC depends on:
+    1. Intrinsic airspace characteristics (traffic density, airspace class)
+    2. Operational volume (size, altitude, proximity to airports)
+    3. Data source reliability (affects robustness)
+    
+    Returns:
+        (initial_arc_value, explanation)
+    """
+    # Validate traffic density data source
+    validation = validate_traffic_density_data_source(
+        arc_inputs.traffic_density_data_source,
+        traffic_density
+    )
+    if not validation.is_valid:
+        logger.error(f"Traffic density validation failed: {validation.error_message}")
+        raise ValueError(validation.error_message)
+    
+    # Base Initial ARC from traffic density and operational characteristics
+    base_arc = calculate_base_arc(operational_volume, traffic_density)
+    
+    # Data source affects assurance level (not directly ARC value)
+    # But it impacts which OSO robustness levels are required
+    assurance_level = get_assurance_level(arc_inputs.traffic_density_data_source)
+    
+    explanation = (
+        f"Initial ARC: {base_arc} (based on {traffic_density} traffic density)\n"
+        f"Data Source: {arc_inputs.traffic_density_data_source.value} "
+        f"(Assurance Level: {assurance_level})\n"
+        f"Reference: JAR_doc_25 Step #4"
+    )
+    
+    logger.info(f"Initial ARC calculated: {base_arc} with assurance level: {assurance_level}")
+    return base_arc, explanation
+
+def validate_traffic_density_data_source(
+    data_source: TrafficDensityDataSource,
+    traffic_density: str
+) -> ValidationResult:
+    """
+    Validate that data source is appropriate for traffic density level
+    
+    Official Rule (JAR_doc_25):
+    - Empirical data: Valid for all traffic densities (Low/Medium/High)
+    - Statistical data: Valid for all traffic densities (Low/Medium/High)
+    - Expert judgment: ONLY valid for LOW traffic density
+    
+    Rationale: Expert judgment lacks sufficient data for accurate 
+    classification of medium/high density airspace.
+    """
+    if data_source == TrafficDensityDataSource.EXPERT:
+        if traffic_density != "Low":
+            return ValidationResult.Fail(
+                f"Expert judgment data source is only valid for LOW traffic density. "
+                f"Current density: {traffic_density}. "
+                f"You must use Empirical or Statistical data sources for Medium/High density. "
+                f"Reference: JAR_doc_25 Step #4"
+            )
+    
+    return ValidationResult.Success()
+
+def calculate_base_arc(operational_volume: Dict[str, Any], traffic_density: str) -> int:
+    """
+    Calculate base ARC using standard SORA table
+    
+    Official Reference: JAR_doc_25 Table (Step #4)
+    """
+    # ARC table based on JARUS SORA 2.5 methodology
+    # Simplified implementation - full version should use complete JAR_doc_25 table
+    arc_table = {
+        ("Low", "Low_Altitude"): 1,      # Below 400 ft AGL, low traffic
+        ("Low", "Medium_Altitude"): 2,   # 400-1000 ft AGL, low traffic
+        ("Low", "High_Altitude"): 3,     # Above 1000 ft AGL, low traffic
+        ("Medium", "Low_Altitude"): 3,
+        ("Medium", "Medium_Altitude"): 4,
+        ("Medium", "High_Altitude"): 5,
+        ("High", "Low_Altitude"): 5,
+        ("High", "Medium_Altitude"): 6,
+        ("High", "High_Altitude"): 8,
+    }
+    
+    altitude_band = categorize_altitude(operational_volume.get('max_altitude', 120))
+    proximity_factor = get_proximity_factor(operational_volume)
+    
+    key = (traffic_density, altitude_band)
+    base_arc = arc_table.get(key, 4)  # Default to ARC 4 if not in table
+    
+    # Apply proximity adjustments
+    final_arc = base_arc + proximity_factor
+    
+    # Ensure ARC is within valid range (1-12)
+    return max(1, min(12, final_arc))
+
+def categorize_altitude(max_altitude_m: float) -> str:
+    """Categorize altitude band based on operational ceiling"""
+    # Convert meters to feet for SORA classification
+    max_altitude_ft = max_altitude_m * 3.28084
+    
+    if max_altitude_ft <= 400:
+        return "Low_Altitude"     # VLOS/Near VLOS operations
+    elif max_altitude_ft <= 1000:
+        return "Medium_Altitude"  # Extended VLOS/BVLOS low altitude
+    else:
+        return "High_Altitude"    # Higher altitude BVLOS
+
+def get_proximity_factor(operational_volume: Dict[str, Any]) -> int:
+    """Calculate ARC adjustment based on proximity to airports/restricted areas"""
+    proximity_factor = 0
+    
+    # Airport proximity increases ARC
+    if operational_volume.get('near_controlled_airport', False):
+        proximity_factor += 2
+    elif operational_volume.get('near_uncontrolled_airport', False):
+        proximity_factor += 1
+    
+    # Airspace class affects ARC
+    airspace_class = operational_volume.get('airspace_class', 'G')
+    airspace_adjustments = {
+        'A': 4, 'B': 3, 'C': 2, 'D': 1, 'E': 0, 'G': 0
+    }
+    proximity_factor += airspace_adjustments.get(airspace_class, 0)
+    
+    return proximity_factor
+
+def get_assurance_level(data_source: TrafficDensityDataSource) -> str:
+    """Map data source to assurance level for OSO requirements"""
+    mapping = {
+        TrafficDensityDataSource.EMPIRICAL: "High",
+        TrafficDensityDataSource.STATISTICAL: "Medium", 
+        TrafficDensityDataSource.EXPERT: "Low"
+    }
+    return mapping[data_source]
+```
+
+### Backend_Python/arc/calculators/strategic_mitigations_v25.py
+
+```python
+from typing import Tuple, List, Dict, Any
+from models.arc_models import ARCInputs25, AirspaceContainment25
+import logging
+
+logger = logging.getLogger(__name__)
+
+def calculate_residual_arc_v25(
+    initial_arc: int,
+    arc_inputs: ARCInputs25,
+    operational_volume: Dict[str, Any]
+) -> Tuple[int, List[str]]:
+    """
+    Calculate Residual ARC after applying strategic mitigations
+    
+    Official Reference: JAR_doc_25 Step #5
+    
+    Formula:
+        Residual ARC = Initial ARC + Strategic Mitigation Credits
+    
+    Strategic Mitigations:
+    1. U-space Services
+    2. Airspace Containment
+    3. Temporal Segregation
+    4. Spatial Segregation
+    
+    Returns:
+        (residual_arc, list_of_applied_mitigations)
+    """
+    mitigations = []
+    total_credit = 0
+    
+    logger.info(f"Calculating residual ARC from initial ARC: {initial_arc}")
+    
+    # 1. U-space Services
+    if arc_inputs.u_space_services_available:
+        credit = calculate_u_space_credit(initial_arc, operational_volume)
+        total_credit += credit
+        if credit < 0:
+            mitigations.append(
+                f"U-space Services: {credit} ARC (reduces collision risk through strategic deconfliction)"
+            )
+            logger.info(f"Applied U-space services credit: {credit}")
+    
+    # 2. Airspace Containment
+    containment_credit = calculate_airspace_containment_credit(
+        arc_inputs.airspace_containment,
+        initial_arc
+    )
+    total_credit += containment_credit
+    if containment_credit < 0:
+        mitigations.append(
+            f"Airspace Containment ({arc_inputs.airspace_containment.value}): "
+            f"{containment_credit} ARC (reduces probability of manned aircraft entry)"
+        )
+        logger.info(f"Applied containment credit: {containment_credit}")
+    
+    # 3. Temporal Segregation
+    if arc_inputs.temporal_segregation:
+        temporal_credit = calculate_temporal_segregation_credit(
+            arc_inputs.temporal_segregation,
+            initial_arc,
+            operational_volume.get('traffic_density', 'Medium')
+        )
+        total_credit += temporal_credit
+        if temporal_credit < 0:
+            mitigations.append(
+                f"Temporal Segregation: {temporal_credit} ARC (operations during low-traffic periods)"
+            )
+            logger.info(f"Applied temporal segregation credit: {temporal_credit}")
+    
+    # 4. Spatial Segregation
+    if arc_inputs.spatial_segregation:
+        spatial_credit = calculate_spatial_segregation_credit(
+            arc_inputs.spatial_segregation,
+            initial_arc,
+            operational_volume
+        )
+        total_credit += spatial_credit
+        if spatial_credit < 0:
+            mitigations.append(
+                f"Spatial Segregation: {spatial_credit} ARC (operations in separated airspace)"
+            )
+            logger.info(f"Applied spatial segregation credit: {spatial_credit}")
+    
+    # Calculate Residual ARC (cannot be less than 1)
+    residual_arc = max(1, initial_arc + total_credit)
+    
+    # Add summary
+    mitigations.append(
+        f"\nResidual ARC Calculation:"
+    )
+    mitigations.append(
+        f"Initial ARC: {initial_arc}"
+    )
+    mitigations.append(
+        f"Strategic Mitigation Credits: {total_credit}"
+    )
+    mitigations.append(
+        f"Residual ARC: max(1, {initial_arc} + {total_credit}) = {residual_arc}"
+    )
+    mitigations.append(
+        f"Reference: JAR_doc_25 Step #5"
+    )
+    
+    logger.info(f"Final residual ARC: {residual_arc} (total credit: {total_credit})")
+    return residual_arc, mitigations
+
+def calculate_u_space_credit(initial_arc: int, operational_volume: Dict[str, Any]) -> int:
+    """
+    Calculate U-space services strategic mitigation credit
+    
+    Official Reference: JAR_doc_34 (Annex H), Section H.2.3.2
+    
+    Credit depends on:
+    1. Service availability (already checked)
+    2. Operational volume in U-space airspace
+    3. Initial ARC level
+    """
+    # Check if operational volume is in U-space designated airspace
+    if not operational_volume.get('in_u_space_airspace', False):
+        logger.info("No U-space credit: operational volume not in U-space airspace")
+        return 0  # No credit if not in U-space airspace
+    
+    # U-space services provide strategic deconfliction
+    if initial_arc <= 6:
+        logger.info("U-space credit applied: -1 ARC for initial ARC <= 6")
+        return -1  # One ARC level reduction
+    else:
+        logger.info("No U-space credit: limited effectiveness for very high ARC")
+        return 0  # Limited effectiveness for very high ARC
+
+def calculate_airspace_containment_credit(
+    containment: AirspaceContainment25,
+    initial_arc: int
+) -> int:
+    """
+    Calculate ARC reduction credit for airspace containment
+    
+    Official Reference: JAR_doc_25 Step #5 - Strategic Mitigations
+    
+    Containment reduces the probability that manned aircraft will 
+    enter the operational volume.
+    """
+    if containment == AirspaceContainment25.NONE:
+        return 0  # No reduction
+    
+    elif containment == AirspaceContainment25.OPERATIONAL:
+        # Operational containment (Medium robustness)
+        # Examples: NOTAMs, coordinated with ANSP, temporary restrictions
+        if initial_arc <= 6:
+            logger.info("Operational containment credit: -1 ARC")
+            return -1  # One ARC level reduction
+        else:
+            logger.info("No operational containment credit: ARC too high")
+            return 0  # Limited effectiveness for very high ARC
+    
+    elif containment == AirspaceContainment25.CERTIFIED:
+        # Certified containment (High robustness)
+        # Examples: Permanent restricted zones, certified segregation
+        if initial_arc <= 4:
+            logger.info("Certified containment credit: -2 ARC")
+            return -2  # Two ARC levels reduction
+        elif initial_arc <= 8:
+            logger.info("Certified containment credit: -1 ARC")
+            return -1  # One ARC level reduction
+        else:
+            logger.info("No certified containment credit: ARC too high")
+            return 0  # Limited effectiveness for very high ARC
+    
+    return 0
+
+def calculate_temporal_segregation_credit(
+    temporal_segregation: bool,
+    initial_arc: int,
+    traffic_density: str
+) -> int:
+    """
+    Calculate ARC reduction credit for temporal segregation
+    
+    Official Reference: SORA Annex C - Strategic Mitigation by Operational Restrictions
+    
+    Temporal segregation means operations during periods when manned 
+    aviation activity is significantly reduced (e.g., night ops, non-business hours).
+    """
+    if not temporal_segregation:
+        return 0
+    
+    # Temporal segregation provides credit if there's documented evidence
+    # of reduced manned traffic during operation times
+    if initial_arc <= 6:
+        # Effective for low to medium ARC
+        logger.info("Temporal segregation credit: -1 ARC")
+        return -1  # One ARC level reduction
+    else:
+        # Limited effectiveness for very high density
+        # Even at night/off-hours, some traffic remains
+        logger.info("No temporal segregation credit: ARC too high")
+        return 0
+
+def calculate_spatial_segregation_credit(
+    spatial_segregation: bool,
+    initial_arc: int,
+    operational_volume: Dict[str, Any]
+) -> int:
+    """
+    Calculate ARC reduction credit for spatial segregation
+    
+    Official Reference: SORA Annex C - Strategic Mitigation by Operational Restrictions
+    
+    Spatial segregation means operations in airspace with defined boundaries 
+    that separate from manned aviation (e.g., below minimum safe altitude, 
+    lateral separation from airways, vertical separation).
+    """
+    if not spatial_segregation:
+        return 0
+    
+    # Spatial segregation provides credit if there's clearly defined
+    # operational boundaries with separation from manned traffic
+    if initial_arc <= 6:
+        # Effective for low to medium ARC
+        logger.info("Spatial segregation credit: -1 ARC")
+        return -1  # One ARC level reduction
+    else:
+        # Limited effectiveness for very high density
+        # Difficult to achieve full separation in congested airspace
+        logger.info("No spatial segregation credit: ARC too high")
+        return 0
+```
+
+## 2. Update SAIL Calculator for SORA 2.5
+
+### Backend_Python/sail/sail_calculator_v25.py
+
+```python
+from typing import Tuple, Dict, List
+import logging
+
+logger = logging.getLogger(__name__)
+
+def calculate_sail_v25(
+    final_grc: int,
+    residual_arc: int
+) -> Tuple[str, str]:
+    """
+    Determine SAIL for SORA 2.5
+    
+    Official Reference: JAR_doc_25 Table 7 (page 47)
+    
+    SAIL depends on:
+    1. Final GRC (after all ground risk mitigations)
+    2. Residual ARC (after strategic mitigations)
+    
+    Returns:
+        (sail_level, explanation)
+    """
+    # SORA 2.5 SAIL Table (JAR_doc_25 Table 7)
+    # Rows = Final GRC (1-10), Columns = Residual ARC (1-10+)
+    sail_table = {
+        # GRC 1
+        (1, 1): "I", (1, 2): "I", (1, 3): "II", (1, 4): "II", (1, 5): "III", (1, 6): "III",
+        (1, 7): "IV", (1, 8): "IV", (1, 9): "V", (1, 10): "V",
+        # GRC 2  
+        (2, 1): "I", (2, 2): "II", (2, 3): "II", (2, 4): "III", (2, 5): "III", (2, 6): "IV",
+        (2, 7): "IV", (2, 8): "V", (2, 9): "V", (2, 10): "VI",
+        # GRC 3
+        (3, 1): "II", (3, 2): "II", (3, 3): "III", (3, 4): "IV", (3, 5): "IV", (3, 6): "V",
+        (3, 7): "V", (3, 8): "VI", (3, 9): "VI", (3, 10): "VI",
+        # GRC 4
+        (4, 1): "II", (4, 2): "III", (4, 3): "IV", (4, 4): "V", (4, 5): "V", (4, 6): "VI",
+        (4, 7): "VI", (4, 8): "VI", (4, 9): "VI", (4, 10): "VI",
+        # GRC 5
+        (5, 1): "III", (5, 2): "IV", (5, 3): "V", (5, 4): "VI", (5, 5): "VI", (5, 6): "VI",
+        (5, 7): "VI", (5, 8): "VI", (5, 9): "VI", (5, 10): "VI",
+        # GRC 6+
+        (6, 1): "IV", (6, 2): "V", (6, 3): "VI", (6, 4): "VI", (6, 5): "VI", (6, 6): "VI",
+        (6, 7): "VI", (6, 8): "VI", (6, 9): "VI", (6, 10): "VI",
+        # Higher GRC values
+        (7, 1): "V", (7, 2): "VI", (7, 3): "VI", (7, 4): "VI", (7, 5): "VI", (7, 6): "VI",
+        (8, 1): "VI", (8, 2): "VI", (8, 3): "VI", (8, 4): "VI", (8, 5): "VI", (8, 6): "VI",
+        (9, 1): "VI", (9, 2): "VI", (9, 3): "VI", (9, 4): "VI", (9, 5): "VI", (9, 6): "VI",
+        (10, 1): "VI", (10, 2): "VI", (10, 3): "VI", (10, 4): "VI", (10, 5): "VI", (10, 6): "VI",
+    }
+    
+    # Clamp values to table bounds
+    grc_clamped = min(10, max(1, final_grc))
+    arc_clamped = min(10, max(1, residual_arc))
+    
+    key = (grc_clamped, arc_clamped)
+    sail = sail_table.get(key, "VI")  # Default to highest SAIL if not in table
+    
+    # Handle ARC values > 10
+    if residual_arc > 10:
+        sail = "VI"
+        arc_display = f"{residual_arc} (>10)"
+    else:
+        arc_display = str(arc_clamped)
+    
+    explanation = (
+        f"SAIL {sail}: Determined from Final GRC={grc_clamped} and "
+        f"Residual ARC={arc_display}\n"
+        f"Using SORA 2.5 SAIL determination matrix\n"
+        f"Reference: JAR_doc_25 Table 7 (page 47)"
+    )
+    
+    logger.info(f"SAIL calculated: {sail} (GRC={grc_clamped}, ARC={residual_arc})")
+    return sail, explanation
+
+def get_oso_requirements(sail: str) -> List[Dict[str, any]]:
+    """
+    Return OSO requirements for given SAIL level
+    
+    Official Reference: JAR_doc_25 Annex E
+    """
+    oso_requirements = {
+        "I": ["Low robustness OSO required", "Basic mitigation measures"],
+        "II": ["Low to Medium robustness OSO", "Enhanced operational procedures"],
+        "III": ["Medium robustness OSO", "Improved design and operational measures"],
+        "IV": ["Medium to High robustness OSO", "Significant safety measures"],
+        "V": ["High robustness OSO", "Comprehensive safety management"],
+        "VI": ["Very High robustness OSO", "Maximum safety requirements"]
+    }
+    
+    requirements = oso_requirements.get(sail, ["Maximum safety requirements"])
+    
+    return [{"level": sail, "requirements": requirements}]
+```
+
+## 3. Update Routes for SORA 2.5
+
+### Backend_Python/routes/sora_routes.py (Updated)
+
+```python
+from fastapi import APIRouter, HTTPException
+from models.arc_models import ARCInputs25
+from models.sora_models import SoraRequestV25, SoraResponseV25
+from arc.calculators.initial_arc_calculator_v25 import calculate_initial_arc_v25
+from arc.calculators.strategic_mitigations_v25 import calculate_residual_arc_v25
+from sail.sail_calculator_v25 import calculate_sail_v25
+from grc.calculators.grc_calculator_v25 import calculate_initial_grc_v25, calculate_final_grc_v25
+import logging
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+@router.post("/api/sora/complete-v25")
+async def calculate_complete_sora_v25(request: SoraRequestV25):
+    """
+    Complete SORA 2.5 evaluation with enhanced ARC inputs
+    
+    Official Reference: JAR_doc_25 (SORA 2.5 Main Body)
+    
+    This endpoint integrates all 5 new SORA 2.5 ARC fields into the calculation flow:
+    1. u_space_services_available
+    2. traffic_density_data_source  
+    3. airspace_containment
+    4. temporal_segregation
+    5. spatial_segregation
+    """
+    try:
+        logger.info("Starting SORA 2.5 complete evaluation")
+        
+        # Validate required inputs
+        if not request.arc_inputs_25:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "Missing SORA 2.5 ARC inputs",
+                    "details": "SORA 2.5 requires enhanced ARC fields: u_space_services_available, "
+                              "traffic_density_data_source, airspace_containment, "
+                              "temporal_segregation, spatial_segregation",
+                    "reference": "JAR_doc_25 Steps #4 and #5"
+                }
+            )
+        
+        # Step #2: Calculate Initial GRC (similar to SORA 2.0)
+        logger.info("Step #2: Calculating Initial GRC")
+        initial_grc = calculate_initial_grc_v25(
+            request.grc_inputs,
+            request.operational_volume
+        )
+        
+        # Step #3: Apply GRC mitigations  
+        logger.info("Step #3: Applying GRC mitigations")
+        final_grc = calculate_final_grc_v25(
+            initial_grc,
+            request.grc_inputs
+        )
+        
+        # Step #4: Calculate Initial ARC (NEW - uses traffic density data source)
+        logger.info("Step #4: Calculating Initial ARC with data source validation")
+        initial_arc, arc_explanation = calculate_initial_arc_v25(
+            request.operational_volume,
+            request.traffic_density,
+            request.arc_inputs_25  # ← This is the key difference from SORA 2.0
+        )
+        
+        # Step #5: Apply Strategic Mitigations (NEW - uses all 5 fields)  
+        logger.info("Step #5: Applying Strategic Mitigations")
+        residual_arc, mitigations = calculate_residual_arc_v25(
+            initial_arc,
+            request.arc_inputs_25,  # ← This is where 5 fields are used
+            request.operational_volume
+        )
+        
+        # Step #9: Determine SAIL
+        logger.info("Step #9: Determining SAIL")
+        sail, sail_explanation = calculate_sail_v25(
+            final_grc,
+            residual_arc
+        )
+        
+        # Prepare response
+        response = SoraResponseV25(
+            initial_grc=initial_grc,
+            final_grc=final_grc,
+            initial_arc=initial_arc,
+            residual_arc=residual_arc,
+            sail=sail,
+            strategic_mitigations=mitigations,
+            arc_explanation=arc_explanation,
+            sail_explanation=sail_explanation,
+            reference="JAR_doc_25 - SORA 2.5 Main Body",
+            success=True
+        )
+        
+        logger.info(f"SORA 2.5 evaluation completed successfully: SAIL {sail}")
+        return response
+    
+    except ValueError as e:
+        logger.error(f"SORA 2.5 validation error: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Validation failed",
+                "details": str(e),
+                "reference": "JAR_doc_25"
+            }
+        )
+    except Exception as e:
+        logger.error(f"SORA 2.5 calculation error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "Calculation failed",
+                "details": str(e),
+                "reference": "Internal server error"
+            }
+        )
+
+@router.get("/api/sora/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "SORA 2.5 Calculation Engine",
+        "version": "2.5",
+        "reference": "JAR_doc_25"
+    }
+
+@router.post("/api/arc/calculate-v25") 
+async def calculate_arc_v25(request: dict):
+    """Standalone ARC calculation for testing"""
+    try:
+        arc_inputs = ARCInputs25(**request.get('arc_inputs', {}))
+        operational_volume = request.get('operational_volume', {})
+        traffic_density = request.get('traffic_density', 'Medium')
+        
+        # Calculate Initial ARC
+        initial_arc, explanation = calculate_initial_arc_v25(
+            operational_volume,
+            traffic_density,
+            arc_inputs
+        )
+        
+        # Calculate Residual ARC
+        residual_arc, mitigations = calculate_residual_arc_v25(
+            initial_arc,
+            arc_inputs,
+            operational_volume
+        )
+        
+        return {
+            "initial_arc": initial_arc,
+            "residual_arc": residual_arc,
+            "explanation": explanation,
+            "mitigations": mitigations,
+            "success": True
+        }
+        
+    except Exception as e:
+        logger.error(f"ARC calculation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+## 4. Add the missing model files
+
+### Backend_Python/models/sora_models.py
+
+```python
+from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from models.arc_models import ARCInputs25
+from models.grc_models import GRCInputs
+
+class SoraRequestV25(BaseModel):
+    operational_volume: Dict[str, Any]
+    traffic_density: str  # "Low", "Medium", "High"
+    arc_inputs_25: ARCInputs25  # The 5 new SORA 2.5 fields
+    grc_inputs: GRCInputs
+    category: str = "SORA-2.5"
+
+class SoraResponseV25(BaseModel):
+    initial_grc: int
+    final_grc: int
+    initial_arc: int
+    residual_arc: int
+    sail: str
+    strategic_mitigations: List[str]
+    arc_explanation: str
+    sail_explanation: str
+    reference: str
+    success: bool = True
+```
+
+## 5. Update main.py to ensure port 8001
+
+### Backend_Python/main.py
+
+```python
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routes.sora_routes import router as sora_router
+import logging
+import uvicorn
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+app = FastAPI(
+    title="SORA 2.5 Calculation Engine",
+    description="JARUS SORA 2.5 compliant risk assessment API",
+    version="2.5.0"
+)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
