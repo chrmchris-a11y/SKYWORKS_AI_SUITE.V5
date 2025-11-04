@@ -13,12 +13,12 @@ Compliance notes (knowledge-first, authoritative):
 """
 
 from typing import List
+import re
 from fastapi import APIRouter, HTTPException, Query, Path
-from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sail.models.sail_models import (
     GRCLevel, ARCLevel, SAILLevel, SORAVersion,
-    SAILCalculationRequest, SAILCalculationResponse
+    SAILCalculationRequest
 )
 from sail.calculators.sail_calculator import SAILCalculator
 from sail.calculators.oso_mapper import OSOMapper
@@ -107,6 +107,19 @@ class SAILCalculationAPIResponse(BaseModel):
     reference: str | None = None
 
 
+def _norm_version(val) -> str:
+    """
+    Normalize SORA version to plain '2.0' or '2.5' for internal branching.
+    Accepts Enum members, strings like 'SORA_2_0', 'SORA 2.5', etc.
+    """
+    if val is None:
+        return "2.5"
+    s = str(getattr(val, "value", val))
+    s = s.replace("_", ".").strip()  # SORA_2_5 -> SORA.2.5
+    m = re.search(r"(\d+\.\d+)", s)
+    return m.group(1) if m else "2.5"
+
+
 class OSORequirementsResponse(BaseModel):
     """API response model for OSO requirements."""
     model_config = ConfigDict(
@@ -153,35 +166,36 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
     try:
         # Normalize inputs considering use_enum_values=True on the model
         grc_int = int(request.grc_level)
-        version_val = str(request.sora_version if not hasattr(request.sora_version, "value") else request.sora_version.value)
+        version_val = _norm_version(request.sora_version)
 
         # Βασικός έλεγχος εύρους ανά έκδοση (authoritative):
-        if version_val.endswith("2.0") and grc_int > 7:
+        if version_val == "2.0" and grc_int > 7:
             # Contract: 2.0 with GRC>7 ⇒ Category C (χωρίς SAIL)
             return {
                 "sail_level": None,
                 "sail": None,
                 "oso_count": None,
-                "grc_level": grc_int,
-                "arc_level": (request.arc_level if not hasattr(request.arc_level, "value") else request.arc_level.value) if request.arc_level else None,
+                "grc_level": GRCLevel(grc_int),
+                "arc_level": (request.arc_level if not hasattr(request.arc_level, "value") else ARCLevel(str(request.arc_level.value).lower())) if request.arc_level else None,
                 "residual_arc_level": None,
-                "sora_version": "2.0",
+                "sora_version": SORAVersion.SORA_2_0,
             }
         
         # Κλάδος SORA 2.5: απαιτείται numeric residual ARC (1..10) και επίσημος πίνακας (Annex D)
-        if version_val.endswith("2.5"):
+        if version_val == "2.5":
             if request.residual_arc_level is None:
                 raise HTTPException(status_code=400, detail="SORA 2.5: Απαιτείται residual_arc_level (1..10) για το Step #9 (numeric ARC)")
             from sail.sail_calculator_v25 import calculate_sail_v25
-            sail_str, explanation = calculate_sail_v25(grc_int, int(request.residual_arc_level))
+            sail_str, _ = calculate_sail_v25(grc_int, int(request.residual_arc_level))
             # Στο 2.5 δεν επιστρέφουμε ‘σκληροκωδικομένο’ OSO count (το Annex E διαφέρει). Μπορούμε να επιστρέψουμε None ή να εκθέσουμε λίστα OSO σε ξεχωριστό endpoint.
+            sail_enum = SAILLevel(sail_str)
             return {
-                "sail_level": sail_str,
-                "sail": sail_str,
+                "sail_level": sail_enum,
+                "sail": sail_enum,
                 "oso_count": None,
-                "grc_level": grc_int,
+                "grc_level": GRCLevel(grc_int),
                 "residual_arc_level": int(request.residual_arc_level),
-                "sora_version": version_val,
+                "sora_version": SORAVersion.SORA_2_5,
                 "reference": "JAR_doc_25 Annex D (Table 7) – numeric ARC"
             }
 
@@ -198,12 +212,12 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
         calc_response = sail_calculator.calculate_sail(calc_request)
         oso_count = oso_mapper.get_oso_count(calc_response.sail_level)
         return {
-            "sail_level": calc_response.sail_level.value,
-            "sail": calc_response.sail_level.value,
+            "sail_level": calc_response.sail_level,
+            "sail": calc_response.sail_level,
             "oso_count": oso_count,
-            "grc_level": grc_int,
-            "arc_level": str(arc_val).lower(),
-            "sora_version": version_val,
+            "grc_level": GRCLevel(grc_int),
+            "arc_level": ARCLevel(str(arc_val).lower()),
+            "sora_version": SORAVersion.SORA_2_0,
             "reference": "EASA AMC/GM SORA 2.0 Annex D Table D.1"
         }
         
@@ -217,12 +231,12 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
 
 @router.get("/calculate", response_model=SAILCalculationAPIResponse)
 async def calculate_sail_get(
-    grc_level: int = Query(..., ge=1, le=8, description="Ground Risk Class level (SORA 2.0: 1–7, SORA 2.5: 1–8)"),
+    grc_level: int = Query(..., ge=1, le=7, description="Ground Risk Class level (SORA 2.0: 1–7)"),
     arc_level: str = Query(..., description="Air Risk Class level (a-d)"),
     sora_version: str = Query("2.5", pattern=r"^(2\.0|2\.5)$", description="SORA version (2.0 or 2.5)")
 ):
     """
-    GET supports only SORA 2.0. For SORA 2.5, use POST /sail/calculate with residual_arc_level (1..10).
+    GET supports only SORA 2.0. For SORA 2.5 use POST /sail/calculate with residual_arc_level (1..10).
 
     Args:
         grc_level: Ground Risk Class level (SORA 2.0: 1–7; SORA 2.5 GET not supported)

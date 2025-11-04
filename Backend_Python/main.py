@@ -575,6 +575,7 @@ async def calculate_sail(request: SailRequest):
             SAILCalculationAPIRequest as _SAILReq,
             calculate_sail as _router_calculate_sail,
         )
+        from sail.models.sail_models import ARCLevel as _ARCLevel, SORAVersion as _SORAVersion
 
         # Έλεγχος/χαρτογράφηση τιμών
         grc_val = int(request.final_grc)
@@ -594,7 +595,7 @@ async def calculate_sail(request: SailRequest):
                 }
 
             arc_letter = _normalize_arc_token_to_letter(request.residual_arc)
-            _req = _SAILReq(grc_level=grc_val, arc_level=arc_letter, sora_version="SORA_2.0")
+            _req = _SAILReq(grc_level=grc_val, arc_level=_ARCLevel(arc_letter), sora_version=_SORAVersion.SORA_2_0)
             result = await _router_calculate_sail(_req)
             # Προσθήκη legacy echoes
             result = dict(result)
@@ -609,7 +610,7 @@ async def calculate_sail(request: SailRequest):
         arc_num = int(request.residual_arc_level)
         if not (1 <= arc_num <= 10):
             raise HTTPException(status_code=400, detail="residual_arc_level must be in [1..10]")
-        _req = _SAILReq(grc_level=grc_val, residual_arc_level=arc_num, sora_version="SORA_2.5")
+        _req = _SAILReq(grc_level=grc_val, residual_arc_level=arc_num, sora_version=_SORAVersion.SORA_2_5)
         result = await _router_calculate_sail(_req)
         result = dict(result)
         result["final_grc"] = grc_val

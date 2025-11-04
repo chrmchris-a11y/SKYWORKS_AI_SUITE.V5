@@ -3,6 +3,25 @@ obj/
 .vscode/*
 !.vscode/extensions/
 node_modules/
+# Python build/test artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+.ipynb_checkpoints/
+
+# Python virtual environments
+.venv/
+venv/
+env/
+Backend_Python/venv/
+Backend_Python/.venv/
+
 # Phase1 Step2 — Skyworks V5
 .continue/
 KnowledgeBase/**
@@ -23,3 +42,7 @@ Tools/TrainingCenter/agent_memory/*
 Tools/TrainingCenter/logs/*
 !Tools/TrainingCenter/logs/
 !Tools/TrainingCenter/logs/.gitkeep
+
+# Node build outputs
+skyworks-sora-mcp-server/build/
+vscode-skyworks-assistant/*.vsix
