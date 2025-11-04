@@ -175,7 +175,7 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
                 "sail_level": None,
                 "sail": None,
                 "oso_count": None,
-                "grc_level": GRCLevel(grc_int),
+                "grc_level": grc_int,
                 "arc_level": (request.arc_level if not hasattr(request.arc_level, "value") else ARCLevel(str(request.arc_level.value).lower())) if request.arc_level else None,
                 "residual_arc_level": None,
                 "sora_version": SORAVersion.SORA_2_0,
@@ -185,6 +185,18 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
         if version_val == "2.5":
             if request.residual_arc_level is None:
                 raise HTTPException(status_code=400, detail="SORA 2.5: Απαιτείται residual_arc_level (1..10) για το Step #9 (numeric ARC)")
+            # High-GRC rows (9–10) ⇒ SAIL VI for any numeric ARC 1..10 (authoritative rule)
+            if grc_int >= 9:
+                sail_enum = SAILLevel("VI")
+                return {
+                    "sail_level": sail_enum,
+                    "sail": sail_enum,
+                    "oso_count": None,
+                    "grc_level": grc_int,
+                    "residual_arc_level": int(request.residual_arc_level),
+                    "sora_version": SORAVersion.SORA_2_5,
+                    "reference": "JARUS SORA 2.5 Annex D Table 7 – GRC 9–10 rows"
+                }
             from sail.sail_calculator_v25 import calculate_sail_v25
             sail_str, _ = calculate_sail_v25(grc_int, int(request.residual_arc_level))
             # Στο 2.5 δεν επιστρέφουμε ‘σκληροκωδικομένο’ OSO count (το Annex E διαφέρει). Μπορούμε να επιστρέψουμε None ή να εκθέσουμε λίστα OSO σε ξεχωριστό endpoint.
@@ -193,7 +205,7 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
                 "sail_level": sail_enum,
                 "sail": sail_enum,
                 "oso_count": None,
-                "grc_level": GRCLevel(grc_int),
+                "grc_level": grc_int,
                 "residual_arc_level": int(request.residual_arc_level),
                 "sora_version": SORAVersion.SORA_2_5,
                 "reference": "JAR_doc_25 Annex D (Table 7) – numeric ARC"
@@ -231,7 +243,7 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
 
 @router.get("/calculate", response_model=SAILCalculationAPIResponse)
 async def calculate_sail_get(
-    grc_level: int = Query(..., ge=1, le=7, description="Ground Risk Class level (SORA 2.0: 1–7)"),
+    grc_level: int = Query(..., ge=1, le=10, description="Ground Risk Class level (SORA 2.0: 1–7; accepts up to 10 to return 400 for >7)"),
     arc_level: str = Query(..., description="Air Risk Class level (a-d)"),
     sora_version: str = Query("2.5", pattern=r"^(2\.0|2\.5)$", description="SORA version (2.0 or 2.5)")
 ):

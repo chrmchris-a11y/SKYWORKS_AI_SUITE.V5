@@ -46,3 +46,6 @@ Tools/TrainingCenter/logs/*
 # Node build outputs
 skyworks-sora-mcp-server/build/
 vscode-skyworks-assistant/*.vsix
+
+# Local debug helpers
+Backend_Python/debug_*.py
