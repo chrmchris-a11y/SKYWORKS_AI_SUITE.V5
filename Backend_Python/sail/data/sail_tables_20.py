@@ -1,37 +1,32 @@
-"""SORA 2.0 SAIL lookup tables and OSO requirements."""
+"""SORA 2.0 SAIL lookup tables and OSO requirements (authoritative)."""
 
 from ..models.sail_models import SAILValue
 
-# SORA 2.0 SAIL mapping table (EASA AMC/GM Annex D, Table D.1)
+# SORA 2.0 SAIL mapping table (Authoritative Table – UK SORA AMC Table 6)
+# Final GRC > 7 ⇒ Category C (outside this table)
+#
+# GRC ≤2: a→I, b→II, c→IV, d→VI
+# GRC 3:  a→II, b→II, c→IV, d→VI
+# GRC 4:  a→III, b→III, c→IV, d→VI
+# GRC 5:  a→IV, b→IV, c→IV, d→VI
+# GRC 6:  a→V,  b→V,  c→V,  d→VI
+# GRC 7:  a/b/c/d → VI
+
 SAIL_TABLE_20 = {
-    # GRC 1-2: Same SAIL mappings
-    (1, 2): {
-        "a": SAILValue.I,
-        "b": SAILValue.I,
-        "c": SAILValue.II,
-        "d": SAILValue.III
-    },
-    # GRC 3-4: Same SAIL mappings
-    (3, 4): {
-        "a": SAILValue.II,
-        "b": SAILValue.II,
-        "c": SAILValue.III,
-        "d": SAILValue.IV
-    },
-    # GRC 5-6: Same SAIL mappings
-    (5, 6): {
-        "a": SAILValue.III,
-        "b": SAILValue.III,
-        "c": SAILValue.IV,
-        "d": SAILValue.V
-    },
-    # GRC 7-8: Same SAIL mappings
-    (7, 8): {
-        "a": SAILValue.IV,
-        "b": SAILValue.IV,
-        "c": SAILValue.V,
-        "d": SAILValue.VI
-    }
+    # GRC 1
+    (1, "a"): "I", (1, "b"): "II", (1, "c"): "IV", (1, "d"): "VI",
+    # GRC 2
+    (2, "a"): "I", (2, "b"): "II", (2, "c"): "IV", (2, "d"): "VI",
+    # GRC 3
+    (3, "a"): "II", (3, "b"): "II", (3, "c"): "IV", (3, "d"): "VI",
+    # GRC 4
+    (4, "a"): "III", (4, "b"): "III", (4, "c"): "IV", (4, "d"): "VI",
+    # GRC 5
+    (5, "a"): "IV", (5, "b"): "IV", (5, "c"): "IV", (5, "d"): "VI",
+    # GRC 6
+    (6, "a"): "V",  (6, "b"): "V",  (6, "c"): "V",  (6, "d"): "VI",
+    # GRC 7
+    (7, "a"): "VI", (7, "b"): "VI", (7, "c"): "VI", (7, "d"): "VI",
 }
 
 # OSO requirements by SAIL (cumulative)
@@ -67,36 +62,23 @@ OSO_BY_SAIL_20 = {
     ]
 }
 
-# Flatten SAIL_TABLE_20 for direct (GRC, ARC) → SAIL lookup
-_flat_table = {}
-for grc_range, mappings in SAIL_TABLE_20.items():
-    if isinstance(grc_range, tuple):
-        for grc in grc_range:
-            for arc, sail in mappings.items():
-                _flat_table[(grc, arc)] = sail.value
-    else:
-        for arc, sail in mappings.items():
-            _flat_table[(grc_range, arc)] = sail.value
-
-# Replace grouped table with flat table
-SAIL_TABLE_20 = _flat_table
+# Keep OSO map compatible with calculator (expects string SAIL values)
 
 # OSO count by SAIL level (string keys for compatibility)
 OSO_BY_SAIL_20 = {
     "I": 6, "II": 10, "III": 15, "IV": 18, "V": 21, "VI": 24
 }
 
-# Verification data for testing
+# Verification data for testing (authoritative cases)
 SORA_20_TEST_CASES = [
     # (GRC, ARC, Expected SAIL)
-    (1, "a", "I"), (1, "b", "I"), (1, "c", "II"), (1, "d", "III"),
-    (2, "a", "I"), (2, "b", "I"), (2, "c", "II"), (2, "d", "III"),
-    (3, "a", "II"), (3, "b", "II"), (3, "c", "III"), (3, "d", "IV"),
-    (4, "a", "II"), (4, "b", "II"), (4, "c", "III"), (4, "d", "IV"),
-    (5, "a", "III"), (5, "b", "III"), (5, "c", "IV"), (5, "d", "V"),
-    (6, "a", "III"), (6, "b", "III"), (6, "c", "IV"), (6, "d", "V"),
-    (7, "a", "IV"), (7, "b", "IV"), (7, "c", "V"), (7, "d", "VI"),
-    (8, "a", "IV"), (8, "b", "IV"), (8, "c", "V"), (8, "d", "VI"),
+    (1, "a", "I"), (1, "b", "II"), (1, "c", "IV"), (1, "d", "VI"),
+    (2, "a", "I"), (2, "b", "II"), (2, "c", "IV"), (2, "d", "VI"),
+    (3, "a", "II"), (3, "b", "II"), (3, "c", "IV"), (3, "d", "VI"),
+    (4, "a", "III"), (4, "b", "III"), (4, "c", "IV"), (4, "d", "VI"),
+    (5, "a", "IV"), (5, "b", "IV"), (5, "c", "IV"), (5, "d", "VI"),
+    (6, "a", "V"),  (6, "b", "V"),  (6, "c", "V"),  (6, "d", "VI"),
+    (7, "a", "VI"), (7, "b", "VI"), (7, "c", "VI"), (7, "d", "VI"),
 ]
 
 # Expected OSO counts by SAIL
@@ -106,18 +88,17 @@ EXPECTED_OSO_COUNTS_20 = {
 
 # SAIL matrix for easy reference
 SAIL_MATRIX_20 = """
-SORA 2.0 SAIL Matrix (EASA AMC/GM Annex D, Table D.1)
+SORA 2.0 SAIL Matrix (Authoritative – UK SORA AMC Table 6)
 
 GRC ↓ / ARC → │  a  │  b  │  c  │  d  │
 ──────────────┼─────┼─────┼─────┼─────┤
-      1       │  I  │  I  │  II │ III │
-      2       │  I  │  I  │  II │ III │
-      3       │  II │  II │ III │  IV │
-      4       │  II │  II │ III │  IV │
-      5       │ III │ III │  IV │  V  │
-      6       │ III │ III │  IV │  V  │
-      7       │  IV │  IV │  V  │  VI │
-      8       │  IV │  IV │  V  │  VI │
+    1       │  I  │  II │  IV │  VI │
+    2       │  I  │  II │  IV │  VI │
+    3       │ II  │ II  │  IV │  VI │
+    4       │ III │ III │  IV │  VI │
+    5       │ IV  │ IV  │  IV │  VI │
+    6       │  V  │  V  │  V  │  VI │
+    7       │ VI  │ VI  │  VI │  VI │
 """
 
 def get_sail_20(grc: int, arc: str) -> str:
@@ -134,19 +115,17 @@ def get_sail_20(grc: int, arc: str) -> str:
     Raises:
         ValueError: If GRC or ARC is invalid
     """
-    if not 1 <= grc <= 8:
-        raise ValueError(f"GRC must be 1-8, got {grc}")
+    if not 1 <= grc <= 7:
+        raise ValueError(f"GRC must be 1-7 for SORA 2.0 table, got {grc}")
     
     arc_lower = arc.lower()
     if arc_lower not in ["a", "b", "c", "d"]:
         raise ValueError(f"ARC must be a/b/c/d, got {arc}")
     
-    # Find matching GRC range
-    for grc_range, arc_map in SAIL_TABLE_20.items():
-        if grc_range[0] <= grc <= grc_range[1]:
-            return arc_map[arc_lower].value
-    
-    raise ValueError(f"No SAIL mapping found for GRC {grc}, ARC {arc}")
+    sail = SAIL_TABLE_20.get((grc, arc_lower))
+    if not sail:
+        raise ValueError(f"No SAIL mapping found for GRC {grc}, ARC {arc}")
+    return sail
 
 def get_oso_requirements_20(sail: str) -> list:
     """

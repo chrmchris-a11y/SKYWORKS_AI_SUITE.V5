@@ -49,3 +49,4 @@ vscode-skyworks-assistant/*.vsix
 
 # Local debug helpers
 Backend_Python/debug_*.py
+Backend_Python/_*.py
