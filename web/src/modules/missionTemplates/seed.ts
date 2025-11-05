@@ -27,10 +27,10 @@ export const seedTemplates: MissionTemplate[] = [
     },
     sora_input_block: {
       sora_2_5: {
-        m1a_ground_risk: 'High',
-        m1b_ground_risk: 'Low',
+        m1a_ground_risk: 'Medium',
+        m1b_ground_risk: 'None',
         m1c_ground_risk: 'Low',
-        m2_air_risk: 'Low',
+        m2_air_risk: 'None',
         residual_arc_level: mapResidualNumericToLevel(2.5),
         final_sail: 'IV',
       },
@@ -110,10 +110,10 @@ export const seedTemplates: MissionTemplate[] = [
     },
     sora_input_block: {
       sora_2_5: {
-        m1a_ground_risk: 'High',
-        m1b_ground_risk: 'Low',
+        m1a_ground_risk: 'Medium',
+        m1b_ground_risk: 'None',
         m1c_ground_risk: 'Low',
-        m2_air_risk: 'Low',
+        m2_air_risk: 'None',
         residual_arc_level: mapResidualNumericToLevel(3.0),
         final_sail: 'V',
       },

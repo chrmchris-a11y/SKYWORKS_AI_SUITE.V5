@@ -25,15 +25,15 @@ export function validateTemplate(t: MissionTemplate): ValidationResult {
         errors.push('residual_arc_level must be an integer between 2 and 9');
       }
 
-      // Policy-level hints from Annex F
+      // Annex F NA rules are hard-validation (blocking)
       if (s25.m1a_ground_risk === 'High') {
-        warnings.push('M1A High should be mitigated to Medium (Annex F)');
+        errors.push('M1A High must be mitigated to Medium (Annex F)');
       }
       if (s25.m1b_ground_risk === 'Low') {
-        warnings.push('M1B Low should be mitigated to None (Annex F)');
+        errors.push('M1B Low must be mitigated to None (Annex F)');
       }
       if (s25.m2_air_risk === 'Low') {
-        warnings.push('M2 Low should be mitigated to None (Annex F)');
+        errors.push('M2 Low must be mitigated to None (Annex F)');
       }
     }
   }
