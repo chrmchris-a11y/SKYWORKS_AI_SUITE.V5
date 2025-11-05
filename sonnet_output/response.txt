@@ -1,0 +1,1248 @@
+# SORAOrchestrationService.cs
+```csharp
+using Microsoft.Extensions.Logging;
+using Skyworks.Core.Models.ARC;
+using Skyworks.Core.Models.GRC;
+using Skyworks.Core.Models.GRC.V2_0;
+using Skyworks.Core.Models.GRC.V2_5;
+using Skyworks.Core.Models.SAIL;
+using Skyworks.Core.Services.GRC;
+using Skyworks.Core.Services.Risk;
+using Skyworks.Core.Services.ARC;
+using Skyworks.Core.Services.Drones;
+using Skyworks.Core.Services.Python;
+
+namespace Skyworks.Core.Services.Orchestration;
+
+public class SORAOrchestrationService : ISORAOrchestrationService
+{
+    private readonly IGRCCalculationService _grcService;
+    private readonly ISAILService _sailService;
+    private readonly IOSOService _osoService;
+    private readonly IRiskModelingService _riskService;
+    private readonly ILogger<SORAOrchestrationService>? _logger;
+    private readonly IARCValidationService? _arcValidationService;
+    private readonly IDroneCatalogService? _droneCatalog;
+    private readonly IPythonCalculationClient? _py;
+    private readonly bool _proxyOnly;
+    private readonly bool _allowExplicitARC;
+
+    public SORAOrchestrationService(
+        IGRCCalculationService grcService,
+        ISAILService sailService,
+        IOSOService osoService,
+        IRiskModelingService riskService,
+        ILogger<SORAOrchestrationService>? logger = null,
+        IARCValidationService? arcValidationService = null,
+        IDroneCatalogService? droneCatalog = null,
+        IPythonCalculationClient? pythonClient = null,
+        bool proxyOnly = false,
+        bool allowExplicitARC = false)
+    {
+        _grcService = grcService;
+        _sailService = sailService;
+        _osoService = osoService;
+        _riskService = riskService;
+        _logger = logger;
+        _arcValidationService = arcValidationService;
+        _droneCatalog = droneCatalog;
+        _py = pythonClient;
+        _proxyOnly = proxyOnly;
+        _allowExplicitARC = allowExplicitARC;
+    }
+
+    /// <summary>
+    /// Executes complete SORA assessment asynchronously
+    /// </summary>
+    public async Task<SORACompleteResult> ExecuteCompleteAsync(SORACompleteRequest request)
+    {
+        _logger?.LogInformation("SORA ExecuteCompleteAsync start: Version={SoraVersion}, MissionId={MissionId}, MissionName={MissionName}, DroneId={DroneId}", 
+            request.SoraVersion, request.MissionId, request.MissionName, request.DroneId);
+        
+        var result = new SORACompleteResult
+        {
+            SoraVersion = request.SoraVersion,
+            MissionId = request.MissionId,
+            MissionName = request.MissionName
+        };
+
+        try
+        {
+            // Step 0: Auto-populate drone specs if DroneId is provided
+            if (!string.IsNullOrWhiteSpace(request.DroneId) && _droneCatalog != null)
+            {
+                var drone = await _droneCatalog.GetDroneByIdAsync(request.DroneId);
+                if (drone != null)
+                {
+                    _logger?.LogInformation("Drone specs loaded: Model={Model}, MTOM={MTOM}kg, CharDim={CharDim}m, MaxSpeed={MaxSpeed}m/s", 
+                        drone.Model, drone.MTOM_kg, drone.CharacteristicDimension_m, drone.MaxSpeed_mps);
+                    
+                    if (!request.GroundRisk.MTOM_kg.HasValue || request.GroundRisk.MTOM_kg.Value <= 0)
+                        request.GroundRisk.MTOM_kg = drone.MTOM_kg;
+                    
+                    if (request.GroundRisk.MaxCharacteristicDimension <= 0)
+                        request.GroundRisk.MaxCharacteristicDimension = drone.CharacteristicDimension_m;
+                    
+                    if (!request.GroundRisk.MaxSpeed.HasValue || request.GroundRisk.MaxSpeed.Value <= 0)
+                        request.GroundRisk.MaxSpeed = drone.MaxSpeed_mps;
+                    
+                    if (!request.GroundRisk.KineticEnergy.HasValue || request.GroundRisk.KineticEnergy.Value <= 0)
+                    {
+                        var mass = drone.MTOM_kg;
+                        var velocity = drone.MaxSpeed_mps;
+                        request.GroundRisk.KineticEnergy = 0.5 * mass * velocity * velocity;
+                        _logger?.LogInformation("Calculated kinetic energy: {KE} Joules (mass={Mass}kg, velocity={Velocity}m/s)", 
+                            request.GroundRisk.KineticEnergy.Value, mass, velocity);
+                    }
+                }
+                else
+                {
+                    _logger?.LogWarning("DroneId '{DroneId}' not found in catalog - using manual inputs", request.DroneId);
+                }
+            }
+
+            // Step 1: Ground Risk Assessment
+            if (request.SoraVersion == "2.0")
+            {
+                var grcResult = await ExecuteGroundRisk_V2_0_Async(request.GroundRisk);
+                if (!grcResult.isValid)
+                {
+                    result.IntrinsicGRC = grcResult.intrinsicGRC;
+                    result.FinalGRC = grcResult.finalGRC > 0 ? grcResult.finalGRC : null;
+                    result.GroundRiskNotes = grcResult.notes;
+                    result.Errors.Add($"Ground Risk: {grcResult.message}");
+                    result.OutOfScopeReason = grcResult.message;
+                    _logger?.LogWarning("Ground risk invalid/out-of-scope (v2.0): iGRC={IntrinsicGRC}, finalGRC={FinalGRC}, notes={Notes}, message={Message}", 
+                        result.IntrinsicGRC, result.FinalGRC, result.GroundRiskNotes, grcResult.message);
+                    result.IsSuccessful = false;
+                    return result;
+                }
+                result.IntrinsicGRC = grcResult.intrinsicGRC;
+                result.FinalGRC = grcResult.finalGRC;
+                result.GroundRiskNotes = grcResult.notes;
+                _logger?.LogInformation("Ground risk computed (v2.0): iGRC={IntrinsicGRC}, finalGRC={FinalGRC}, notes={Notes}", 
+                    result.IntrinsicGRC, result.FinalGRC, result.GroundRiskNotes);
+            }
+            else
+            {
+                var grcResult = await ExecuteGroundRisk_V2_5_Async(request.GroundRisk);
+                if (!grcResult.isValid)
+                {
+                    result.IntrinsicGRC = grcResult.intrinsicGRC;
+                    result.FinalGRC = grcResult.finalGRC > 0 ? grcResult.finalGRC : null;
+                    result.GroundRiskNotes = grcResult.notes;
+                    result.Errors.Add($"Ground Risk: {grcResult.message}");
+                    result.OutOfScopeReason = grcResult.message;
+                    _logger?.LogWarning("Ground risk invalid/out-of-scope (v2.5): iGRC={IntrinsicGRC}, finalGRC={FinalGRC}, notes={Notes}, message={Message}", 
+                        result.IntrinsicGRC, result.FinalGRC, result.GroundRiskNotes, grcResult.message);
+                    result.IsSuccessful = false;
+                    return result;
+                }
+                result.IntrinsicGRC = grcResult.intrinsicGRC;
+                result.FinalGRC = grcResult.finalGRC;
+                result.GroundRiskNotes = grcResult.notes;
+                _logger?.LogInformation("Ground risk computed (v2.5): iGRC={IntrinsicGRC}, finalGRC={FinalGRC}, notes={Notes}", 
+                    result.IntrinsicGRC, result.FinalGRC, result.GroundRiskNotes);
+            }
+
+            // Step 2: Air Risk Assessment
+            var arcResult = await ExecuteAirRisk_Async(request.AirRisk, request.SoraVersion);
+            if (!arcResult.isValid)
+            {
+                result.Errors.Add($"Air Risk: {arcResult.message}");
+                result.OutOfScopeReason = arcResult.message;
+                _logger?.LogWarning("Air risk invalid: message={Message}", arcResult.message);
+                result.IsSuccessful = false;
+                return result;
+            }
+            result.InitialARC = arcResult.initialARC;
+            result.ResidualARC = arcResult.residualARC;
+            result.AirRiskNotes = arcResult.notes;
+            _logger?.LogInformation("Air risk computed: initialARC={InitialARC}, residualARC={ResidualARC}, notes={Notes}", 
+                result.InitialARC, result.ResidualARC, result.AirRiskNotes);
+
+            // ARC environment validation warnings
+            if (!request.AirRisk.ExplicitARC.HasValue && request.SoraVersion == "2.5" && _arcValidationService != null)
+            {
+                var env = new ARCEnvironmentInput
+                {
+                    AirspaceControl = ParseAirspaceControl(request.AirRisk.AirspaceControl),
+                    LocationType = ParseLocationType(request.AirRisk.LocationType),
+                    Environment = string.IsNullOrWhiteSpace(request.AirRisk.Environment?.ToString())
+                        ? (request.SoraVersion == "2.5" ? EnvironmentType.Rural : EnvironmentType.Urban)
+                        : NormalizeEnvironmentForARC(request.AirRisk.Environment?.ToString()),
+                    Typicality = ParseTypicality(request.AirRisk.Typicality),
+                    MaxHeightAGL = request.AirRisk.MaxHeightAGL ?? 120.0,
+                    IsNearAerodrome = request.AirRisk.IsNearAerodrome ?? false,
+                    DistanceToAerodrome_km = request.AirRisk.DistanceToAerodrome_km,
+                    IsInCTR = request.AirRisk.IsInCTR ?? false
+                };
+                var validation = _arcValidationService.ValidateEnvironment_V2_5(env);
+                foreach (var issue in validation.Issues)
+                {
+                    result.Warnings.Add($"ARC validation [{issue.Severity}::{issue.Code}]: {issue.Message}");
+                }
+                if (!string.IsNullOrWhiteSpace(validation.Notes))
+                {
+                    result.AirRiskNotes = string.IsNullOrWhiteSpace(result.AirRiskNotes)
+                        ? validation.Notes
+                        : result.AirRiskNotes + " | " + validation.Notes;
+                }
+            }
+
+            // Step 3: SAIL Determination
+            var sailInput = new SAILInput
+            {
+                FinalGRC = result.FinalGRC!.Value,
+                ResidualARC = result.ResidualARC!.Value
+            };
+            var sailResult = await DetermineSAIL_Authoritative_Async(request.SoraVersion, sailInput);
+            
+            if (!sailResult.IsSupported || !sailResult.SAIL.HasValue)
+            {
+                result.Errors.Add($"SAIL not supported: {sailResult.Notes}");
+                result.OutOfScopeReason = sailResult.Notes;
+                _logger?.LogWarning("SAIL not supported: notes={Notes}", sailResult.Notes);
+                result.IsSuccessful = false;
+                return result;
+            }
+            
+            result.SAIL = sailResult.SAIL.Value;
+            result.SAILNotes = sailResult.Notes;
+            _logger?.LogInformation("SAIL determined: sail={SAIL}, notes={Notes}", result.SAIL, result.SAILNotes);
+
+            // Step 3.5: Validate Operation Scope
+            var (isValid, reason, reasonCode) = ValidateOperationScope(result.FinalGRC.Value, result.ResidualARC.Value, result.SAIL.Value);
+            if (!isValid)
+            {
+                result.Errors.Add($"Out of Scope: {reason}");
+                result.IsSuccessful = false;
+                result.ReasonCode = reasonCode;
+                result.OutOfScopeReason = reason;
+                _logger?.LogWarning("Operation rejected - out of scope: {Reason} ({ReasonCode})", reason, reasonCode);
+                return result;
+            }
+
+            // Step 4: TMPR Determination
+            result.TMPRDetails = request.SoraVersion == "2.0"
+                ? _grcService.DetermineTMPR_V2_0(result.ResidualARC.Value)
+                : _grcService.DetermineTMPR_V2_5(result.ResidualARC.Value);
+            _logger?.LogInformation("TMPR determined: level={Level}, robustness={Robustness}, apiLabel={ApiLabel}", 
+                result.TMPRDetails?.Level, result.TMPRDetails?.Robustness, result.TMPR);
+
+            // Step 5: OSO Compliance
+            var osoReqs = _osoService.GetOSORequirements(result.SAIL.Value, request.SoraVersion);
+            var osoCompliance = _osoService.ValidateOSOCompliance(
+                result.SAIL.Value,
+                request.ImplementedOSOs,
+                request.SoraVersion
+            );
+
+            result.RequiredOSOCount = osoReqs.RequiredCount;
+            result.ImplementedOSOCount = request.ImplementedOSOs.Count;
+            result.MissingOSOs = osoCompliance.MissingOSOs;
+            result.InsufficientRobustnessOSOs = osoCompliance.InsufficientRobustness;
+            result.IsCompliant = osoCompliance.IsCompliant;
+            _logger?.LogInformation("OSO compliance: implemented={Implemented}, required={Required}, compliant={Compliant}, missing={MissingCount}, insufficient={InsufficientCount}",
+                result.ImplementedOSOCount, result.RequiredOSOCount, result.IsCompliant, result.MissingOSOs.Count, result.InsufficientRobustnessOSOs.Count);
+
+            // Step 6: Risk Modeling
+            var riskReq = new RiskAssessmentRequest
+            {
+                SoraVersion = request.SoraVersion,
+                FinalGRC = result.FinalGRC.Value,
+                ResidualARC = result.ResidualARC.Value,
+                SAIL = result.SAIL.Value,
+                OperationType = "VLOS",
+                Environment = request.AirRisk.Environment ?? "NonUrban",
+                MissionDurationMinutes = 10
+            };
+            var riskResult = _riskService.AssessOperationalRisk(riskReq);
+            result.RiskScore = riskResult.Score;
+            result.RiskBand = riskResult.Band;
+            _logger?.LogInformation("Risk assessment: band={Band}, score={Score:F1}", result.RiskBand, result.RiskScore);
+
+            // Warnings
+            if (result.FinalGRC >= 6)
+            {
+                result.Warnings.Add("High Final GRC (≥6) - requires robust safety case");
+                _logger?.LogWarning("Warning: High Final GRC (>=6)");
+            }
+            if (result.ResidualARC == ARCRating.ARC_d)
+            {
+                result.Warnings.Add("Residual ARC-d - highest air risk level");
+                _logger?.LogWarning("Warning: Residual ARC-d");
+            }
+            if (result.SAIL >= SAILLevel.V)
+            {
+                result.Warnings.Add("SAIL ≥V - very high assurance requirements");
+                _logger?.LogWarning("Warning: SAIL >= V");
+            }
+            if (!result.IsCompliant)
+            {
+                result.Warnings.Add("OSO compliance not met - operation cannot proceed without mitigation");
+                _logger?.LogWarning("Warning: OSO compliance not met");
+            }
+
+            result.Summary = BuildSummary(result);
+            result.IsSuccessful = true;
+            _logger?.LogInformation("SORA ExecuteCompleteAsync success: {Summary}", result.Summary);
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                if (!result.IntrinsicGRC.HasValue)
+                {
+                    if (request.SoraVersion == "2.0")
+                    {
+                        var iInput = new IntrinsicGRCInput_V2_0
+                        {
+                            Scenario = request.GroundRisk.Scenario_V2_0 ?? OperationalScenario.VLOS_SparselyPopulated,
+                            MaxCharacteristicDimension = request.GroundRisk.MaxCharacteristicDimension,
+                            KineticEnergy = request.GroundRisk.KineticEnergy
+                        };
+                        var iRes = _grcService.CalculateIntrinsicGRC_V2_0(iInput);
+                        result.IntrinsicGRC = iRes.IGRC > 0 ? iRes.IGRC : (int?)null;
+                    }
+                    else
+                    {
+                        var iInput = new IntrinsicGRCInput
+                        {
+                            PopulationDensity = request.GroundRisk.PopulationDensity ?? 0,
+                            IsControlledGroundArea = request.GroundRisk.IsControlledGroundArea,
+                            MaxCharacteristicDimension = request.GroundRisk.MaxCharacteristicDimension,
+                            MaxSpeed = request.GroundRisk.MaxSpeed ?? 0
+                        };
+                        var iRes = _grcService.CalculateIntrinsicGRC_V2_5(iInput);
+                        result.IntrinsicGRC = iRes.IGRC > 0 ? iRes.IGRC : (int?)null;
+                    }
+                }
+            }
+            catch
+            {
+                // best-effort only
+            }
+
+            result.Errors.Add($"Orchestration error: {ex.Message}");
+            result.OutOfScopeReason = ex.Message;
+            _logger?.LogError(ex, "SORA ExecuteCompleteAsync error: {Message}", ex.Message);
+            result.IsSuccessful = false;
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Synchronous wrapper for ExecuteCompleteAsync
+    /// </summary>
+    public SORACompleteResult ExecuteComplete(SORACompleteRequest request)
+    {
+        return ExecuteCompleteAsync(request).GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Executes SORA 2.0 ground risk calculation asynchronously
+    /// </summary>
+    private async Task<(bool isValid, int intrinsicGRC, int finalGRC, string notes, string message)> ExecuteGroundRisk_V2_0_Async(GroundRiskInput input)
+    {
+        if (_py != null)
+        {
+            try
+            {
+                if (!input.Scenario_V2_0.HasValue)
+                {
+                    _logger?.LogError("SORA 2.0 requires Scenario_V2_0");
+                    return (false, 0, 0, "", "SORA 2.0 requires Scenario_V2_0 parameter");
+                }
+
+                string scenario = input.Scenario_V2_0.Value.ToString();
+                double dimensionM = input.MaxCharacteristicDimension > 0 ? input.MaxCharacteristicDimension : 1.0;
+                string containmentQuality = scenario.Contains("Controlled") ? "Good" : "Adequate";
+                
+                var req = new Skyworks.Core.Services.Python.PythonGRCRequest_2_0
+                {
+                    Scenario = scenario,
+                    DimensionM = dimensionM,
+                    ContainmentQuality = containmentQuality,
+                    M1Strategic = ExtractMitigationRobustness(input.Mitigations, "M1"),
+                    M2Impact = ExtractMitigationRobustness(input.Mitigations, "M2"),
+                    M3ERP = ExtractMitigationRobustness(input.Mitigations, "M3")
+                };
+
+                _logger?.LogInformation("Calling Python GRC 2.0 with Scenario: {Scenario}, Dimension: {Dim}m, M1: {M1}, M2: {M2}, M3: {M3}",
+                    req.Scenario, req.DimensionM, req.M1Strategic, req.M2Impact, req.M3ERP);
+
+                var pyRes = await _py.CalculateGRC_2_0(req);
+                
+                if (pyRes != null)
+                {
+                    _logger?.LogInformation("Python GRC 2.0 success: Initial={Initial}, Final={Final}",
+                        pyRes.IntrinsicGRC, pyRes.FinalGRC);
+
+                    var notes = string.IsNullOrWhiteSpace(pyRes.Notes) 
+                        ? $"SORA 2.0 - Mitigations applied: {pyRes.M1Effect + pyRes.M2Effect + pyRes.M3Effect}" 
+                        : pyRes.Notes;
+                    return (true, pyRes.IntrinsicGRC, pyRes.FinalGRC, notes,
+                           "Ground risk calculated successfully using Python SORA engine");
+                }
+                else
+                {
+                    _logger?.LogWarning("Python GRC 2.0 returned null response - falling back to C# implementation");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Python GRC 2.0 proxy failed: {Message}", ex.Message);
+                if (_proxyOnly)
+                {
+                    return (false, 0, 0, string.Empty, $"Proxy-only mode: Python GRC 2.0 call failed - {ex.Message}");
+                }
+                _logger?.LogWarning(ex, "Python GRC 2.0 call failed - falling back to C# implementation");
+            }
+        }
+
+        // Fallback to C# implementation
+        if (!input.Scenario_V2_0.HasValue)
+            return (false, 0, 0, "", "SORA 2.0 requires Scenario_V2_0");
+
+        var intrinsicInput = new IntrinsicGRCInput_V2_0
+        {
+            Scenario = input.Scenario_V2_0.Value,
+            MaxCharacteristicDimension = input.MaxCharacteristicDimension,
+            KineticEnergy = input.KineticEnergy
+        };
+        var intrinsicResult = _grcService.CalculateIntrinsicGRC_V2_0(intrinsicInput);
+        
+        if (intrinsicResult.IsOutOfScope)
+            return (false, intrinsicResult.IGRC, 0, intrinsicResult.Notes, "Operation out of SORA 2.0 scope");
+
+        var mitigations = input.Mitigations
+            .Select(m => new AppliedMitigation_V2_0
+            {
+                Type = ParseMitigation_V2_0(m.Type),
+                Robustness = m.Robustness,
+                GRCReduction = 0
+            })
+            .ToList();
+
+        var finalInput = new FinalGRCInput_V2_0
+        {
+            IntrinsicGRC = intrinsicResult.IGRC,
+            Mitigations = mitigations,
+            ColumnMinimumGRC = 1
+        };
+        var finalResult = _grcService.CalculateFinalGRC_V2_0(finalInput);
+
+        if (!finalResult.IsValid)
+            return (false, intrinsicResult.IGRC, finalResult.FinalGRC, finalResult.ValidationMessage, finalResult.ValidationMessage);
+
+        return (true, intrinsicResult.IGRC, finalResult.FinalGRC, $"iGRC={intrinsicResult.IGRC}, Final GRC={finalResult.FinalGRC}", "");
+    }
+
+    /// <summary>
+    /// Executes SORA 2.5 ground risk calculation asynchronously
+    /// </summary>
+    private async Task<(bool isValid, int intrinsicGRC, int finalGRC, string notes, string message)> ExecuteGroundRisk_V2_5_Async(GroundRiskInput input)
+    {
+        if (_py != null)
+        {
+            try
+            {
+                if (!input.MTOM_kg.HasValue || input.MTOM_kg.Value <= 0)
+                {
+                    _logger?.LogError("MTOM_kg is mandatory for SORA 2.5 GRC calculation: {MTOM}", input.MTOM_kg);
+                    return (false, 0, 0, "", "SORA 2.5 requires valid MTOM_kg (drone mass)");
+                }
+
+                if (input.MaxCharacteristicDimension <= 0)
+                {
+                    _logger?.LogError("Invalid MaxCharacteristicDimension for SORA 2.5: {Dim}", input.MaxCharacteristicDimension);
+                    return (false, 0, 0, "", "SORA 2.5 requires valid MaxCharacteristicDimension");
+                }
+
+                if (!input.MaxSpeed.HasValue || input.MaxSpeed.Value <= 0)
+                {
+                    _logger?.LogError("MaxSpeed is mandatory for SORA 2.5: {Speed}", input.MaxSpeed);
+                    return (false, 0, 0, "", "SORA 2.5 requires valid MaxSpeed");
+                }
+
+                // Sub-250g special case
+                if (input.MTOM_kg.Value <= 0.25)
+                {
+                    _logger?.LogInformation("Sub-250g drone detected: MTOM={MTOM}kg, Speed={Speed}m/s", input.MTOM_kg.Value, input.MaxSpeed.Value);
+                    
+                    // Check if speed is within bin for iGRC=1
+                    bool speedInBin = input.MaxSpeed.Value <= 19.0; // Example threshold
+                    if (speedInBin)
+                    {
+                        _logger?.LogInformation("Sub-250g drone qualifies for iGRC=1");
+                        return (true, 1, 1, "Sub-250g drone with speed within bin: iGRC=1, Final GRC=1", "");
+                    }
+                }
+
+                int populationDensity = (int)(input.PopulationDensity ?? 0);
+                if (input.Scenario_V2_0.HasValue && populationDensity == 0)
+                {
+                    populationDensity = MapScenarioToPopulationDensity(input.Scenario_V2_0.Value);
+                }
+
+                string operationMode = "VLOS";
+                string overflownArea = "Sparsely";
+                if (input.Scenario_V2_0.HasValue)
+                {
+                    operationMode = input.Scenario_V2_0.Value.ToString().StartsWith("BVLOS") ? "BVLOS" : "VLOS";
+                    var scenarioStr = input.Scenario_V2_0.Value.ToString();
+                    if (scenarioStr.Contains("Gathering"))
+                        overflownArea = "Gathering";
+                    else if (scenarioStr.Contains("Populated") || scenarioStr.Contains("Urban"))
+                        overflownArea = "Populated";
+                    else if (scenarioStr.Contains("Sparsely") || scenarioStr.Contains("Sparse"))
+                        overflownArea = "Sparsely";
+                }
+
+                var req = new Skyworks.Core.Services.Python.PythonGRCRequest_2_5
+                {
+                    MTOM_kg = input.MTOM_kg.Value,
+                    MaxSpeed_mps = input.MaxSpeed.Value,
+                    PopulationDensity = populationDensity,
+                    MaxDimensionM = input.MaxCharacteristicDimension,
+                    MaxCharacteristicDimensionM = input.MaxCharacteristicDimension,
+                    OperationMode = operationMode,
+                    OverflownArea = overflownArea,
+                    M1A_Sheltering = ExtractMitigationRobustness(input.Mitigations, "M1A"),
+                    M1B_Operational = ExtractMitigationRobustness(input.Mitigations, "M1B"),
+                    M1C_GroundObservation = ExtractMitigationRobustness(input.Mitigations, "M1C"),
+                    M2Impact = ExtractMitigationRobustness(input.Mitigations, "M2")
+                };
+
+                _logger?.LogInformation("Calling Python GRC 2.5 with MTOM: {MTOM}kg, Speed: {Speed}m/s, Dim: {Dim}m, PopDensity: {PopDensity}",
+                    req.MTOM_kg, req.MaxSpeed_mps, req.MaxDimensionM, req.PopulationDensity);
+
+                var pyRes = await _py.CalculateGRC_2_5(req);
+                
+                if (pyRes != null)
+                {
+                    _logger?.LogInformation("Python GRC 2.5 success: Initial={Initial}, Final={Final}",
+                        pyRes.IntrinsicGRC, pyRes.FinalGRC);
+
+                    var notes = string.IsNullOrWhiteSpace(pyRes.Notes) 
+                        ? $"SORA 2.5 - Mitigations applied: {pyRes.M1Effect + pyRes.M2Effect}" 
+                        : pyRes.Notes;
+                    return (true, pyRes.IntrinsicGRC, pyRes.FinalGRC, notes,
+                           "Ground risk calculated successfully using Python SORA 2.5 engine");
+                }
+                else
+                {
+                    _logger?.LogError("Python GRC 2.5 returned null response");
+                    return (false, 0, 0, "", "Python GRC 2.5 calculation failed - null response");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Python GRC 2.5 proxy failed: {Message}", ex.Message);
+                if (_proxyOnly)
+                {
+                    return (false, 0, 0, string.Empty, $"Proxy-only mode: Python GRC 2.5 call failed - {ex.Message}");
+                }
+                _logger?.LogWarning(ex, "Python GRC 2.5 call failed - falling back to C# implementation");
+            }
+        }
+
+        // Fallback to C# implementation
+        var intrinsicInput = new IntrinsicGRCInput
+        {
+            PopulationDensity = input.PopulationDensity ?? 0,
+            IsControlledGroundArea = input.IsControlledGroundArea,
+            MaxCharacteristicDimension = input.MaxCharacteristicDimension,
+            MaxSpeed = input.MaxSpeed ?? 0
+        };
+        var intrinsicResult = _grcService.CalculateIntrinsicGRC_V2_5(intrinsicInput);
+
+        if (intrinsicResult.IsOutOfScope)
+            return (false, intrinsicResult.IGRC, 0, intrinsicResult.Notes ?? string.Empty, "Operation out of SORA 2.5 scope");
+
+        var mitigations = input.Mitigations
+            .Select(m => new AppliedMitigation
+            {
+                Type = ParseMitigation_V2_5(m.Type),
+                Robustness = m.Robustness,
+                GRCReduction = 0
+            })
+            .ToList();
+
+        var finalInput = new FinalGRCInput
+        {
+            IntrinsicGRC = intrinsicResult.IGRC,
+            Mitigations = mitigations
+        };
+        var finalResult = _grcService.CalculateFinalGRC_V2_5(finalInput);
+
+        if (!finalResult.IsValid)
+            return (false, intrinsicResult.IGRC, finalResult.FinalGRC, finalResult.ValidationMessage ?? string.Empty, finalResult.ValidationMessage ?? string.Empty);
+
+        return (true, intrinsicResult.IGRC, finalResult.FinalGRC, $"iGRC={intrinsicResult.IGRC}, Final GRC={finalResult.FinalGRC}", "");
+    }
+
+    /// <summary>
+    /// Executes air risk calculation asynchronously
+    /// </summary>
+    private async Task<(bool isValid, ARCRating? initialARC, ARCRating? residualARC, string notes, string message)> ExecuteAirRisk_Async(AirRiskInput input, string soraVersion)
+    {
+        if (input.ExplicitARC.HasValue && !_allowExplicitARC)
+        {
+            _logger?.LogWarning("ExplicitARC provided but not in test mode - will derive from environment");
+            input.ExplicitARC = null;
+        }
+
+        ARCRating initialARC;
+        string initialNotes = string.Empty;
+
+        if (input.ExplicitARC.HasValue && _allowExplicitARC)
+        {
+            initialARC = input.ExplicitARC.Value;
+            initialNotes = $"Explicit ARC provided (test mode): {initialARC}. WARNING: Not for operational compliance.";
+
+            var residualARC = initialARC;
+            int reductions = 0;
+            foreach (var mitigation in input.StrategicMitigations)
+            {
+                if (mitigation.StartsWith("S", StringComparison.OrdinalIgnoreCase) && CanReduceARC(residualARC))
+                {
+                    residualARC = ReduceARC(residualARC);
+                    reductions++;
+                }
+            }
+
+            if (input.IsAtypicalSegregated && residualARC == ARCRating.ARC_b)
+            {
+                residualARC = ARCRating.ARC_a;
+                reductions++;
+            }
+
+            if (residualARC == ARCRating.ARC_a && !input.IsAtypicalSegregated && initialARC != ARCRating.ARC_a)
+            {
+                residualARC = ARCRating.ARC_b;
+            }
+
+            var notes = $"Initial ARC: {initialARC}. {initialNotes} Residual ARC: {residualARC}. Reductions: {reductions}.";
+            return (true, initialARC, residualARC, notes, "");
+        }
+        else
+        {
+            var env = new ARCEnvironmentInput
+            {
+                AirspaceControl = ParseAirspaceControl(input.AirspaceControl),
+                LocationType = ParseLocationType(input.LocationType),
+                Environment = string.IsNullOrWhiteSpace(input.Environment?.ToString())
+                    ? (soraVersion == "2.5" ? EnvironmentType.Rural : EnvironmentType.Urban)
+                    : NormalizeEnvironmentForARC(input.Environment?.ToString()),
+                Typicality = ParseTypicality(input.Typicality),
+                MaxHeightAGL = input.MaxHeightAGL ?? 120.0,
+                IsInCTR = input.IsInCTR ?? false,
+                IsNearAerodrome = input.IsNearAerodrome ?? false,
+                DistanceToAerodrome_km = input.DistanceToAerodrome_km
+            };
+
+            if (_py != null)
+            {
+                try
+                {
+                    if (soraVersion == "2.0")
+                    {
+                        var req = new Skyworks.Core.Services.Python.PythonARCRequest_2_0
+                        {
+                            AltitudeAglFt = env.MaxHeightAGL * 3.28084,
+                            MaxHeightAmslM = env.MaxHeightAMSL,
+                            AirspaceClass = env.AirspaceClass.ToString(),
+                            IsControlled = env.AirspaceControl == AirspaceControl.Controlled,
+                            IsModesVeil = env.IsModeS_Veil,
+                            IsTmz = env.IsTMZ,
+                            Environment = env.Environment.ToString(),
+                            IsAirportHeliport = env.LocationType == LocationType.Airport || env.LocationType == LocationType.Heliport,
+                            IsAtypicalSegregated = env.IsAtypicalSegregated,
+                            TacticalMitigationLevel = "None",
+                            DistanceToAerodrome_nm = env.DistanceToAerodrome_km.HasValue ? env.DistanceToAerodrome_km.Value * 0.539957 : null,
+                            IsInCTR = env.IsInCTR
+                        };
+                        var pyRes = await _py.CalculateARC_2_0(req);
+                        if (pyRes != null)
+                        {
+                            initialARC = ParseARCLabel(pyRes.InitialARC);
+                            if (initialARC == ARCRating.ARC_a && !env.IsAtypicalSegregated)
+                                initialARC = ARCRating.ARC_b;
+
+                            var aecNote = pyRes.AEC > 0 ? $"AEC={pyRes.AEC}. " : string.Empty;
+                            var srcNote = !string.IsNullOrWhiteSpace(pyRes.Source) ? $"Sources: {pyRes.Source}. " : string.Empty;
+                            initialNotes = $"{aecNote}{srcNote}{pyRes.Notes}".Trim();
+                            goto Residual;
+                        }
+                    }
+                    else
+                    {
+                        var req = new Skyworks.Core.Services.Python.PythonARCRequest_2_5
+                        {
+                            AltitudeAglM = env.MaxHeightAGL,
+                            MaxSpeedMs = 0,
+                            AirspaceClass = env.AirspaceClass.ToString(),
+                            IsControlled = env.AirspaceControl == AirspaceControl.Controlled,
+                            IsModesVeil = env.IsModeS_Veil,
+                            IsTmz = env.IsTMZ,
+                            Environment = env.Environment.ToString(),
+                            IsAirportHeliport = env.LocationType == LocationType.Airport || env.LocationType == LocationType.Heliport,
+                            IsAtypicalSegregated = env.IsAtypicalSegregated,
+                            TacticalMitigationLevel = "None",
+                            DistanceToAerodrome_km = env.DistanceToAerodrome_km,
+                            IsInCTR = env.IsInCTR,
+                            IsNearAerodrome = env.IsNearAerodrome
+                        };
+                        var pyRes = await _py.CalculateARC_2_5(req);
+                        if (pyRes != null)
+                        {
+                            initialARC = ParseARCLabel(pyRes.InitialARC);
+                            if (initialARC == ARCRating.ARC_a && !env.IsAtypicalSegregated)
+                                initialARC = ARCRating.ARC_b;
+
+                            var aecNote = pyRes.AEC > 0 ? $"AEC={pyRes.AEC}. " : string.Empty;
+                            var srcNote = !string.IsNullOrWhiteSpace(pyRes.Source) ? $"Sources: {pyRes.Source}. " : string.Empty;
+                            initialNotes = $"{aecNote}{srcNote}{pyRes.Notes}".Trim();
+                            goto Residual;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (_proxyOnly)
+                    {
+                        return (false, null, null, string.Empty, $"Proxy-only mode: Python ARC call failed - {ex.Message}");
+                    }
+                    _logger?.LogWarning(ex, "Python ARC call failed - falling back to C# implementation");
+                }
+            }
+
+            var initResult = soraVersion == "2.0"
+                ? _grcService.DetermineInitialARC_V2_0(env)
+                : _grcService.DetermineInitialARC_V2_5(env);
+
+            initialARC = initResult.ARC;
+            initialNotes = initResult.Notes;
+        }
+
+    Residual:
+        var residualInput = new ARCResidualInput
+        {
+            InitialARC = initialARC,
+            StrategicMitigations = input.StrategicMitigations,
+            LocalDensityRating = input.LocalDensityRating,
+            IsAtypicalSegregated = input.IsAtypicalSegregated
+        };
+
+        var residualResult = soraVersion == "2.0"
+            ? _grcService.DetermineResidualARC_V2_0(residualInput)
+            : _grcService.DetermineResidualARC_V2_5(residualInput);
+
+        var combinedNotes = $"Initial ARC: {initialARC}. {initialNotes} Residual ARC: {residualResult.ARC}. {residualResult.Notes}".Trim();
+        return (true, initialARC, residualResult.ARC, combinedNotes, "");
+    }
+
+    /// <summary>
+    /// Determines SAIL using authoritative Python service with async pattern
+    /// </summary>
+    private async Task<SAILResult> DetermineSAIL_Authoritative_Async(string soraVersion, SAILInput input)
+    {
+        if (_py != null)
+        {
+            try
+            {
+                var req = new Skyworks.Core.Services.Python.PythonSAILRequest
+                {
+                    FinalGRC = input.FinalGRC,
+                    ResidualARC = ToARCLabel(input.ResidualARC)
+                };
+                var pyRes = await _py.CalculateSAIL(req);
+                if (pyRes != null && !string.IsNullOrWhiteSpace(pyRes.SAIL))
+                {
+                    var level = ParseSAILLabel(pyRes.SAIL);
+                    return new SAILResult { IsSupported = true, SAIL = level, Notes = pyRes.Notes };
+                }
+            }
+            catch (Exception ex)
+            {
+                if (_proxyOnly)
+                {
+                    return new SAILResult { IsSupported = false, Notes = $"Proxy-only mode: Python SAIL call failed - {ex.Message}" };
+                }
+                _logger?.LogWarning(ex, "Python SAIL call failed - falling back to C# implementation");
+            }
+        }
+
+        return _sailService.DetermineSAIL(input);
+    }
+
+    private AirspaceControl ParseAirspaceControl(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return AirspaceControl.Uncontrolled;
+        return s.Trim().ToLower() switch
+        {
+            "controlled" => AirspaceControl.Controlled,
+            _ => AirspaceControl.Uncontrolled
+        };
+    }
+
+    private LocationType ParseLocationType(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return LocationType.NonAirport;
+        return s.Trim().ToLower() switch
+        {
+            "airport" => LocationType.Airport,
+            "heliport" => LocationType.Heliport,
+            "airportheliport" => LocationType.Airport,
+            _ => LocationType.NonAirport
+        };
+    }
+
+    /// <summary>
+    /// Normalizes environment type for ARC calculation per EASA AMC Annex C
+    /// </summary>
+    private EnvironmentType NormalizeEnvironmentForARC(string? environment)
+    {
+        if (string.IsNullOrWhiteSpace(environment))
+            return EnvironmentType.Rural;
+
+        return environment.Trim().ToLower() switch
+        {
+            "suburban" => EnvironmentType.Urban,
+            "industrial" => EnvironmentType.Urban,
+            "urban" => EnvironmentType.Urban,
+            "rural" => EnvironmentType.Rural,
+            "nonurban" => EnvironmentType.Rural,
+            "remote" => EnvironmentType.Rural,
+            "water" => EnvironmentType.Rural,
+            _ => EnvironmentType.Urban
+        };
+    }
+
+    private AirspaceTypicality ParseTypicality(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return AirspaceTypicality.Typical;
+        return s.Trim().ToLower() switch
+        {
+            "atypical" or "atypicalsegregated" or "segregated" => AirspaceTypicality.AtypicalSegregated,
+            _ => AirspaceTypicality.Typical
+        };
+    }
+
+    private bool CanReduceARC(ARCRating arc) => arc > ARCRating.ARC_a;
+
+    private ARCRating ReduceARC(ARCRating arc)
+    {
+        return arc switch
+        {
+            ARCRating.ARC_d => ARCRating.ARC_c,
+            ARCRating.ARC_c => ARCRating.ARC_b,
+            ARCRating.ARC_b => ARCRating.ARC_a,
+            _ => arc
+        };
+    }
+
+    private string ToARCLabel(ARCRating arc) => arc switch
+    {
+        ARCRating.ARC_a => "ARC_a",
+        ARCRating.ARC_b => "ARC_b",
+        ARCRating.ARC_c => "ARC_c",
+        ARCRating.ARC_d => "ARC_d",
+        _ => "ARC_b"
+    };
+
+    private ARCRating ParseARCLabel(string s)
+    {
+        return (s?.Trim().ToUpperInvariant()) switch
+        {
+            "ARC_A" => ARCRating.ARC_a,
+            "ARC_B" => ARCRating.ARC_b,
+            "ARC_C" => ARCRating.ARC_c,
+            "ARC_D" => ARCRating.ARC_d,
+            _ => ARCRating.ARC_b
+        };
+    }
+
+    private SAILLevel ParseSAILLabel(string s) => (s?.Trim().ToUpperInvariant()) switch
+    {
+        "I" => SAILLevel.I,
+        "II" => SAILLevel.II,
+        "III" => SAILLevel.III,
+        "IV" => SAILLevel.IV,
+        "V" => SAILLevel.V,
+        "VI" => SAILLevel.VI,
+        _ => SAILLevel.III
+    };
+
+    private GroundRiskMitigation_V2_0 ParseMitigation_V2_0(string type)
+    {
+        return type.ToUpper() switch
+        {
+            "M1" => GroundRiskMitigation_V2_0.M1_StrategicMitigations,
+            "M2" => GroundRiskMitigation_V2_0.M2_ImpactReduction,
+            "M3" => GroundRiskMitigation_V2_0.M3_EmergencyResponsePlan,
+            _ => GroundRiskMitigation_V2_0.M1_StrategicMitigations
+        };
+    }
+
+    private GroundRiskMitigation ParseMitigation_V2_5(string type)
+    {
+        return type.ToUpper() switch
+        {
+            "M1A" => GroundRiskMitigation.M1A_Sheltering,
+            "M1B" => GroundRiskMitigation.M1B_OperationalRestrictions,
+            "M1C" => GroundRiskMitigation.M1C_GroundObservation,
+            "M2" => GroundRiskMitigation.M2_ImpactDynamics,
+            _ => GroundRiskMitigation.M1A_Sheltering
+        };
+    }
+
+    /// <summary>
+    /// Maps operational scenarios to population density values per EASA guidelines
+    /// </summary>
+    private int MapScenarioToPopulationDensity(OperationalScenario scenario)
+    {
+        return scenario switch
+        {
+            OperationalScenario.ControlledGroundArea => 0,
+            OperationalScenario.VLOS_SparselyPopulated => 10,
+            OperationalScenario.BVLOS_SparselyPopulated => 10,
+            OperationalScenario.VLOS_Populated => 500,
+            OperationalScenario.BVLOS_Populated => 500,
+            OperationalScenario.VLOS_GatheringOfPeople => 50000,
+            OperationalScenario.BVLOS_GatheringOfPeople => 50000,
+            _ => 1000
+        };
+    }
+
+    /// <summary>
+    /// Extracts mitigation robustness level from mitigations list
+    /// </summary>
+    private string? ExtractMitigationRobustness(List<MitigationInput>? mitigations, string mitigationType)
+    {
+        if (mitigations == null || !mitigations.Any())
+            return null;
+
+        var mitigation = mitigations.FirstOrDefault(m => 
+            string.Equals(m.Type, mitigationType, StringComparison.OrdinalIgnoreCase));
+
+        if (mitigation == null)
+            return null;
+
+        return mitigation.Robustness switch
+        {
+            RobustnessLevel.Low => "Low",
+            RobustnessLevel.Medium => "Medium",
+            RobustnessLevel.High => "High",
+            _ => null
+        };
+    }
+
+    private string BuildSummary(SORACompleteResult result)
+    {
+        var summary = $"SORA {result.SoraVersion} Assessment: " +
+                      $"GRC {result.IntrinsicGRC}→{result.FinalGRC}, " +
+                      $"ARC {result.InitialARC}→{result.ResidualARC}, " +
+                      $"SAIL {result.SAIL}, " +
+                      $"TMPR {result.TMPRDetails?.Level} ({result.TMPRDetails?.Robustness}), " +
+                      $"OSO {result.ImplementedOSOCount}/{result.RequiredOSOCount}, " +
+                      $"Compliant: {result.IsCompliant}, " +
+                      $"Risk: {result.RiskBand} ({result.RiskScore:F1})";
+
+        if (result.Warnings != null && result.Warnings.Count > 0)
+        {
+            summary += $", Warnings: {result.Warnings.Count}";
+            var first = result.Warnings[0];
+            string? example = null;
+            var lb = first.IndexOf('[');
+            var rb = first.IndexOf("]:", StringComparison.Ordinal);
+            if (lb >= 0 && rb > lb)
+            {
+                var inside = first.Substring(lb + 1, rb - lb - 1).Trim();
+                var parts = inside.Split("::", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                example = parts.Length > 0 ? parts[^1] : inside;
+            }
+            if (string.IsNullOrWhiteSpace(example))
+            {
+                example = first.Length > 40 ? first.Substring(0, 40) + "…" : first;
+            }
+            summary += $" (e.g., {example})";
+        }
+        if (result.Errors != null && result.Errors.Count > 0)
+        {
+            summary += $", Errors: {result.Errors.Count}";
+        }
+        return summary;
+    }
+
+    /// <summary>
+    /// Validates if the operation is within SPECIFIC category scope per JARUS SORA guidelines
+    /// </summary>
+    private (bool IsValid, string Reason, string ReasonCode) ValidateOperationScope(int finalGRC, ARCRating residualARC, SAILLevel sail)
+    {
+        if (sail == SAILLevel.VI)
+        {
+            _logger?.LogWarning("Operation out of scope: SAIL VI requires certified category");
+            return (false, 
+                    "SAIL VI operations require CERTIFIED category and are out of scope for SPECIFIC category operations",
+                    "OOS.SAIL_VI");
+        }
+
+        if (finalGRC >= 6)
+        {
+            _logger?.LogWarning("Operation out of scope: High GRC ({GRC})", finalGRC);
+            return (false, 
+                    $"Ground Risk Class {finalGRC} is out of scope for SPECIFIC category operations. GRC must be < 6.",
+                    "OOS.GRC_GE_6");
+        }
+
+        if (finalGRC >= 5 && residualARC == ARCRating.ARC_d)
+        {
+            _logger?.LogWarning("Operation out of scope: Combined high risk (GRC={GRC}, ARC=d)", finalGRC);
+            return (false,
+                    $"Combined high risk (GRC {finalGRC} with ARC-d) requires additional safety case review",
+                    "OOS.GRC5_PLUS_ARCd");
+        }
+
+        return (true, "Operation is within SPECIFIC category scope", "");
+    }
+}
+```
+
+# PythonGRCRequest_2_0.cs
+```csharp
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// Request model for SORA 2.0 GRC calculation via Python engine
+/// </summary>
+public class PythonGRCRequest_2_0
+{
+    /// <summary>
+    /// SORA 2.0 operational scenario (e.g., "VLOS_SparselyPopulated")
+    /// </summary>
+    public string Scenario { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Aircraft characteristic dimension in meters
+    /// </summary>
+    public double DimensionM { get; set; }
+
+    /// <summary>
+    /// Footprint containment quality (Good/Adequate)
+    /// </summary>
+    public string ContainmentQuality { get; set; } = "Adequate";
+
+    /// <summary>
+    /// M1 Strategic mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M1Strategic { get; set; }
+
+    /// <summary>
+    /// M2 Impact reduction mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M2Impact { get; set; }
+
+    /// <summary>
+    /// M3 Emergency Response Plan mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M3ERP { get; set; }
+}
+```
+
+# PythonGRCRequest_2_5.cs
+```csharp
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// Request model for SORA 2.5 GRC calculation via Python engine
+/// </summary>
+public class PythonGRCRequest_2_5
+{
+    /// <summary>
+    /// Maximum Take-Off Mass in kilograms (mandatory for SORA 2.5)
+    /// </summary>
+    public double MTOM_kg { get; set; }
+
+    /// <summary>
+    /// Maximum speed in meters per second (mandatory for SORA 2.5)
+    /// </summary>
+    public double MaxSpeed_mps { get; set; }
+
+    /// <summary>
+    /// Population density (people per km²)
+    /// </summary>
+    public int PopulationDensity { get; set; }
+
+    /// <summary>
+    /// Maximum dimension in meters
+    /// </summary>
+    public double MaxDimensionM { get; set; }
+
+    /// <summary>
+    /// Maximum characteristic dimension in meters (SORA 2.5 Table 2)
+    /// </summary>
+    public double MaxCharacteristicDimensionM { get; set; }
+
+    /// <summary>
+    /// Operation mode (VLOS/BVLOS)
+    /// </summary>
+    public string OperationMode { get; set; } = "VLOS";
+
+    /// <summary>
+    /// Overflown area type (Sparsely/Populated/Gathering)
+    /// </summary>
+    public string OverflownArea { get; set; } = "Sparsely";
+
+    /// <summary>
+    /// M1A Sheltering mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M1A_Sheltering { get; set; }
+
+    /// <summary>
+    /// M1B Operational restrictions mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M1B_Operational { get; set; }
+
+    /// <summary>
+    /// M1C Ground observation mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M1C_GroundObservation { get; set; }
+
+    /// <summary>
+    /// M2 Impact dynamics mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M2Impact { get; set; }
+}
+```
+
+# PythonARCRequest_2_0.cs
+```csharp
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// Request model for SORA 2.0 ARC calculation via Python engine
+/// </summary>
+public class PythonARCRequest_2_0
+{
+    /// <summary>
+    /// Altitude above ground level in feet (SORA 2.0 uses feet)
+    /// </summary>
+    public double AltitudeAglFt { get; set; }
+
+    /// <summary>
+    /// Maximum height above mean sea level in meters
+    /// </summary>
+    public double? MaxHeightAmslM { get; set; }
+
+    /// <summary>
+    /// Airspace class (A/B/C/D/E/F/G)
+    /// </summary>
+    public string AirspaceClass { get; set; } = "G";
+
+    /// <summary>
+    /// Whether airspace is controlled
+    /// </summary>
+    public bool IsControlled { get; set; }
+
+    /// <summary>
+    /// Whether in Mode S veil
+    /// </summary>
+    public bool IsModesVeil { get; set; }
+
+    /// <summary>
+    /// Whether in Transponder Mandatory Zone
+    /// </summary>
+    public bool IsTmz { get; set; }
+
+    /// <summary>
+    /// Environment type (Urban/Rural)
+    /// </summary>
+    public string Environment { get; set; } = "Urban";
+
+    /// <summary>
+    /// Whether near airport or heliport
+    /// </summary>
+    public bool IsAirportHeliport { get; set; }
+
+    /// <summary>
+    /// Whether operation is atypical/segregated
+    /// </summary>
+    public bool IsAtypicalSegregated { get; set; }
+
+    /// <summary>
+    /// Tactical mitigation level (None/Low/Medium/High)
+    /// </summary>
+    public string TacticalMitigationLevel { get; set; } = "None";
+
+    /// <summary>
+    /// Distance to nearest aerodrome in nautical miles (SORA 2.0 uses nm)
+    /// </summary>
+    public double? DistanceToAerodrome_nm { get; set; }
+
+    /// <summary>
+    /// Whether operation is in Control Traffic Region
+    /// </summary>
+    public bool IsInCTR { get; set; }
+}
+```
+
+# PythonARCRequest_2_5.cs
+```csharp
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// Request model for SORA 2.5 ARC calculation via Python engine
+/// </summary>
+public class PythonARCRequest_2_5
+{
+    /// <summary>
+    /// Altitude above ground level in meters (SORA 2.5 uses meters)
+    /// </summary>
+    public double AltitudeAglM { get; set; }
+
+    /// <summary>
+    /// Maximum speed in meters per second
+    /// </summary>
+    public double MaxSpeedMs { get; set; }
+
+    /// <summary>
+    /// Airspace class (A/B/C/D/E/F/G)
+    /// </summary>
+    public string AirspaceClass { get; set; } = "G";
+
+    /// <summary>
+    /// Whether airspace is controlled
+    /// </summary>
+    public bool IsControlled { get; set; }
+
+    /// <summary>
+    /// Whether in Mode S veil
+    /// </summary>
+    public bool IsModesVeil { get; set; }
+
+    /// <summary>
+    /// Whether in Transponder Mandatory Zone
+    /// </summary>
+    public bool IsTmz { get; set; }
+
+    /// <summary>
+    /// Environment type (Urban/Rural)
+    /// </summary>
+    public string Environment { get; set; } = "Urban";
+
+    /// <summary>
+    /// Whether near airport or heliport
+    /// </summary>
+    public bool IsAirportHeliport { get; set; }
+
+    /// <summary>
+    /// Whether operation is atypical/segregated
+    /// </summary>
+    public bool IsAtypicalSegregated { get; set; }
+
+    /// <summary>
+    

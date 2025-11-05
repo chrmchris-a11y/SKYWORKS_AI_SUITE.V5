@@ -1,0 +1,249 @@
+IMPORTANT OUTPUT FORMAT — READ FIRST
+
+Respond ONLY with one or more file sections in this exact format. Do not include any prose or explanations outside these sections.
+
+=== FILE: <relative\\path\\from\\repo\\root> ===
+<full file content>
+
+Repeat the section per file you create or modify. No other text.
+
+Paths are Windows-style relative to repo root (e.g., Backend_Python\\sail\\oso_requirements.py). Create directories as needed. Do not rename existing APIs.
+
+---
+
+You are implementing three components in a SORA compliance stack. Treat the official texts below as single sources of truth. Do not invent rules, “bin” numeric ARCs into letters for SORA 2.5, or hard-code OSO counts for 2.5.
+
+Authoritative references (use these names verbatim in docstrings/comments)
+
+SORA 2.0 (EASA AMC/GM to Reg. (EU) 2019/947)
+
+Annex D, Table D.1 — SAIL lookup (GRC 1..7 × ARC a–d).
+
+Annex E — Operational Safety Objectives (OSOs) and robustness per SAIL.
+
+SORA 2.5 (JARUS SORA v2.5 Main Body & Annexes)
+
+Step 9 / Annex D, Table 7 — SAIL lookup (GRC 1..10 × numeric residual ARC 1..10).
+
+Annex E — OSOs and robustness model. (Counts must not be hard-coded for 2.5.)
+
+Compliance constraints:
+
+SORA 2.0: SAIL table is only GRC 1..7. If GRC > 7 ⇒ Category C (Certified) → SAIL is None.
+
+SORA 2.5: SAIL table is GRC 1..10 with explicit rule GRC 9–10 ⇒ SAIL VI for any residual ARC 1..10.
+
+2.5 uses numeric residual ARC (1..10). Do not convert to a/b/c/d on authoritative paths.
+
+Your scope (files 6–8)
+6) oso_requirements.py
+
+Goal: Provide OSO information per SAIL without creating version drift.
+
+Authoritative behavior
+
+For SORA 2.0 only, expose count by SAIL using the conventional Annex-E mapping the client expects:
+I → 6, II → 10, III → 15, IV → 18, V → 21, VI → 24.
+(Document clearly that this is a convenience count derived from Annex E; the normative artifact is the OSO list with robustness.)
+
+For SORA 2.5, do not return a hard-coded count. Return None for counts and expose the OSO list with robustness tags per SAIL, as per Annex E v2.5 (the set and robustness differ).
+
+Deliverables
+
+get_oso_count_for_sail(sail: SAILLevel, sora_version: SORAVersion) -> int | None
+
+2.0 → return the counts above.
+
+2.5 → return None.
+
+get_oso_requirements_for_sail(sail: SAILLevel, sora_version: SORAVersion) -> list[OSORequirement]
+
+OSORequirement fields: id: str, title: str, robustness: str | None, applicability_note: str | None.
+
+2.0: populate the canonical 24 OSOs with robustness per SAIL (from Annex E SORA 2.0).
+
+2.5: populate the v2.5 OSO set and robustness per SAIL (Annex E SORA 2.5).
+
+If the full v2.5 mapping is not yet available in the repo, structure the code to load from a single data file (e.g., /sail/data/oso_map_2_5.yaml) and fall back with a 501-style error instructing to provide the data file. Do not invent mappings.
+
+Non-functional
+
+Single source of truth: OSO definitions live in /sail/data/… YAML/JSON and are loaded by both Python and .NET when possible.
+
+Docstrings must cite the references above by name (no links needed).
+
+Unit tests: assert 2.0 count values and that 2.5 returns None for count but a non-empty OSO list for, e.g., SAIL III/IV.
+
+7) sail_validator.py
+
+Goal: Centralize strict version-aware validation and normalization.
+
+Rules
+
+Normalize SORAVersion inputs to "2.0" or "2.5" (accept SORA_2_0, 2.0, SORA 2.5, etc.).
+
+GRC:
+
+For 2.0: accept integers 1..7. If a caller supplies >7, return a validation result indicating Category C (no SAIL) rather than raising; include a category="C" flag so the API can short-circuit.
+
+For 2.5: accept integers 1..10; reject values outside this range with a 400-class error (message: “SORA 2.5 requires GRC in [1..10]”).
+
+ARC:
+
+For 2.0: require letter ARC in {a,b,c,d}; accept variants like ARC-a, ARC_A, case-insensitive; normalize to lowercase a|b|c|d.
+
+For 2.5: require numeric residual ARC in [1..10]; do not accept letters or letter aliases; message: “SORA 2.5 uses numeric residual ARC (1..10); letter ARC is not valid.”
+
+Provide a single class:
+
+class SAILValidator:
+    validate(grc, arc_or_level, sora_version) -> ValidationResult
+
+
+where ValidationResult contains:
+
+ok: bool
+
+normalized_version: Literal["2.0","2.5"]
+
+normalized_grc: int | None
+
+arc_letter: Literal["a","b","c","d"] | None (2.0 only)
+
+arc_level: int | None (2.5 only)
+
+category: Literal["C"] | None (2.0 when GRC > 7)
+
+error: str | None
+
+reference: str (Table D.1 for 2.0, Table 7 for 2.5)
+
+Error taxonomy (return messages, don’t throw):
+
+400 semantics for wrong field given the version (e.g., letter ARC in 2.5).
+
+422 if a Pydantic model upstream already rejected shape/typing.
+
+Unit tests:
+
+2.0: (grc=7, arc='c') → ok; (grc=8, arc='a') → category="C", ok=True, no SAIL.
+
+2.5: (grc=9, level=3) → ok; (grc=11, level=1) → not ok, 400-style message.
+
+8) .NET — SAILService.cs
+
+Goal: Provide a clean interface for clients and keep parity with Python without duplicating logic.
+
+Interface
+
+public interface ISAILService
+{
+    Task<SAILResult> CalculateSail20Async(int grc, char arcLetter);           // 2.0
+    Task<SAILResult> CalculateSail25Async(int grc, int residualArcLevel);     // 2.5
+    Task<OsoResponse>  GetOsoRequirementsAsync(string sail, string soraVersion);
+    Task<MappingTable> GetMappingTableAsync(string soraVersion);               // for UI grids
+}
+
+
+Contracts
+
+Do not reconstruct SAIL logic in C#. Prefer one of:
+
+Call the Python API endpoints (/sail/calculate, /sail/mapping-table, /sail/oso-requirements) and surface typed results; or
+
+If offline is mandatory, load the same JSON tables produced by Python at startup (e.g., persisted from /sail/mapping-table) and map locally. You must still respect the 2.5 rule “GRC 9–10 ⇒ VI”.
+
+Version behavior:
+
+CalculateSail20Async: if grc > 7 return category="C", Sail=null.
+
+CalculateSail25Async: require residualArcLevel ∈ [1..10]; treat grc ∈ {9,10} as VI.
+
+OSO exposure:
+
+For 2.0, you may return OsoCount = {6,10,15,18,21,24}.
+
+For 2.5, return OsoCount = null and include the list with robustness from Python/JSON.
+
+Telemetry: include Reference in the result (“EASA AMC/GM Annex D Table D.1” or “JARUS Annex D Table 7”).
+
+Integration tests:
+
+GRC=3, ARC='a' ⇒ SAIL I; GRC=4, 'a' ⇒ SAIL II; GRC=5, 'b' ⇒ SAIL IV; GRC=6, 'b' ⇒ SAIL IV; GRC=7, 'c' ⇒ SAIL VI; GRC=7, 'd' ⇒ SAIL VI.
+
+2.5: (GRC=6, residualArc=4) equals the cell from Table 7; (GRC=9, residualArc=1) ⇒ VI.
+
+Cross-cutting requirements (all three components)
+
+Single Source of Truth for tables
+
+Store SORA 2.0 and 2.5 SAIL tables under sail/data/ and import in both calculators and APIs.
+
+OSO definitions/robustness live in sail/data/oso_map_2_0.yaml and sail/data/oso_map_2_5.yaml.
+
+Error taxonomy
+
+400: wrong field for version / out-of-range business rule.
+
+422: Pydantic schema error pre-validation.
+
+501: data files or optional calculators not present.
+
+500: unexpected.
+
+Documentation & references
+
+Every public method, endpoint, and DTO must include a reference string with the exact table name (Table D.1 or Table 7) and the standard (EASA AMC/GM vs JARUS v2.5).
+
+Tests
+
+Unit: validator, OSO counts (2.0), 2.5 count is None, several table cells per version.
+
+Parity: assert C# → Python results match for a sample grid of inputs.
+
+Golden cases: include the six 2.0 cases above and 2.5 high-GRC rule.
+
+No binning in 2.5
+
+Never convert numeric residual ARC (1..10) to letter a–d in authoritative paths. If you expose a legacy echo for UI, mark it non-authoritative and keep numeric as the key.
+
+Category C handling (2.0 only)
+
+When GRC > 7, return category="C", Sail=null, OsoCount=null, and a message that Certified category is required per SORA 2.0.
+
+Output format & quality bar
+
+Produce code and tests for:
+
+oso_requirements.py (and the two YAML/JSON OSO maps if available),
+
+sail_validator.py,
+
+.NET ISAILService interface + a concrete SailService that calls Python or loads JSON tables,
+
+Unit/Integration tests as specified.
+
+Include docstrings that cite the exact official tables.
+
+Keep responses DTOs in snake_case for Python; PascalCase for C#.
+
+Provide a README.md snippet (10–15 lines) explaining the version differences and how OSO counts are handled (2.0 vs 2.5).
+
+Do not change any existing endpoint contracts or invent new rules. If a required data file is missing (e.g., 2.5 OSO YAML), implement a graceful 501-style error with a clear “how to enable” message.
+
+Acceptance checklist (must pass)
+
+2.0 golden cases:
+(3,a)→I, (4,a)→II, (5,b)→IV, (6,b)→IV, (7,c)→VI, (7,d)→VI.
+
+2.0 GRC=8, arc=a → category="C", Sail=null.
+
+2.5 (GRC=6, residualArc=4) equals Table 7; (GRC=9, residualArc=1) → VI.
+
+get_oso_count_for_sail(…, "2.0") returns {6,10,15,18,21,24}; for "2.5" returns None.
+
+2.5 OSO endpoint returns list with robustness; no hard-coded count.
+
+C# service returns the same results as Python parity tests.
+
+Deliver the code and tests as above. Keep it precise, compliant, and DRY.

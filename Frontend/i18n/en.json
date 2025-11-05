@@ -17,6 +17,7 @@
       "title": "Mission",
       "soraVersion": "SORA Version",
       "operationCategory": "Operation Category",
+      "populationDensity": "Population Density",
       "missionId": "Mission ID",
       "missionIdPlaceholder": "M-001",
       "missionName": "Mission Name",
@@ -422,13 +423,18 @@
     "events": {
       "title": "Events"
     }
-  }
-  ,
-  "ui.editManually": "Edit manually",
-  "oso.level.NR": "Not Required",
-  "oso.level.L": "Low",
-  "oso.level.M": "Medium",
-  "oso.level.H": "High",
+  },
+  "ui": {
+    "editManually": "Edit manually"
+  },
+  "oso": {
+    "level": {
+      "NR": "Not Required",
+      "L": "Low",
+      "M": "Medium",
+      "H": "High"
+    }
+  },
 
   "oso_1_name": "Operator competent/proven",
   "oso_1_desc": "The UAS operator is competent and has demonstrated capability. Ref: JARUS SORA v2.5 Table 14.",

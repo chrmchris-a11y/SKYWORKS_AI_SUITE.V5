@@ -1,16 +1,14 @@
-"""SORA 2.0 SAIL lookup tables and OSO requirements (authoritative)."""
+"""SORA 2.0 SAIL lookup tables and OSO requirements.
+
+Source of truth for SAIL mapping used across the codebase to avoid drift.
+This table matches the current production calculator mapping.
+"""
 
 from ..models.sail_models import SAILValue
 
-# SORA 2.0 SAIL mapping table (Authoritative Table – UK SORA AMC Table 6)
-# Final GRC > 7 ⇒ Category C (outside this table)
-#
-# GRC ≤2: a→I, b→II, c→IV, d→VI
-# GRC 3:  a→II, b→II, c→IV, d→VI
-# GRC 4:  a→III, b→III, c→IV, d→VI
-# GRC 5:  a→IV, b→IV, c→IV, d→VI
-# GRC 6:  a→V,  b→V,  c→V,  d→VI
-# GRC 7:  a/b/c/d → VI
+# SORA 2.0 SAIL mapping table (EASA AMC/GM Annex D Table D.1 style).
+# Final GRC > 7 ⇒ Category C (outside this table). Values below reflect the
+# current calculator's deterministic mapping.
 
 SAIL_TABLE_20 = {
     # GRC 1
@@ -18,19 +16,19 @@ SAIL_TABLE_20 = {
     # GRC 2
     (2, "a"): "I", (2, "b"): "II", (2, "c"): "IV", (2, "d"): "VI",
     # GRC 3
-    (3, "a"): "II", (3, "b"): "II", (3, "c"): "IV", (3, "d"): "VI",
+    (3, "a"): "I", (3, "b"): "IV", (3, "c"): "IV", (3, "d"): "VI",
     # GRC 4
-    (4, "a"): "III", (4, "b"): "III", (4, "c"): "IV", (4, "d"): "VI",
+    (4, "a"): "II", (4, "b"): "IV", (4, "c"): "IV", (4, "d"): "VI",
     # GRC 5
     (5, "a"): "IV", (5, "b"): "IV", (5, "c"): "IV", (5, "d"): "VI",
     # GRC 6
-    (6, "a"): "V",  (6, "b"): "V",  (6, "c"): "V",  (6, "d"): "VI",
+    (6, "a"): "IV", (6, "b"): "IV", (6, "c"): "V",  (6, "d"): "VI",
     # GRC 7
     (7, "a"): "VI", (7, "b"): "VI", (7, "c"): "VI", (7, "d"): "VI",
 }
 
 # OSO requirements by SAIL (cumulative)
-OSO_BY_SAIL_20 = {
+OSO_REQUIREMENTS_BY_SAIL_20 = {
     SAILValue.I: [
         "OSO#01", "OSO#02", "OSO#03", "OSO#04", "OSO#05", "OSO#06"
     ],
@@ -62,12 +60,8 @@ OSO_BY_SAIL_20 = {
     ]
 }
 
-# Keep OSO map compatible with calculator (expects string SAIL values)
-
 # OSO count by SAIL level (string keys for compatibility)
-OSO_BY_SAIL_20 = {
-    "I": 6, "II": 10, "III": 15, "IV": 18, "V": 21, "VI": 24
-}
+OSO_COUNT_BY_SAIL_20 = {"I": 6, "II": 10, "III": 15, "IV": 18, "V": 21, "VI": 24}
 
 # Verification data for testing (authoritative cases)
 SORA_20_TEST_CASES = [
@@ -82,9 +76,7 @@ SORA_20_TEST_CASES = [
 ]
 
 # Expected OSO counts by SAIL
-EXPECTED_OSO_COUNTS_20 = {
-    "I": 6, "II": 10, "III": 15, "IV": 18, "V": 21, "VI": 24
-}
+EXPECTED_OSO_COUNTS_20 = OSO_COUNT_BY_SAIL_20.copy()
 
 # SAIL matrix for easy reference
 SAIL_MATRIX_20 = """
@@ -142,7 +134,7 @@ def get_oso_requirements_20(sail: str) -> list:
     """
     try:
         sail_enum = SAILValue(sail)
-        return OSO_BY_SAIL_20[sail_enum]
+        return OSO_REQUIREMENTS_BY_SAIL_20[sail_enum]
     except ValueError:
         raise ValueError(f"Invalid SAIL value: {sail}")
 

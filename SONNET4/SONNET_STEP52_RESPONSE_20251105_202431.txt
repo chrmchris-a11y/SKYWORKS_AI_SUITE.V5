@@ -1,0 +1,567 @@
+# Mission Template Schema v1.0 & Seed Catalog
+
+## 1. Mission Template Schema v1.0
+
+```json
+{
+  "$schema": "https://schemas.uasrisk.com/mission-template/v1.0",
+  "version": "1.0.0",
+  "template": {
+    "identity": {
+      "template_id": "string (uuid)",
+      "name": "string",
+      "description": "string",
+      "version": "semver",
+      "created_date": "ISO8601",
+      "last_modified": "ISO8601",
+      "author": "string",
+      "tags": ["array of strings"]
+    },
+    
+    "regulatory_framework": {
+      "sora_version": "enum: ['2.0', '2.5']",
+      "scenario_tag": "enum: ['STS-01', 'STS-02', 'PDRA-S01', 'CUSTOM']",
+      "applicable_regulations": ["EU 2019/947", "AMC/GM UAS.SPEC.050"],
+      "category_threshold": {
+        "sora_2.0": "GRC > 7 triggers Category C",
+        "sora_2.5": "M1A: High→Medium, M1B: Low→None, M1C: None/Low only, M2: Low→None"
+      }
+    },
+
+    "operational_constraints": {
+      "altitude": {
+        "max_agl_ft": "number",
+        "max_amsl_ft": "number",
+        "buffer_ft": "number (default: 50)"
+      },
+      "geofence": {
+        "type": "enum: ['polygon', 'circle', 'corridor']",
+        "coordinates": "GeoJSON geometry",
+        "buffer_m": "number (default: 30)"
+      },
+      "speed": {
+        "max_groundspeed_ms": "number",
+        "max_vertical_ms": "number (default: 3.0)"
+      },
+      "temporal": {
+        "daylight_only": "boolean",
+        "weather_minima": {
+          "visibility_m": "number (default: 5000)",
+          "ceiling_ft": "number (default: 1000)",
+          "wind_max_ms": "number (default: 12)"
+        }
+      }
+    },
+
+    "sora_input_block": {
+      "version_specific": {
+        "sora_2.0": {
+          "intrinsic_grc": "number (1-12)",
+          "initial_arc": "enum: ['a', 'b', 'c', 'd']",
+          "oso_requirements": {
+            "class_I": "number (max: 6)",
+            "class_II": "number (max: 10)", 
+            "class_III": "number (max: 15)",
+            "class_IV": "number (max: 18)",
+            "class_V": "number (max: 21)",
+            "class_VI": "number (max: 24)"
+          },
+          "final_arc": "enum: ['a', 'b', 'c', 'd']",
+          "final_sail": "enum: ['I', 'II', 'III', 'IV', 'V', 'VI']"
+        },
+        "sora_2.5": {
+          "m1a_ground_risk": "enum: ['None', 'Low', 'Medium', 'High']",
+          "m1b_ground_risk": "enum: ['None', 'Low']",
+          "m1c_ground_risk": "enum: ['None', 'Low']",
+          "m2_air_risk": "enum: ['None', 'Low']",
+          "residual_arc_numeric": "number (0.0-4.0)",
+          "final_sail": "enum: ['I', 'II', 'III', 'IV', 'V', 'VI']"
+        }
+      }
+    },
+
+    "mitigations_profile": {
+      "strategic": [
+        {
+          "mitigation_id": "string",
+          "type": "enum: ['geographic', 'temporal', 'procedural']",
+          "description": "string",
+          "effectiveness": "enum: ['low', 'medium', 'high']"
+        }
+      ],
+      "tactical": [
+        {
+          "system_id": "string",
+          "capability": "string",
+          "performance_level": "enum: ['basic', 'enhanced', 'advanced']"
+        }
+      ]
+    },
+
+    "crew_competency": {
+      "remote_pilot": {
+        "license_required": "enum: ['A1/A3', 'A2', 'SPECIFIC']",
+        "experience_hours": "number",
+        "recency_days": "number (default: 90)",
+        "training_modules": ["array of strings"]
+      },
+      "visual_observer": {
+        "required": "boolean",
+        "count": "number",
+        "training_required": "boolean"
+      }
+    },
+
+    "emergency_response": {
+      "erp_template": "string (reference to ERP template)",
+      "contingency_procedures": [
+        {
+          "trigger": "string",
+          "response": "string",
+          "timeline_seconds": "number"
+        }
+      ],
+      "emergency_contacts": {
+        "atc": "string (optional)",
+        "local_authority": "string",
+        "operator_ops": "string"
+      }
+    },
+
+    "documentation_pack": {
+      "required_docs": [
+        "Operations Manual",
+        "Risk Assessment",
+        "Emergency Response Plan",
+        "Insurance Certificate"
+      ],
+      "templates": {
+        "risk_assessment": "string (template reference)",
+        "ops_manual_section": "string (template reference)"
+      }
+    },
+
+    "ui_bindings": {
+      "form_sections": [
+        {
+          "section": "string",
+          "fields": ["array of field names"],
+          "validation_rules": ["array of rule references"]
+        }
+      ],
+      "workflow_steps": [
+        {
+          "step": "number",
+          "title": "string",
+          "required_fields": ["array"],
+          "next_step_conditions": "object"
+        }
+      ]
+    },
+
+    "telemetry_tags": {
+      "required_parameters": [
+        "position_accuracy",
+        "altitude_source",
+        "c2_link_quality"
+      ],
+      "logging_frequency_hz": "number (default: 1.0)",
+      "retention_days": "number (default: 90)"
+    }
+  }
+}
+```
+
+## 2. Seed Catalog (6 Templates)
+
+### Template 1: Urban BVLOS Facade Cleaning
+```json
+{
+  "template_id": "urban-bvlos-facade-001",
+  "name": "Urban BVLOS Building Facade Inspection/Cleaning",
+  "sora_version": "2.5",
+  "scenario_tag": "CUSTOM",
+  "operational_constraints": {
+    "altitude": {"max_agl_ft": 400, "buffer_ft": 50},
+    "geofence": {
+      "type": "polygon",
+      "buffer_m": 30
+    },
+    "speed": {"max_groundspeed_ms": 5.0}
+  },
+  "sora_input_block": {
+    "sora_2.5": {
+      "m1a_ground_risk": "High",
+      "m1b_ground_risk": "Low", 
+      "m1c_ground_risk": "Low",
+      "m2_air_risk": "Low",
+      "residual_arc_numeric": 2.5,
+      "final_sail": "IV"
+    }
+  },
+  "crew_competency": {
+    "remote_pilot": {
+      "license_required": "SPECIFIC",
+      "experience_hours": 100
+    },
+    "visual_observer": {"required": true, "count": 2}
+  }
+}
+```
+
+### Template 2: Suburban VLOS Solar Inspection
+```json
+{
+  "template_id": "suburban-vlos-solar-001",
+  "name": "Suburban VLOS Solar Panel Inspection",
+  "sora_version": "2.0",
+  "scenario_tag": "CUSTOM",
+  "operational_constraints": {
+    "altitude": {"max_agl_ft": 200},
+    "speed": {"max_groundspeed_ms": 8.0},
+    "temporal": {"daylight_only": true}
+  },
+  "sora_input_block": {
+    "sora_2.0": {
+      "intrinsic_grc": 4,
+      "initial_arc": "b",
+      "oso_requirements": {
+        "class_I": 2,
+        "class_II": 4,
+        "class_III": 0
+      },
+      "final_arc": "a",
+      "final_sail": "II"
+    }
+  },
+  "crew_competency": {
+    "remote_pilot": {"license_required": "A2"},
+    "visual_observer": {"required": false}
+  }
+}
+```
+
+### Template 3: STS-01 Roof Inspection
+```json
+{
+  "template_id": "sts01-roof-001",
+  "name": "STS-01 Commercial Roof Inspection",
+  "sora_version": "2.5",
+  "scenario_tag": "STS-01",
+  "operational_constraints": {
+    "altitude": {"max_agl_ft": 120},
+    "speed": {"max_groundspeed_ms": 5.0},
+    "geofence": {"type": "polygon", "buffer_m": 10}
+  },
+  "sora_input_block": {
+    "sora_2.5": {
+      "m1a_ground_risk": "Medium",
+      "m1b_ground_risk": "None",
+      "m1c_ground_risk": "None", 
+      "m2_air_risk": "None",
+      "residual_arc_numeric": 1.0,
+      "final_sail": "I"
+    }
+  },
+  "crew_competency": {
+    "remote_pilot": {"license_required": "A1/A3"},
+    "visual_observer": {"required": false}
+  }
+}
+```
+
+### Template 4: Linear BVLOS Utility Corridor
+```json
+{
+  "template_id": "linear-bvlos-utility-001", 
+  "name": "Linear BVLOS Utility Line Inspection",
+  "sora_version": "2.0",
+  "scenario_tag": "CUSTOM",
+  "operational_constraints": {
+    "altitude": {"max_agl_ft": 300},
+    "geofence": {"type": "corridor", "buffer_m": 50},
+    "speed": {"max_groundspeed_ms": 12.0}
+  },
+  "sora_input_block": {
+    "sora_2.0": {
+      "intrinsic_grc": 6,
+      "initial_arc": "c",
+      "oso_requirements": {
+        "class_I": 4,
+        "class_II": 8,
+        "class_III": 10,
+        "class_IV": 5
+      },
+      "final_arc": "b",
+      "final_sail": "III"
+    }
+  },
+  "mitigations_profile": {
+    "strategic": [
+      {
+        "mitigation_id": "geographic_isolation",
+        "type": "geographic",
+        "effectiveness": "high"
+      }
+    ]
+  }
+}
+```
+
+### Template 5: Night VLOS Urban Surveillance
+```json
+{
+  "template_id": "night-vlos-urban-001",
+  "name": "Night VLOS Urban Area Surveillance", 
+  "sora_version": "2.5",
+  "scenario_tag": "CUSTOM",
+  "operational_constraints": {
+    "altitude": {"max_agl_ft": 150},
+    "speed": {"max_groundspeed_ms": 3.0},
+    "temporal": {
+      "daylight_only": false,
+      "weather_minima": {"visibility_m": 3000}
+    }
+  },
+  "sora_input_block": {
+    "sora_2.5": {
+      "m1a_ground_risk": "High",
+      "m1b_ground_risk": "Low",
+      "m1c_ground_risk": "Low",
+      "m2_air_risk": "Low", 
+      "residual_arc_numeric": 3.0,
+      "final_sail": "V"
+    }
+  },
+  "crew_competency": {
+    "remote_pilot": {
+      "license_required": "SPECIFIC",
+      "training_modules": ["night_operations", "urban_environment"]
+    },
+    "visual_observer": {"required": true, "count": 1}
+  }
+}
+```
+
+### Template 6: Harbor VLOS near RMZ/TMZ
+```json
+{
+  "template_id": "harbor-vlos-rmz-001",
+  "name": "Harbor VLOS Operations near RMZ/TMZ",
+  "sora_version": "2.0", 
+  "scenario_tag": "CUSTOM",
+  "operational_constraints": {
+    "altitude": {"max_agl_ft": 100, "buffer_ft": 20},
+    "speed": {"max_groundspeed_ms": 6.0},
+    "geofence": {"type": "polygon", "buffer_m": 100}
+  },
+  "sora_input_block": {
+    "sora_2.0": {
+      "intrinsic_grc": 8,
+      "initial_arc": "d",
+      "oso_requirements": {
+        "class_I": 6,
+        "class_II": 10,
+        "class_III": 15,
+        "class_IV": 12,
+        "class_V": 8
+      },
+      "final_arc": "c", 
+      "final_sail": "IV"
+    }
+  },
+  "emergency_response": {
+    "emergency_contacts": {
+      "atc": "Harbor Control Tower",
+      "local_authority": "Port Authority"
+    }
+  }
+}
+```
+
+## 3. Validation Rules
+
+### Hard Validation (Blocking)
+```python
+def validate_template(template):
+    errors = []
+    
+    # SORA 2.5 specific validations
+    if template.sora_version == "2.5":
+        sora_25 = template.sora_input_block.sora_2_5
+        
+        # M1A: High must be reduced to Medium
+        if sora_25.m1a_ground_risk == "High":
+            errors.append("M1A High risk must be mitigated to Medium (SORA 2.5 Annex F)")
+            
+        # M1B: Low must be reduced to None  
+        if sora_25.m1b_ground_risk == "Low":
+            errors.append("M1B Low risk must be mitigated to None (SORA 2.5 Annex F)")
+            
+        # M1C: Only None/Low permitted
+        if sora_25.m1c_ground_risk not in ["None", "Low"]:
+            errors.append("M1C only permits None/Low risk levels (SORA 2.5 Annex F)")
+            
+        # M2: Low must be reduced to None
+        if sora_25.m2_air_risk == "Low": 
+            errors.append("M2 Low risk must be mitigated to None (SORA 2.5 Annex F)")
+            
+        # Numeric ARC range
+        if not (0.0 <= sora_25.residual_arc_numeric <= 4.0):
+            errors.append("Residual ARC must be 0.0-4.0 (SORA 2.5 Table 7)")
+    
+    # SORA 2.0 specific validations  
+    if template.sora_version == "2.0":
+        sora_20 = template.sora_input_block.sora_2_0
+        
+        # OSO count limits
+        oso_limits = {"class_I": 6, "class_II": 10, "class_III": 15, 
+                     "class_IV": 18, "class_V": 21, "class_VI": 24}
+        
+        for oso_class, count in sora_20.oso_requirements.items():
+            if count > oso_limits[oso_class]:
+                errors.append(f"{oso_class} OSO count {count} exceeds limit {oso_limits[oso_class]}")
+                
+        # Category C threshold
+        if sora_20.intrinsic_grc > 7:
+            errors.append("GRC > 7 triggers Category C operations (SORA 2.0)")
+    
+    return errors
+
+def normalize_template(template):
+    """Apply NA rules and normalization"""
+    if template.sora_version == "2.5":
+        sora_25 = template.sora_input_block.sora_2_5
+        
+        # Auto-apply required mitigations per Annex F
+        if sora_25.m1a_ground_risk == "High":
+            sora_25.m1a_ground_risk = "Medium"
+            
+        if sora_25.m1b_ground_risk == "Low":
+            sora_25.m1b_ground_risk = "None"
+            
+        if sora_25.m2_air_risk == "Low":
+            sora_25.m2_air_risk = "None"
+    
+    return template
+```
+
+### Policy Warnings
+```python
+def check_policy_warnings(template):
+    warnings = []
+    
+    # High SAIL operations
+    if template.final_sail in ["V", "VI"]:
+        warnings.append("High SAIL operations require enhanced oversight")
+        
+    # Night operations
+    if not template.operational_constraints.temporal.daylight_only:
+        warnings.append("Night operations require additional pilot training")
+        
+    # BVLOS operations
+    if "BVLOS" in template.name:
+        warnings.append("BVLOS operations require detect & avoid capability")
+        
+    return warnings
+```
+
+## 4. Acceptance Criteria
+
+### Template → API Validation → SAIL Preview
+```python
+def acceptance_test_workflow():
+    # Load template
+    template = load_template("urban-bvlos-facade-001")
+    
+    # API validation
+    validation_result = api.validate_template(template)
+    assert validation_result.is_valid
+    
+    # Generate SAIL preview
+    sail_preview = api.generate_sail_preview(template)
+    assert sail_preview.final_sail == template.sora_input_block.final_sail
+    
+    # Verify regulatory compliance
+    compliance_check = api.check_regulatory_compliance(template)
+    assert compliance_check.sora_compliant == True
+```
+
+### Parity Test (.NET ⇄ Python)
+```python
+def test_cross_platform_parity():
+    template_json = get_test_template()
+    
+    # Process in Python
+    python_result = python_processor.process_template(template_json)
+    
+    # Process in .NET
+    dotnet_result = dotnet_processor.process_template(template_json)
+    
+    # Verify identical results
+    assert python_result.final_sail == dotnet_result.final_sail
+    assert python_result.residual_arc == dotnet_result.residual_arc
+    assert python_result.validation_errors == dotnet_result.validation_errors
+```
+
+### Smoke Test Pass
+```python
+def smoke_test_all_templates():
+    templates = load_seed_catalog()
+    
+    for template in templates:
+        # Basic validation
+        errors = validate_template(template)
+        assert len(errors) == 0, f"Template {template.template_id} has validation errors"
+        
+        # SAIL calculation
+        sail_result = calculate_sail(template)
+        assert sail_result.final_sail in ["I", "II", "III", "IV", "V", "VI"]
+        
+        # Documentation generation
+        docs = generate_documentation(template)
+        assert docs.risk_assessment is not None
+        assert docs.ops_manual_section is not None
+```
+
+## 5. Risk Mitigation
+
+### Template/Backend Drift Prevention
+```python
+class TemplateVersionManager:
+    def __init__(self):
+        self.version_registry = {}
+        
+    def register_template(self, template):
+        """Pin template to specific backend version"""
+        backend_version = get_current_backend_version()
+        template.metadata.backend_version = backend_version
+        self.version_registry[template.template_id] = backend_version
+        
+    def validate_compatibility(self, template):
+        """Check template/backend compatibility"""
+        current_version = get_current_backend_version()
+        template_version = template.metadata.backend_version
+        
+        if not is_compatible(template_version, current_version):
+            raise IncompatibleVersionError(
+                f"Template requires backend {template_version}, "
+                f"current version {current_version}"
+            )
+            
+    def round_trip_check(self, template):
+        """Verify template survives serialization round-trip"""
+        json_str = template.to_json()
+        restored = Template.from_json(json_str)
+        
+        assert template.equals(restored), "Round-trip serialization failed"
+```
+
+This comprehensive Mission Template Schema v1.0 provides:
+- **Structured templates** enforcing SORA 2.0/2.5 input contracts
+- **Diverse seed catalog** covering common operational scenarios  
+- **Robust validation** with hard blocks and policy warnings
+- **Cross-platform compatibility** with parity testing
+- **Version management** preventing template/backend drift
+
+The schema supports both SORA versions while maintaining regulatory compliance and operational safety standards.

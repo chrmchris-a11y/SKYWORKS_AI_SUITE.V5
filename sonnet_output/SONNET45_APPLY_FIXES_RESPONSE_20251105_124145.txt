@@ -1,0 +1,386 @@
+=== FILE: Backend_Python\sail\data\oso_map_2_5.yaml ===
+I:
+  - id: "OSO#01"
+    title: "Ensure the operator is competent and/or proven"
+    robustness: "Medium"
+  - id: "OSO#02"
+    title: "UAS manufactured by competent and/or proven entity"
+    robustness: "Medium"
+  - id: "OSO#03"
+    title: "UAS maintained by competent and/or proven entity"
+    robustness: "Medium"
+  - id: "OSO#04"
+    title: "UAS designed and qualified for mission"
+    robustness: "Medium"
+  - id: "OSO#05"
+    title: "UAS operation compliant with applicable limitations and conditions"
+    robustness: "Medium"
+  - id: "OSO#06"
+    title: "Effects of ground impact are reduced"
+    robustness: "Medium"
+
+II:
+  - id: "OSO#01"
+    title: "Ensure the operator is competent and/or proven"
+    robustness: "Medium"
+  - id: "OSO#02"
+    title: "UAS manufactured by competent and/or proven entity"
+    robustness: "Medium"
+  - id: "OSO#03"
+    title: "UAS maintained by competent and/or proven entity"
+    robustness: "Medium"
+  - id: "OSO#04"
+    title: "UAS designed and qualified for mission"
+    robustness: "Medium"
+  - id: "OSO#05"
+    title: "UAS operation compliant with applicable limitations and conditions"
+    robustness: "Medium"
+  - id: "OSO#06"
+    title: "Effects of ground impact are reduced"
+    robustness: "Medium"
+  - id: "OSO#07"
+    title: "UAS designed to manage the deterioration of external systems supporting UAS operation"
+    robustness: "Medium"
+  - id: "OSO#08"
+    title: "UAS designed to manage the deterioration of the UAS"
+    robustness: "Medium"
+  - id: "OSO#09"
+    title: "Inspection of the UAS (or parts of the system) to ensure continued operation throughout the flight"
+    robustness: "Medium"
+  - id: "OSO#10"
+    title: "Procedures designed to handle emergency situations"
+    robustness: "Medium"
+
+III:
+  - id: "OSO#01"
+    title: "Ensure the operator is competent and/or proven"
+    robustness: "Medium"
+  - id: "OSO#02"
+    title: "UAS manufactured by competent and/or proven entity"
+    robustness: "Medium"
+  - id: "OSO#03"
+    title: "UAS maintained by competent and/or proven entity"
+    robustness: "Medium"
+  - id: "OSO#04"
+    title: "UAS designed and qualified for mission"
+    robustness: "Medium"
+  - id: "OSO#05"
+    title: "UAS operation compliant with applicable limitations and conditions"
+    robustness: "Medium"
+  - id: "OSO#06"
+    title: "Effects of ground impact are reduced"
+    robustness: "Medium"
+  - id: "OSO#07"
+    title: "UAS designed to manage the deterioration of external systems supporting UAS operation"
+    robustness: "Medium"
+  - id: "OSO#08"
+    title: "UAS designed to manage the deterioration of the UAS"
+    robustness: "Medium"
+  - id: "OSO#09"
+    title: "Inspection of the UAS (or parts of the system) to ensure continued operation throughout the flight"
+    robustness: "Medium"
+  - id: "OSO#10"
+    title: "Procedures designed to handle emergency situations"
+    robustness: "Medium"
+  - id: "OSO#11"
+    title: "Procedures to handle the deterioration of external systems supporting UAS operation"
+    robustness: "Medium"
+  - id: "OSO#12"
+    title: "The UAS is designed to enable the pilot to comply with air traffic rules"
+    robustness: "Medium"
+  - id: "OSO#13"
+    title: "External services supporting UAS operations are adequate to the operation"
+    robustness: "Medium"
+  - id: "OSO#14"
+    title: "Characteristics of the airspace and operation account for UAS limitations"
+    robustness: "Medium"
+  - id: "OSO#15"
+    title: "UAS operation conducted in a structured environment that mitigates the risk to third parties"
+    robustness: "Medium"
+
+IV:
+  - id: "OSO#01"
+    title: "Ensure the operator is competent and/or proven"
+    robustness: "High"
+  - id: "OSO#02"
+    title: "UAS manufactured by competent and/or proven entity"
+    robustness: "High"
+  - id: "OSO#03"
+    title: "UAS maintained by competent and/or proven entity"
+    robustness: "High"
+  - id: "OSO#04"
+    title: "UAS designed and qualified for mission"
+    robustness: "High"
+  - id: "OSO#05"
+    title: "UAS operation compliant with applicable limitations and conditions"
+    robustness: "High"
+  - id: "OSO#06"
+    title: "Effects of ground impact are reduced"
+    robustness: "High"
+  - id: "OSO#07"
+    title: "UAS designed to manage the deterioration of external systems supporting UAS operation"
+    robustness: "High"
+  - id: "OSO#08"
+    title: "UAS designed to manage the deterioration of the UAS"
+    robustness: "High"
+  - id: "OSO#09"
+    title: "Inspection of the UAS (or parts of the system) to ensure continued operation throughout the flight"
+    robustness: "High"
+  - id: "OSO#10"
+    title: "Procedures designed to handle emergency situations"
+    robustness: "High"
+  - id: "OSO#11"
+    title: "Procedures to handle the deterioration of external systems supporting UAS operation"
+    robustness: "High"
+  - id: "OSO#12"
+    title: "The UAS is designed to enable the pilot to comply with air traffic rules"
+    robustness: "High"
+  - id: "OSO#13"
+    title: "External services supporting UAS operations are adequate to the operation"
+    robustness: "High"
+  - id: "OSO#14"
+    title: "Characteristics of the airspace and operation account for UAS limitations"
+    robustness: "High"
+  - id: "OSO#15"
+    title: "UAS operation conducted in a structured environment that mitigates the risk to third parties"
+    robustness: "High"
+  - id: "OSO#16"
+    title: "Multi-crew coordination"
+    robustness: "High"
+  - id: "OSO#17"
+    title: "Ensure appropriate procedures are in place to address human error"
+    robustness: "High"
+  - id: "OSO#18"
+    title: "Ensure appropriate training to address identified human error and other shortcomings of human performance"
+    robustness: "High"
+
+V:
+  - id: "OSO#01"
+    title: "Ensure the operator is competent and/or proven"
+    robustness: "High"
+  - id: "OSO#02"
+    title: "UAS manufactured by competent and/or proven entity"
+    robustness: "High"
+  - id: "OSO#03"
+    title: "UAS maintained by competent and/or proven entity"
+    robustness: "High"
+  - id: "OSO#04"
+    title: "UAS designed and qualified for mission"
+    robustness: "High"
+  - id: "OSO#05"
+    title: "UAS operation compliant with applicable limitations and conditions"
+    robustness: "High"
+  - id: "OSO#06"
+    title: "Effects of ground impact are reduced"
+    robustness: "High"
+  - id: "OSO#07"
+    title: "UAS designed to manage the deterioration of external systems supporting UAS operation"
+    robustness: "High"
+  - id: "OSO#08"
+    title: "UAS designed to manage the deterioration of the UAS"
+    robustness: "High"
+  - id: "OSO#09"
+    title: "Inspection of the UAS (or parts of the system) to ensure continued operation throughout the flight"
+    robustness: "High"
+  - id: "OSO#10"
+    title: "Procedures designed to handle emergency situations"
+    robustness: "High"
+  - id: "OSO#11"
+    title: "Procedures to handle the deterioration of external systems supporting UAS operation"
+    robustness: "High"
+  - id: "OSO#12"
+    title: "The UAS is designed to enable the pilot to comply with air traffic rules"
+    robustness: "High"
+  - id: "OSO#13"
+    title: "External services supporting UAS operations are adequate to the operation"
+    robustness: "High"
+  - id: "OSO#14"
+    title: "Characteristics of the airspace and operation account for UAS limitations"
+    robustness: "High"
+  - id: "OSO#15"
+    title: "UAS operation conducted in a structured environment that mitigates the risk to third parties"
+    robustness: "High"
+  - id: "OSO#16"
+    title: "Multi-crew coordination"
+    robustness: "High"
+  - id: "OSO#17"
+    title: "Ensure appropriate procedures are in place to address human error"
+    robustness: "High"
+  - id: "OSO#18"
+    title: "Ensure appropriate training to address identified human error and other shortcomings of human performance"
+    robustness: "High"
+  - id: "OSO#19"
+    title: "Safe recovery from human error"
+    robustness: "High"
+  - id: "OSO#20"
+    title: "Management and assurance of safety critical procedures"
+    robustness: "High"
+  - id: "OSO#21"
+    title: "Organisational factors"
+    robustness: "High"
+
+VI:
+  - id: "OSO#01"
+    title: "Ensure the operator is competent and/or proven"
+    robustness: "High"
+  - id: "OSO#02"
+    title: "UAS manufactured by competent and/or proven entity"
+    robustness: "High"
+  - id: "OSO#03"
+    title: "UAS maintained by competent and/or proven entity"
+    robustness: "High"
+  - id: "OSO#04"
+    title: "UAS designed and qualified for mission"
+    robustness: "High"
+  - id: "OSO#05"
+    title: "UAS operation compliant with applicable limitations and conditions"
+    robustness: "High"
+  - id: "OSO#06"
+    title: "Effects of ground impact are reduced"
+    robustness: "High"
+  - id: "OSO#07"
+    title: "UAS designed to manage the deterioration of external systems supporting UAS operation"
+    robustness: "High"
+  - id: "OSO#08"
+    title: "UAS designed to manage the deterioration of the UAS"
+    robustness: "High"
+  - id: "OSO#09"
+    title: "Inspection of the UAS (or parts of the system) to ensure continued operation throughout the flight"
+    robustness: "High"
+  - id: "OSO#10"
+    title: "Procedures designed to handle emergency situations"
+    robustness: "High"
+  - id: "OSO#11"
+    title: "Procedures to handle the deterioration of external systems supporting UAS operation"
+    robustness: "High"
+  - id: "OSO#12"
+    title: "The UAS is designed to enable the pilot to comply with air traffic rules"
+    robustness: "High"
+  - id: "OSO#13"
+    title: "External services supporting UAS operations are adequate to the operation"
+    robustness: "High"
+  - id: "OSO#14"
+    title: "Characteristics of the airspace and operation account for UAS limitations"
+    robustness: "High"
+  - id: "OSO#15"
+    title: "UAS operation conducted in a structured environment that mitigates the risk to third parties"
+    robustness: "High"
+  - id: "OSO#16"
+    title: "Multi-crew coordination"
+    robustness: "High"
+  - id: "OSO#17"
+    title: "Ensure appropriate procedures are in place to address human error"
+    robustness: "High"
+  - id: "OSO#18"
+    title: "Ensure appropriate training to address identified human error and other shortcomings of human performance"
+    robustness: "High"
+  - id: "OSO#19"
+    title: "Safe recovery from human error"
+    robustness: "High"
+  - id: "OSO#20"
+    title: "Management and assurance of safety critical procedures"
+    robustness: "High"
+  - id: "OSO#21"
+    title: "Organisational factors"
+    robustness: "High"
+  - id: "OSO#22"
+    title: "Coordination with ATC and manned aviation operations"
+    robustness: "High"
+  - id: "OSO#23"
+    title: "Collision avoidance systems and procedures"
+    robustness: "High"
+  - id: "OSO#24"
+    title: "UAS operations requirements developed to overcome ground and air risks"
+    robustness: "High"
+
+=== FILE: Backend_Python\tests\test_oso_requirements.py ===
+import pytest
+from sail.oso_requirements import get_oso_requirements_for_sail, get_oso_count_for_sail, SAILLevel
+
+
+class TestOSORequirements:
+    """Test suite for OSO requirements functionality"""
+
+    def test_get_oso_requirements_for_sail_2_0(self):
+        """Test that OSO requirements are returned for SORA 2.0"""
+        requirements = get_oso_requirements_for_sail(SAILLevel.III, "2.0")
+        
+        assert requirements is not None
+        assert len(requirements) > 0
+        
+        # Check structure of requirements
+        for req in requirements:
+            assert "id" in req
+            assert "title" in req
+            assert "robustness" in req
+            assert req["id"].startswith("OSO#")
+            assert req["robustness"] in ["Low", "Medium", "High"]
+
+    def test_get_oso_requirements_for_sail_2_5(self):
+        """Test that OSO requirements are returned for SORA 2.5"""
+        requirements = get_oso_requirements_for_sail(SAILLevel.III, "2.5")
+        
+        assert requirements is not None
+        assert len(requirements) > 0
+        
+        # Check structure of requirements
+        for req in requirements:
+            assert "id" in req
+            assert "title" in req
+            assert "robustness" in req
+            assert req["id"].startswith("OSO#")
+            assert req["robustness"] in ["Low", "Medium", "High"]
+
+    def test_get_oso_requirements_for_sail_iv_2_5(self):
+        """Test that OSO requirements are returned for SAIL IV in SORA 2.5"""
+        requirements = get_oso_requirements_for_sail(SAILLevel.IV, "2.5")
+        
+        assert requirements is not None
+        assert len(requirements) > 0
+        
+        # Check structure of requirements
+        for req in requirements:
+            assert "id" in req
+            assert "title" in req
+            assert "robustness" in req
+            assert req["id"].startswith("OSO#")
+            assert req["robustness"] in ["Low", "Medium", "High"]
+
+    def test_get_oso_count_for_sail_2_0(self):
+        """Test that OSO counts are returned correctly for SORA 2.0"""
+        # Test expected counts for SORA 2.0
+        assert get_oso_count_for_sail(SAILLevel.I, "2.0") == 6
+        assert get_oso_count_for_sail(SAILLevel.II, "2.0") == 10
+        assert get_oso_count_for_sail(SAILLevel.III, "2.0") == 15
+        assert get_oso_count_for_sail(SAILLevel.IV, "2.0") == 18
+        assert get_oso_count_for_sail(SAILLevel.V, "2.0") == 21
+        assert get_oso_count_for_sail(SAILLevel.VI, "2.0") == 24
+
+    def test_get_oso_count_for_sail_2_5(self):
+        """Test that OSO counts return None for SORA 2.5"""
+        # Test that all SAIL levels return None for SORA 2.5
+        assert get_oso_count_for_sail(SAILLevel.I, "2.5") is None
+        assert get_oso_count_for_sail(SAILLevel.II, "2.5") is None
+        assert get_oso_count_for_sail(SAILLevel.III, "2.5") is None
+        assert get_oso_count_for_sail(SAILLevel.IV, "2.5") is None
+        assert get_oso_count_for_sail(SAILLevel.V, "2.5") is None
+        assert get_oso_count_for_sail(SAILLevel.VI, "2.5") is None
+
+    def test_invalid_version(self):
+        """Test that invalid version raises appropriate error"""
+        with pytest.raises(NotImplementedError):
+            get_oso_requirements_for_sail(SAILLevel.III, "3.0")
+
+    def test_all_sail_levels_2_0(self):
+        """Test that all SAIL levels work for SORA 2.0"""
+        for sail_level in SAILLevel:
+            requirements = get_oso_requirements_for_sail(sail_level, "2.0")
+            assert requirements is not None
+            assert len(requirements) > 0
+
+    def test_all_sail_levels_2_5(self):
+        """Test that all SAIL levels work for SORA 2.5"""
+        for sail_level in SAILLevel:
+            requirements = get_oso_requirements_for_sail(sail_level, "2.5")
+            assert requirements is not None
+            assert len(requirements) > 0

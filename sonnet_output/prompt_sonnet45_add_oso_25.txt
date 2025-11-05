@@ -1,0 +1,49 @@
+IMPORTANT OUTPUT FORMAT — READ FIRST
+
+Respond ONLY with one or more file sections in this exact format. Do not include any prose or explanations outside these sections.
+
+=== FILE: <relative\path\from\repo\root> ===
+<full file content>
+
+Repeat the section per file you create or modify. No other text.
+
+Paths are Windows-style relative to repo root. Create directories as needed. Do not rename existing APIs.
+
+---
+
+Goal: Provide full JARUS SORA v2.5 OSO data and tests so OSO endpoints are 100% compliant and functional for both 2.0 and 2.5 (no 501/NotImplemented for 2.5). Keep SORA 2.0 counts; do NOT introduce counts for 2.5.
+
+Constraints & References
+- SORA 2.0: EASA AMC/GM to Reg. (EU) 2019/947, Annex E — 24 OSOs; counts by SAIL: I→6, II→10, III→15, IV→18, V→21, VI→24.
+- SORA 2.5: JARUS SORA v2.5 Main Body & Annexes, Annex E — OSO set and robustness per SAIL; do not return hard-coded counts.
+
+Current loader contract (do NOT change):
+- Backend_Python\sail\oso_requirements.py expects YAML files shaped as:
+  - Top-level keys: I, II, III, IV, V, VI
+  - Each key maps to a list of objects with fields: { id: "OSO#nn", title: "...", robustness: "Low|Medium|High" [, applicability_note: "..."] }
+- 2.0 file exists at Backend_Python\sail\data\oso_map_2_0.yaml and is used by get_oso_requirements_for_sail.
+- 2.5 path is Backend_Python\sail\data\oso_map_2_5.yaml (currently missing) — absence triggers NotImplementedError.
+
+Deliverables (files to create/modify):
+1) Backend_Python\sail\data\oso_map_2_5.yaml
+   - Provide the full OSO mapping for SORA 2.5 Annex E.
+   - Use the exact YAML shape required by the existing loader (I..VI lists of OSO objects as above).
+   - Robustness per SAIL must reflect Annex E v2.5. Do NOT include a counts_per_sail block.
+
+2) Backend_Python\tests\test_oso_requirements.py
+   - Replace the test that currently expects NotImplementedError for 2.5 with assertions that:
+     - get_oso_requirements_for_sail(SAILLevel.III, "2.5") returns a non-empty list
+     - Each item has id/title/robustness and id starts with "OSO#"
+     - get_oso_count_for_sail(…, "2.5") returns None for all SAIL levels
+   - Keep the SORA 2.0 count assertions intact.
+
+Notes
+- Do not alter the Python loader (oso_requirements.py) public surface or error taxonomy.
+- Ensure the YAML uses UTF-8 and Windows newlines are fine.
+- Keep OSO ids as OSO#01..OSO#24.
+- If robustness differs across versions, reflect the 2.5 profile faithfully.
+
+Acceptance (must pass):
+- pytest in Backend_Python is green; no NotImplementedError for 2.5 OSO retrieval.
+- get_oso_count_for_sail returns None for 2.5; returns the standard counts for 2.0.
+- get_oso_requirements_for_sail returns populated lists for both versions (e.g., SAIL III and IV).

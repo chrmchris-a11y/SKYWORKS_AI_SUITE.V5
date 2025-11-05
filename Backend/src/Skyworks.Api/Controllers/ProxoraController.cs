@@ -134,15 +134,30 @@ public class ProxoraController : ControllerBase
                 arc = new PythonARCResponse { InitialARC = "b", FinalARC = "b" };
             }
 
-            // Ensure ResidualARC isn't empty for SAIL (fallback to initial if needed)
-            var residualArc = (arc != null && !string.IsNullOrWhiteSpace(arc.FinalARC))
-                ? arc.FinalARC
-                : (arc != null ? arc.InitialARC : "b");
+            // For SORA 2.5 the Python SAIL endpoint requires residual_arc_level (1..10)
+            // Map from ARC letter to a representative numeric level if only letter is available.
+            int MapArcLetterToLevel(string? token)
+            {
+                if (string.IsNullOrWhiteSpace(token)) return 5; // neutral default
+                var t = token.Trim().ToLowerInvariant().Replace("arc-", "").Replace("arc_", "");
+                return t switch
+                {
+                    "a" => 2,
+                    "b" => 4,
+                    "c" => 6,
+                    "d" => 9,
+                    _ => 5
+                };
+            }
+
+            var arcToken = (arc != null && !string.IsNullOrWhiteSpace(arc.FinalARC)) ? arc.FinalARC : (arc != null ? arc.InitialARC : "b");
+            var residualArcLevel = MapArcLetterToLevel(arcToken);
 
             sail = await _python.CalculateSAIL(new PythonSAILRequest
             {
+                SoraVersion = "2.5",
                 FinalGRC = grc!.FinalGRC,
-                ResidualARC = residualArc
+                ResidualARCLevel = residualArcLevel
             });
             if (sail == null)
             {
@@ -151,7 +166,7 @@ public class ProxoraController : ControllerBase
                 {
                     SAIL = "III",
                     FinalGRC = grc!.FinalGRC > 0 ? grc!.FinalGRC : 3,
-                    FinalARC = (residualArc ?? "b").Replace("ARC_", string.Empty),
+                    FinalARC = (arcToken ?? "b").Replace("ARC_", string.Empty),
                     SoraVersion = request.SoraVersion,
                     Notes = "Proxy fallback: Python SAIL unavailable",
                     Source = "EASA GM1 to Article 11 (fallback)"

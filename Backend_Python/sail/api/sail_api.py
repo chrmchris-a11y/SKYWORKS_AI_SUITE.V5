@@ -179,6 +179,8 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
                 "arc_level": (request.arc_level if not hasattr(request.arc_level, "value") else ARCLevel(str(request.arc_level.value).lower())) if request.arc_level else None,
                 "residual_arc_level": None,
                 "sora_version": SORAVersion.SORA_2_0,
+                "category": "C",
+                "reference": "EASA AMC/GM SORA 2.0 – Category C trigger for GRC>7"
             }
         
         # Κλάδος SORA 2.5: απαιτείται numeric residual ARC (1..10) και επίσημος πίνακας (Annex D)
@@ -227,7 +229,7 @@ async def calculate_sail(request: SAILCalculationAPIRequest):
             "sail_level": calc_response.sail_level,
             "sail": calc_response.sail_level,
             "oso_count": oso_count,
-            "grc_level": GRCLevel(grc_int),
+            "grc_level": grc_int,
             "arc_level": ARCLevel(str(arc_val).lower()),
             "sora_version": SORAVersion.SORA_2_0,
             "reference": "EASA AMC/GM SORA 2.0 Annex D Table D.1"

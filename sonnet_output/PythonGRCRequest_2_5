@@ -1,0 +1,62 @@
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// Request model for SORA 2.5 GRC calculation via Python engine
+/// </summary>
+public class PythonGRCRequest_2_5
+{
+    /// <summary>
+    /// Maximum Take-Off Mass in kilograms (mandatory for SORA 2.5)
+    /// </summary>
+    public double MTOM_kg { get; set; }
+
+    /// <summary>
+    /// Maximum speed in meters per second (mandatory for SORA 2.5)
+    /// </summary>
+    public double MaxSpeed_mps { get; set; }
+
+    /// <summary>
+    /// Population density (people per km²)
+    /// </summary>
+    public int PopulationDensity { get; set; }
+
+    /// <summary>
+    /// Maximum dimension in meters
+    /// </summary>
+    public double MaxDimensionM { get; set; }
+
+    /// <summary>
+    /// Maximum characteristic dimension in meters (SORA 2.5 Table 2)
+    /// </summary>
+    public double MaxCharacteristicDimensionM { get; set; }
+
+    /// <summary>
+    /// Operation mode (VLOS/BVLOS)
+    /// </summary>
+    public string OperationMode { get; set; } = "VLOS";
+
+    /// <summary>
+    /// Overflown area type (Sparsely/Populated/Gathering)
+    /// </summary>
+    public string OverflownArea { get; set; } = "Sparsely";
+
+    /// <summary>
+    /// M1A Sheltering mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M1A_Sheltering { get; set; }
+
+    /// <summary>
+    /// M1B Operational restrictions mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M1B_Operational { get; set; }
+
+    /// <summary>
+    /// M1C Ground observation mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M1C_GroundObservation { get; set; }
+
+    /// <summary>
+    /// M2 Impact dynamics mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M2Impact { get; set; }
+}

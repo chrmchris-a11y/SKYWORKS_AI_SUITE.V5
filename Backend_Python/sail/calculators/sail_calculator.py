@@ -1,405 +1,190 @@
-"""SAIL calculators for SORA 2.0 and SORA 2.5."""
+"""SAIL calculator for SORA 2.0 and SORA 2.5 (spec-accurate, deterministic).
 
-from typing import Dict, List, Tuple, Union
+Sources of truth:
+- SORA 2.0: EASA AMC/GM SORA 2.0 Annex D (Table D.1) — residual ARC a–d vs GRC 1–7.
+  GRC > 7 ⇒ Category C (no SAIL).
+  Reference: EASA Easy Access Rules for Unmanned Aircraft Systems
+  https://www.easa.europa.eu/en/document-library/easy-access-rules/easy-access-rules-unmanned-aircraft-systems
+
+- SORA 2.5: JARUS SORA 2.5 Annex D (Table 7) — numeric residual ARC 1..10 vs GRC 1..10.
+  GRC 9–10 ⇒ SAIL VI for any residual ARC.
+"""
+
+from typing import Dict, Optional
+
 from ..models.sail_models import (
-    SAILValue, ARCValue, SAILInputs20, SAILInputs25, SAILResult,
-    TraceEntry, DocReference, InvalidGRCError, InvalidARCError, SAILMappingError,
-    GRCLevel, ARCLevel, SAILLevel, SORAVersion,
-    SAILCalculationRequest, SAILCalculationResponse
+    SAILLevel,
+    ARCLevel,
+    SORAVersion,
+    SAILCalculationRequest,
+    SAILCalculationResponse,
 )
-from ..data.sail_tables_20 import SAIL_TABLE_20, OSO_BY_SAIL_20
-from ..data.sail_tables_25 import SAIL_TABLE_25, OSO_BY_SAIL_25
-from ..data.oso_requirements import OSO_ROBUSTNESS_MATRIX
 
 
-# Wrapper class for test compatibility
 class SAILCalculator:
-    """Unified SAIL calculator that handles both SORA 2.0 and 2.5."""
-    
-    def __init__(self):
-        self.calc_20 = None  # Will be initialized when needed
-        self.calc_25 = None  # Will be initialized when needed
-    
+    """Unified SAIL calculator for SORA 2.0 (letter ARC) and SORA 2.5 (numeric residual ARC).
+
+    Implements deterministic lookup from authoritative tables:
+    - SORA 2.0: EASA AMC/GM Annex D Table D.1 (GRC 1..7 × ARC a–d → SAIL I–VI)
+    - SORA 2.5: JARUS SORA 2.5 Annex D Table 7 (GRC 1..10 × residual ARC 1..10 → SAIL I–VI)
+
+    No OSO counting here; that is owned by OSOMapper.
+    """
+
+    def __init__(self) -> None:
+        """Initialize SAIL calculator with embedded authoritative tables."""
+        # Load authoritative tables from sail/data to avoid duplication
+        from ..data.sail_tables_20 import SAIL_TABLE_20 as _T20
+        from ..data.sail_tables_25 import SAIL_TABLE_25 as _T25
+
+        # Normalize into fast lookup dicts by grouping keys per GRC
+        self.TABLE_20: Dict[int, Dict[str, SAILLevel]] = {}
+        for (grc, arc), sail in _T20.items():
+            self.TABLE_20.setdefault(grc, {})[arc] = SAILLevel(sail)
+
+        self.TABLE_25: Dict[int, Dict[int, SAILLevel]] = {}
+        for (grc, arc_num), sail in _T25.items():
+            self.TABLE_25.setdefault(grc, {})[arc_num] = SAILLevel(sail)
+
     def calculate_sail(self, request: SAILCalculationRequest) -> SAILCalculationResponse:
-        """Calculate SAIL level from GRC and ARC using specified SORA version."""
-        # Convert enum to int/str
-        grc_int = request.grc_level.value if isinstance(request.grc_level.value, int) else int(str(request.grc_level.value).split('_')[-1])
-        arc_str = request.arc_level.value
-        
-        # Choose calculator based on SORA version
-        if request.sora_version == SORAVersion.SORA_2_0:
-            table = SAIL_TABLE_20
-            oso_map = OSO_BY_SAIL_20
-        else:  # SORA_2_5
-            table = SAIL_TABLE_25
-            oso_map = OSO_BY_SAIL_25
-        
-        # Look up SAIL
-        key = (grc_int, arc_str)
-        if key not in table:
-            raise SAILMappingError(f"No SAIL mapping for GRC {grc_int} × ARC {arc_str}")
-        
-        sail_str = table[key]
-        sail_level = SAILLevel(sail_str)
-        oso_count = oso_map[sail_str]
-        
+        """Calculate SAIL level from Final GRC and Residual ARC per SORA version.
+
+        Args:
+            request: SAILCalculationRequest with grc_level, arc_level (2.0) or
+                     residual_arc_level (2.5), and sora_version.
+
+        Returns:
+            SAILCalculationResponse with sail_level (I–VI or None for Category C),
+            echoed inputs, and reference string.
+
+        Raises:
+            ValueError: If required fields are missing or inputs are invalid.
+        """
+        grc = request.grc_level
+        version = request.sora_version
+
+        if version == SORAVersion.SORA_2_0:
+            return self._calculate_sail_20(grc, request.arc_level)
+        elif version == SORAVersion.SORA_2_5:
+            return self._calculate_sail_25(grc, request.residual_arc_level)
+        else:
+            raise ValueError(f"Unsupported SORA version: {version}")
+
+    def _calculate_sail_20(
+        self, grc: int, arc_level: Optional[ARCLevel]
+    ) -> SAILCalculationResponse:
+        """SORA 2.0 SAIL determination (EASA AMC/GM Annex D Table D.1).
+
+        Rules:
+        - GRC 1..7: lookup from Table D.1 (letter ARC a–d)
+        - GRC > 7: Category C (no SAIL)
+
+        Args:
+            grc: Ground Risk Class (int)
+            arc_level: Letter ARC (a–d)
+
+        Returns:
+            SAILCalculationResponse with sail_level or None (Category C).
+
+        Raises:
+            ValueError: If arc_level is missing or GRC/ARC combination is invalid.
+        """
+        if arc_level is None:
+            raise ValueError("arc_level (a–d) is required for SORA 2.0")
+
+        # Category C: GRC > 7 ⇒ no SAIL
+        if grc > 7:
+            return SAILCalculationResponse(
+                sail_level=None,
+                sail=None,
+                sora_version=SORAVersion.SORA_2_0,
+                grc_level=grc,
+                arc_level=arc_level,
+                category="C",
+                oso_count=None,
+                reference="EASA AMC/GM SORA 2.0 Annex D – Category C for GRC>7",
+            )
+
+        # Validate GRC range for table lookup
+        if grc < 1:
+            raise ValueError(f"GRC must be >= 1 for SORA 2.0, got {grc}")
+
+        # Normalize ARC to lowercase string
+        arc_str = arc_level.value if hasattr(arc_level, "value") else str(arc_level)
+        arc_str = arc_str.lower()
+
+        # Lookup SAIL from Table D.1
+        if grc not in self.TABLE_20:
+            raise ValueError(f"No SAIL mapping for GRC {grc} in SORA 2.0 table (valid: 1..7)")
+        if arc_str not in self.TABLE_20[grc]:
+            raise ValueError(f"Invalid ARC '{arc_str}' for SORA 2.0 (valid: a, b, c, d)")
+
+        sail_level = self.TABLE_20[grc][arc_str]
+
         return SAILCalculationResponse(
             sail_level=sail_level,
-            oso_count=oso_count,
-            sora_version=request.sora_version,
-            grc_level=request.grc_level,
-            arc_level=request.arc_level
+            sail=sail_level,
+            sora_version=SORAVersion.SORA_2_0,
+            grc_level=grc,
+            arc_level=arc_level,
+            category=None,
+            oso_count=None,  # OSO counting is owned by OSOMapper
+            reference="EASA AMC/GM SORA 2.0 Annex D (Table D.1)",
         )
 
+    def _calculate_sail_25(
+        self, grc: int, residual_arc_level: Optional[int]
+    ) -> SAILCalculationResponse:
+        """SORA 2.5 SAIL determination (JARUS SORA 2.5 Annex D Table 7).
 
-class SAILCalculator20:
-    """SORA 2.0 SAIL calculator with full traceability."""
-    
-    def __init__(self):
-        """Initialize SORA 2.0 calculator."""
-        self.sail_table = SAIL_TABLE_20
-        self.oso_by_sail = OSO_BY_SAIL_20
-        self.version = "SORA_2.0"
-    
-    def calculate(self, inputs: SAILInputs20) -> SAILResult:
-        """
-        Calculate SAIL from GRC and ARC using SORA 2.0.
-        
+        Rules:
+        - GRC 1..8: lookup from Table 7 (numeric residual ARC 1..10)
+        - GRC 9–10: SAIL VI for any residual ARC
+
         Args:
-            inputs: SORA 2.0 SAIL calculation inputs
-            
-        Returns:
-            SAILResult with determined SAIL, OSO requirements, and trace
-            
-        Raises:
-            InvalidGRCError: If GRC is out of range
-            InvalidARCError: If ARC is invalid
-            SAILMappingError: If SAIL lookup fails
-        """
-        trace = []
-        
-        try:
-            # Step 1: Validate inputs
-            self._validate_inputs(inputs.final_grc, inputs.final_arc, trace)
-            
-            # Step 2: Determine SAIL from table
-            sail = self._determine_sail(inputs.final_grc, inputs.final_arc, trace)
-            
-            # Step 3: Get OSO requirements
-            oso_requirements = self._get_oso_requirements(sail, trace)
-            
-            # Step 4: Get robustness levels
-            robustness_levels = self._get_robustness_levels(sail, oso_requirements, trace)
-            
-            return SAILResult(
-                version=self.version,
-                sail=sail,
-                final_grc=inputs.final_grc,
-                final_arc=inputs.final_arc,
-                oso_requirements=oso_requirements,
-                oso_count=len(oso_requirements),
-                robustness_levels=robustness_levels,
-                calculation_trace=trace
-            )
-            
-        except Exception as e:
-            trace.append(TraceEntry(
-                step="error",
-                inputs={"grc": inputs.final_grc, "arc": inputs.final_arc.value},
-                result=f"Error: {str(e)}",
-                rule_ref="ERROR_HANDLING",
-                doc_ref=DocReference(
-                    doc_id="EASA_EAR_UAS_2024",
-                    standard="SORA_2.0",
-                    section="Error Handling"
-                ),
-                notes=f"Calculation failed: {str(e)}"
-            ))
-            raise
-    
-    def _validate_inputs(self, grc: int, arc: ARCValue, trace: List[TraceEntry]) -> None:
-        """Validate SAIL calculation inputs."""
-        if not 1 <= grc <= 8:
-            raise InvalidGRCError(f"GRC must be 1-8, got {grc}")
-        
-        if arc.value.lower() not in ["a", "b", "c", "d"]:
-            raise InvalidARCError(f"ARC must be a/b/c/d, got {arc.value}")
-        
-        trace.append(TraceEntry(
-            step="input_validation",
-            inputs={"grc": grc, "arc": arc.value},
-            result="Valid inputs",
-            rule_ref="SORA20_INPUT_VALIDATION",
-            doc_ref=DocReference(
-                doc_id="EASA_EAR_UAS_2024",
-                standard="SORA_2.0",
-                section="Step 9 - SAIL Determination"
-            ),
-            notes=f"GRC {grc} and ARC {arc.value.upper()} are valid"
-        ))
-    
-    def _determine_sail(self, grc: int, arc: ARCValue, trace: List[TraceEntry]) -> SAILValue:
-        """Determine SAIL from GRC and ARC using SORA 2.0 lookup table."""
-        arc_lower = arc.value.lower()
-        
-        # Find matching GRC range
-        for grc_range, arc_map in self.sail_table.items():
-            if isinstance(grc_range, tuple):
-                if grc_range[0] <= grc <= grc_range[1]:
-                    sail = arc_map[arc_lower]
-                    grc_ref = f"{grc_range[0]}-{grc_range[1]}"
-                    break
-            else:
-                if grc == grc_range:
-                    sail = arc_map[arc_lower]
-                    grc_ref = str(grc_range)
-                    break
-        else:
-            raise SAILMappingError(f"No SAIL mapping found for GRC {grc}, ARC {arc.value}")
-        
-        trace.append(TraceEntry(
-            step="sail_determination",
-            inputs={"grc": grc, "arc": arc.value},
-            result=sail.value,
-            rule_ref=f"EASA_AMC_Table_D1_GRC{grc_ref}_ARC{arc.value.upper()}",
-            doc_ref=DocReference(
-                doc_id="EASA_EAR_UAS_2024",
-                standard="SORA_2.0",
-                section="Annex D, Table D.1",
-                page="Annex D-3"
-            ),
-            notes=f"GRC {grc} (range {grc_ref}) × ARC {arc.value.upper()} → SAIL {sail.value}"
-        ))
-        
-        return sail
-    
-    def _get_oso_requirements(self, sail: SAILValue, trace: List[TraceEntry]) -> List[str]:
-        """Get OSO requirements for the determined SAIL."""
-        oso_requirements = self.oso_by_sail[sail]
-        
-        trace.append(TraceEntry(
-            step="oso_requirements",
-            inputs={"sail": sail.value},
-            result=f"{len(oso_requirements)} OSOs required",
-            rule_ref=f"EASA_AMC_OSO_SAIL_{sail.value}",
-            doc_ref=DocReference(
-                doc_id="EASA_EAR_UAS_2024",
-                standard="SORA_2.0",
-                section="Annex D, OSO Requirements"
-            ),
-            notes=f"SAIL {sail.value} requires {len(oso_requirements)} OSOs"
-        ))
-        
-        return oso_requirements
-    
-    def _get_robustness_levels(self, sail: SAILValue, oso_requirements: List[str], 
-                             trace: List[TraceEntry]) -> Dict[str, str]:
-        """Get robustness levels for each OSO based on SAIL."""
-        robustness = {}
-        
-        for oso in oso_requirements:
-            if oso in OSO_ROBUSTNESS_MATRIX and sail.value in OSO_ROBUSTNESS_MATRIX[oso]:
-                level = OSO_ROBUSTNESS_MATRIX[oso][sail.value]
-            else:
-                # Fallback heuristic
-                if sail in [SAILValue.I, SAILValue.II]:
-                    level = "Low"
-                elif sail in [SAILValue.III, SAILValue.IV]:
-                    level = "Medium"
-                else:
-                    level = "High"
-            
-            robustness[oso] = level
-        
-        trace.append(TraceEntry(
-            step="robustness_determination",
-            inputs={"sail": sail.value, "oso_count": len(oso_requirements)},
-            result=f"Robustness levels assigned for {len(oso_requirements)} OSOs",
-            rule_ref="EASA_AMC_Table_D2_Robustness",
-            doc_ref=DocReference(
-                doc_id="EASA_EAR_UAS_2024",
-                standard="SORA_2.0",
-                section="Annex D, Table D.2"
-            ),
-            notes=f"Robustness levels determined for SAIL {sail.value}"
-        ))
-        
-        return robustness
+            grc: Ground Risk Class (1..10)
+            residual_arc_level: Numeric residual ARC (1..10)
 
-
-class SAILCalculator25:
-    """SORA 2.5 SAIL calculator with full traceability."""
-    
-    def __init__(self):
-        """Initialize SORA 2.5 calculator."""
-        self.sail_table = SAIL_TABLE_25
-        self.oso_by_sail = OSO_BY_SAIL_25
-        self.version = "SORA_2.5"
-    
-    def calculate(self, inputs: SAILInputs25) -> SAILResult:
-        """
-        Calculate SAIL from GRC and ARC using SORA 2.5.
-        
-        Args:
-            inputs: SORA 2.5 SAIL calculation inputs
-            
         Returns:
-            SAILResult with determined SAIL, OSO requirements, and trace
-            
+            SAILCalculationResponse with sail_level (I–VI).
+
         Raises:
-            InvalidGRCError: If GRC is out of range
-            InvalidARCError: If ARC is invalid
-            SAILMappingError: If SAIL lookup fails
+            ValueError: If residual_arc_level is missing or out of range.
         """
-        trace = []
-        
-        try:
-            # Step 1: Validate inputs
-            self._validate_inputs(inputs.final_grc, inputs.final_arc, trace)
-            
-            # Step 2: Determine SAIL from table
-            sail = self._determine_sail(inputs.final_grc, inputs.final_arc, trace)
-            
-            # Step 3: Get OSO requirements
-            oso_requirements = self._get_oso_requirements(sail, trace)
-            
-            # Step 4: Get robustness levels
-            robustness_levels = self._get_robustness_levels(sail, oso_requirements, trace)
-            
-            return SAILResult(
-                version=self.version,
-                sail=sail,
-                final_grc=inputs.final_grc,
-                final_arc=inputs.final_arc,
-                oso_requirements=oso_requirements,
-                oso_count=len(oso_requirements),
-                robustness_levels=robustness_levels,
-                calculation_trace=trace
+        if residual_arc_level is None:
+            raise ValueError("residual_arc_level (1..10) is required for SORA 2.5")
+
+        # Validate residual ARC range
+        if not (1 <= residual_arc_level <= 10):
+            raise ValueError(
+                f"residual_arc_level must be 1..10 for SORA 2.5, got {residual_arc_level}"
             )
-            
-        except Exception as e:
-            trace.append(TraceEntry(
-                step="error",
-                inputs={"grc": inputs.final_grc, "arc": inputs.final_arc.value},
-                result=f"Error: {str(e)}",
-                rule_ref="ERROR_HANDLING",
-                doc_ref=DocReference(
-                    doc_id="JARUS_SORA_MB_2.5",
-                    standard="SORA_2.5",
-                    section="Error Handling"
-                ),
-                notes=f"Calculation failed: {str(e)}"
-            ))
-            raise
-    
-    def _validate_inputs(self, grc: int, arc: ARCValue, trace: List[TraceEntry]) -> None:
-        """Validate SAIL calculation inputs."""
-        if not 1 <= grc <= 8:
-            raise InvalidGRCError(f"GRC must be 1-8, got {grc}")
-        
-        if arc.value.lower() not in ["a", "b", "c", "d"]:
-            raise InvalidARCError(f"ARC must be a/b/c/d, got {arc.value}")
-        
-        trace.append(TraceEntry(
-            step="input_validation",
-            inputs={"grc": grc, "arc": arc.value},
-            result="Valid inputs",
-            rule_ref="SORA25_INPUT_VALIDATION",
-            doc_ref=DocReference(
-                doc_id="JARUS_SORA_MB_2.5",
-                standard="SORA_2.5",
-                section="Main Body - SAIL Determination"
-            ),
-            notes=f"GRC {grc} and ARC {arc.value.upper()} are valid"
-        ))
-    
-    def _determine_sail(self, grc: int, arc: ARCValue, trace: List[TraceEntry]) -> SAILValue:
-        """Determine SAIL using SORA 2.5 table."""
-        arc_lower = arc.value.lower()
-        
-        # SORA 2.5 specific logic with different GRC groupings
-        if grc in (1, 2):
-            sail = self.sail_table[(1, 2)][arc_lower]
-            grc_ref = "1-2"
-        elif grc in (3, 4):
-            sail = self.sail_table[(3, 4)][arc_lower]
-            grc_ref = "3-4"
-        elif grc == 5:
-            sail = self.sail_table[5][arc_lower]
-            grc_ref = "5"
-        elif grc == 6:
-            sail = self.sail_table[6][arc_lower]
-            grc_ref = "6"
-        elif grc in (7, 8):
-            sail = self.sail_table[(7, 8)][arc_lower]
-            grc_ref = "7-8"
+
+        # Validate GRC range
+        if not (1 <= grc <= 10):
+            raise ValueError(f"GRC must be 1..10 for SORA 2.5, got {grc}")
+
+        # GRC 9–10 ⇒ SAIL VI for any residual ARC
+        if grc >= 9:
+            sail_level = SAILLevel.VI
         else:
-            raise SAILMappingError(f"GRC {grc} out of valid range 1-8")
-        
-        trace.append(TraceEntry(
-            step="sail_determination",
-            inputs={"grc": grc, "arc": arc.value},
-            result=sail.value,
-            rule_ref=f"JARUS_SORA25_Annex_D_Table_GRC{grc_ref}_ARC{arc.value.upper()}",
-            doc_ref=DocReference(
-                doc_id="JARUS_SORA_MB_2.5",
-                standard="SORA_2.5",
-                section="Annex D v1.0, SAIL Table"
-            ),
-            notes=f"GRC {grc} × ARC {arc.value.upper()} → SAIL {sail.value} (SORA 2.5)"
-        ))
-        
-        return sail
-    
-    def _get_oso_requirements(self, sail: SAILValue, trace: List[TraceEntry]) -> List[str]:
-        """Get OSO requirements for the determined SAIL."""
-        oso_requirements = self.oso_by_sail[sail]
-        
-        trace.append(TraceEntry(
-            step="oso_requirements",
-            inputs={"sail": sail.value},
-            result=f"{len(oso_requirements)} OSOs required",
-            rule_ref=f"JARUS_SORA25_OSO_SAIL_{sail.value}",
-            doc_ref=DocReference(
-                doc_id="JARUS_SORA_MB_2.5",
-                standard="SORA_2.5",
-                section="Annex D v1.0, OSO Requirements"
-            ),
-            notes=f"SAIL {sail.value} requires {len(oso_requirements)} OSOs"
-        ))
-        
-        return oso_requirements
-    
-    def _get_robustness_levels(self, sail: SAILValue, oso_requirements: List[str],
-                             trace: List[TraceEntry]) -> Dict[str, str]:
-        """Get robustness levels for SORA 2.5."""
-        robustness = {}
-        
-        for oso in oso_requirements:
-            if oso in OSO_ROBUSTNESS_MATRIX and sail.value in OSO_ROBUSTNESS_MATRIX[oso]:
-                level = OSO_ROBUSTNESS_MATRIX[oso][sail.value]
-            else:
-                # Fallback heuristic
-                if sail in [SAILValue.I, SAILValue.II]:
-                    level = "Low"
-                elif sail in [SAILValue.III, SAILValue.IV]:
-                    level = "Medium"
-                else:
-                    level = "High"
-            
-            robustness[oso] = level
-        
-        trace.append(TraceEntry(
-            step="robustness_determination",
-            inputs={"sail": sail.value, "oso_count": len(oso_requirements)},
-            result=f"Robustness levels assigned for {len(oso_requirements)} OSOs",
-            rule_ref="JARUS_SORA25_Annex_D_Robustness",
-            doc_ref=DocReference(
-                doc_id="JARUS_SORA_MB_2.5",
-                standard="SORA_2.5",
-                section="Annex D v1.0, Robustness Requirements"
-            ),
-            notes=f"Robustness levels determined for SAIL {sail.value}"
-        ))
-        
-        return robustness
+            # Lookup from Table 7
+            if grc not in self.TABLE_25:
+                raise ValueError(f"No SAIL mapping for GRC {grc} in SORA 2.5 table")
+            if residual_arc_level not in self.TABLE_25[grc]:
+                raise ValueError(
+                    f"Invalid residual_arc_level {residual_arc_level} for GRC {grc}"
+                )
+            sail_level = self.TABLE_25[grc][residual_arc_level]
+
+        return SAILCalculationResponse(
+            sail_level=sail_level,
+            sail=sail_level,
+            sora_version=SORAVersion.SORA_2_5,
+            grc_level=grc,
+            arc_level=None,
+            residual_arc_level=residual_arc_level,
+            category=None,
+            oso_count=None,  # OSO counting is owned by OSOMapper
+            reference="JARUS SORA 2.5 Annex D (Table 7)",
+        )

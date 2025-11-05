@@ -1,0 +1,296 @@
+IMPORTANT OUTPUT FORMAT — READ FIRST
+
+Respond ONLY with one or more file sections in this exact format. Do not include any prose or explanations outside these sections.
+
+=== FILE: <relative\path\from\repo\root> ===
+<full file content>
+
+Repeat the section per file you create or modify. No other text.
+
+Paths are Windows-style relative to repo root (e.g., Backend\src\Skyworks.Api\Controllers\SAILController.cs). Create directories as needed. Do not rename existing APIs.
+
+---
+
+Act as a senior engineer tasked with hardening the SAIL path end-to-end (.NET API controller + .NET Python client + PowerShell validation + .NET tests) so results exactly match the official SORA logic:
+
+SORA 2.0: SAIL from GRC (1–7) × ARC letters (a–d). GRC > 7 ⇒ Category C (Certified), no SAIL.
+
+SORA 2.5: SAIL from GRC (1–10) × numeric residual ARC (1..10). Do not letter-bin residual ARC. GRC 9–10 ⇒ SAIL VI for any residual ARC.
+
+You must implement the changes below exactly as specified, wire strong validation, and update tests accordingly.
+
+Primary Authorities (use these to justify each change)
+
+Use the short excerpts below when you annotate code/tests. Keep the quotes as comments near the relevant logic.
+
+EASA AMC/GM (SORA 2.0) – OSOs & SAIL linkage
+
+“The SAIL defined in Step #9 is the level of robustness required to satisfy the safety objectives specified in Annex E.” 
+EASA
+
+“In Annex E the 24 Operational Safety Objectives… are listed with their associated levels of robustness.” 
+EASA
+
+EASA eRules / AMC extracts (SORA 2.0) – Annex E exists and is binding
+Use to justify OSO exposure and per-SAIL applicability (counts are derived from Annex-E matrix; do not invent new OSOs). 
+Transpordiamet
+
+Note: You may reference the standard SORA 2.0 SAIL mapping (GRC×ARC → SAIL) as “Table 5 – Determination of SAIL” per JARUS SORA 2.0 main body; and Category-C branch for GRC>7 is consistent with legacy AMC usage.
+
+File 9 — SAILController.cs (REST API)
+What to change
+
+Route & DTOs
+
+POST /api/sail/calculate accepts:
+
+soraVersion: "2.0" or "2.5".
+
+finalGrc: int. (2.0: 1..7; 2.5: 1..10).
+
+2.0 only: residualArc as letter "a"|"b"|"c"|"d" (accept ARC-a/ARC_a and normalize to a).
+
+2.5 only: residualArcLevel as int 1..10 (strict; no letter binning).
+
+Response:
+
+sail ("I".."VI" or null for Category C),
+
+sailLevel (same),
+
+osoCount (2.0 only – see below),
+
+category (when 2.0 & finalGrc>7 ⇒ "C"),
+
+reference (string: indicate the applied table/path),
+
+Echo fields (finalGrc, residualArc or residualArcLevel, soraVersion).
+
+Version-aware rules
+
+SORA 2.0
+
+If finalGrc > 7 ⇒ return category="C", sail=null, osoCount=null.
+Comment with excerpt: “The SAIL defined in Step #9… Annex E.” (Category-C path stops SAIL). 
+EASA
+
+Else: map (GRC 1..7, ARC a–d) → SAIL via the standard 2.0 table (“Table 5 – Determination of SAIL”).
+
+OSO count: return derived count per SAIL from Annex-E applicability for SORA 2.0 only (I:6, II:10, III:15, IV:18, V:21, VI:24).
+Justification comment: “Annex E lists 24 OSOs; SAIL determines robustness level to satisfy them.” (counts are derived, not invented). 
+EASA
++1
+
+SORA 2.5
+
+Require residualArcLevel 1..10. Reject any letter ARC for 2.5.
+Controller comment: “Residual ARC is numeric in 2.5; do not bin to letters.”
+
+If finalGrc >= 9 ⇒ sail="VI" for any residual ARC.
+Rationale: high-GRC rows collapse to SAIL VI in the 2.5 mapping.
+
+Else: call Python /sail/calculate v2.5 path and return the SAIL string.
+
+Do not return osoCount (leave null). 2.5 Annex-E profile differs; expose OSO lists elsewhere.
+
+Validation & errors
+
+400 when:
+
+2.0 without valid residualArc letter.
+
+2.5 without valid residualArcLevel 1..10.
+
+Any out-of-range finalGrc.
+
+502 when Python service unreachable; include x-correlation-id.
+
+Observability
+
+Log compact structured events: {soraVersion, finalGrc, arcToken, arcLevel, sail, category, durationMs}.
+
+Acceptance Examples (must pass)
+
+2.0:
+
+(GRC=3, ARC=a) → SAIL I
+
+(GRC=4, ARC=a) → SAIL II
+
+(GRC=5, ARC=b) → SAIL IV
+
+(GRC=6, ARC=b) → SAIL IV
+
+(GRC=7, ARC=c) → SAIL VI
+
+(GRC=8, ARC=a) → Category C (no SAIL)
+
+2.5:
+
+(GRC=6, residualArcLevel=4) → SAIL V/“per table”
+
+(GRC=10, residualArcLevel=10) → SAIL VI (rule: 9–10 ⇒ VI)
+
+Add comments with the EASA Annex-E linkage: “The SAIL defined in Step #9… Annex E.” 
+EASA
+
+File 10 — PythonCalculationClient.cs (HTTP client)
+What to change
+
+Payload formation
+
+2.0: POST /api/v1/calculate/sail with { "sora_version":"2.0", "final_grc":<1..7>, "residual_arc":"ARC-a|b|c|d" }.
+
+2.5: POST with { "sora_version":"2.5", "final_grc":<1..10>, "residual_arc_level":<1..10> }.
+
+Normalize user inputs (ARC-a, a, ARC_A → a).
+
+Response handling
+
+If body contains category:"C" ⇒ return CategoryC status with Sail=null, OsoCount=null.
+Rationale comment (AMC Annex-E link): SAIL feeds Annex-E; Category-C short-circuits SAIL. 
+EASA
+
+If soraVersion=="2.5" ⇒ discard any oso_count in Python echo; keep null in .NET.
+
+Resilience
+
+3× retry on 502/503 with jitter; 10s overall budget.
+
+408/timeout → bubble as retryable exception; attach correlation id.
+
+DTOs & mapping
+
+Separate typed DTOs for 2.0 and 2.5 requests to prevent accidental letter/numeric mixing.
+
+Single PythonSAILResponse with nullable Sail, OsoCount, Category.
+
+File 11 — COMPREHENSIVE_SORA_VALIDATION_TEST.ps1
+What to change
+
+Service readiness
+
+Fail fast if Python base URL not reachable; print hint: “Start uvicorn on :8001”.
+
+Update the matrix
+
+Remove any ‘Category C’ expectation from SORA 2.5 (that’s a 2.0 concept).
+
+Keep 2.0 Category C for GRC>7.
+
+Add explicit negative tests:
+
+2.5 without residual_arc_level ⇒ 400
+
+2.0 with numeric ARC ⇒ 400
+
+Golden cases
+
+Keep the acceptance examples listed in File-9 section.
+
+Ensure the previously failing cases now match:
+
+“GRC 3, ARC-a → SAIL I” PASS
+
+“GRC 5, ARC-b → SAIL IV” PASS
+
+“GRC 6, ARC-b → SAIL IV” PASS
+
+“GRC 7, ARC-c → SAIL VI” PASS
+
+“2.5: GRC 10, ARC 10 → SAIL VI” PASS
+
+“2.5: missing residualArcLevel” 400
+
+Reporting
+
+Keep the red/green section; add counts per version; include URL of failing endpoint.
+
+Annotate the script header with the short AMC quote tying SAIL → Annex-E OSOs. 
+EASA
+
+File 12 — .NET SAIL tests (Unit + Integration)
+What to change
+
+Unit tests (mapping parity)
+
+Table-driven tests for 2.0 (GRC×ARC→SAIL) covering edges: (1,a), (3,a), (4,a), (5,b), (6,b), (7,c), and GRC=8 (Category C).
+
+Reject invalid inputs:
+
+2.0 with numeric ARC
+
+2.5 with letter ARC
+
+Out-of-range GRC/ARC
+
+Integration tests (Python round-trip)
+
+Spin against the live Python service:
+
+2.0 happy path + Category C.
+
+2.5: (6,4) and (10,10).
+
+Assert null OsoCount for 2.5.
+
+OSO behavior tests
+
+For 2.0 SAIL levels, assert OsoCount I:6, II:10, III:15, IV:18, V:21, VI:24.
+Comment with AMC reference (Annex-E linkage). 
+EASA
++1
+
+Non-negotiable Compliance Notes (add as inline comments)
+
+“The SAIL defined in Step #9 is the level of robustness required to satisfy the safety objectives specified in Annex E.” — use this to justify:
+
+returning OSO counts for 2.0 only, and
+
+not manufacturing OSO counts for 2.5 where Annex-E/scoping differs. 
+EASA
+
+“In Annex E the 24 Operational Safety Objectives… are listed with their associated levels of robustness.” — use to justify existence of 24 OSOs and per-SAIL applicability. 
+EASA
+
+Out-of-Scope (must NOT do)
+
+Do not convert numeric residual ARC (2.5) to letters.
+
+Do not return OSO counts for 2.5; provide those via a dedicated OSO endpoint if needed.
+
+Do not collapse 2.5 GRC 9–10 to Category C; it maps to SAIL VI.
+
+Definition of Done
+
+All controller/client changes merged; logs show correct branching by version.
+
+PowerShell validation shows all SAIL cases PASS (no Category-C false positives in 2.5; no ARC-format mix-ups).
+
+.NET unit/integration tests: green.
+
+Manual smoke: two sample calls return exactly:
+
+POST /api/sail/calculate 2.0 {finalGrc:5,residualArc:"ARC-b"} → {sail:"IV", osoCount:18, ...}
+
+POST /api/sail/calculate 2.5 {finalGrc:10,residualArcLevel:10} → {sail:"VI", osoCount:null, ...}
+
+Implementation Notes to Yourself
+
+Centralize ARC parsing helpers to avoid drift.
+
+Attach a reference string in responses:
+
+2.0: "JARUS SORA 2.0 Table 5 (GRC×ARC→SAIL), AMC Annex E link"
+
+2.5: "SORA 2.5 Annex D/Table mapping (numeric ARC), high-GRC rule (9–10→VI)"
+
+(Keep these tiny quote blocks as comments near logic)
+// “The SAIL defined in Step #9 is the level of robustness required to satisfy the safety objectives specified in Annex E.” (EASA AMC/GM – SORA)
+
+// “In Annex E the 24 Operational Safety Objectives… are listed with their associated levels of robustness.” (EASA AMC/GM – SORA)
+
+
+Deliverables: 4 PRs (Controller, Client, PS Test, .NET Tests) with the above acceptance examples passing end-to-end. Keep commit messages terse and compliance-oriented.
+
+If anything in legacy tests expects 2.5 + Category C, delete or correct it. That was the root cause of several false failures.

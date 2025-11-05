@@ -61,13 +61,12 @@ class I18nLoader {
     }
 
     try {
-      // Try multiple base paths for robustness across serving setups
+      // Prefer relative paths to avoid root 404 noise in production
       const bases = [
-        `/i18n`,
         `../i18n`,
-        `/Frontend/i18n`,
-        `${window.location.pathname.replace(/\/[^/]*$/, '')}/../i18n`,
         `/app/i18n`,
+        `/Frontend/i18n`,
+        `${window.location.pathname.replace(/\/[^/]*$/, '')}/../i18n`
       ];
       let lastError = null;
       for (const base of bases) {
@@ -89,7 +88,8 @@ class I18nLoader {
           return this.translations;
         } catch (err) {
           lastError = err;
-          console.warn(`[i18n] Failed to load from ${url}:`, err.message);
+          // Keep logs concise; avoid flooding console when trying fallbacks
+          console.debug(`[i18n] Fallback try failed from ${url}:`, err.message);
           continue;
         }
       }

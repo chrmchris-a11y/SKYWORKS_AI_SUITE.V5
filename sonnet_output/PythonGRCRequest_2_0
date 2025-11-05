@@ -1,0 +1,37 @@
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// Request model for SORA 2.0 GRC calculation via Python engine
+/// </summary>
+public class PythonGRCRequest_2_0
+{
+    /// <summary>
+    /// SORA 2.0 operational scenario (e.g., "VLOS_SparselyPopulated")
+    /// </summary>
+    public string Scenario { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Aircraft characteristic dimension in meters
+    /// </summary>
+    public double DimensionM { get; set; }
+
+    /// <summary>
+    /// Footprint containment quality (Good/Adequate)
+    /// </summary>
+    public string ContainmentQuality { get; set; } = "Adequate";
+
+    /// <summary>
+    /// M1 Strategic mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M1Strategic { get; set; }
+
+    /// <summary>
+    /// M2 Impact reduction mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M2Impact { get; set; }
+
+    /// <summary>
+    /// M3 Emergency Response Plan mitigation robustness (Low/Medium/High)
+    /// </summary>
+    public string? M3ERP { get; set; }
+}

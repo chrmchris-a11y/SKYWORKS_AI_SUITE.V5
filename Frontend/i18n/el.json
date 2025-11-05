@@ -17,6 +17,7 @@
       "title": "Αποστολή",
       "soraVersion": "Έκδοση SORA",
       "operationCategory": "Κατηγορία Λειτουργίας",
+      "populationDensity": "Πυκνότητα Πληθυσμού",
       "missionId": "Κωδικός Αποστολής",
       "missionIdPlaceholder": "M-001",
       "missionName": "Όνομα Αποστολής",

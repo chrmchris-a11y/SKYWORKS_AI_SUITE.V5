@@ -31,3 +31,6 @@ python-json-logger==2.0.7
 
 # CORS (για frontend να μπορεί να καλεί)
 python-multipart==0.0.6
+
+# Data files (YAML)
+pyyaml>=6.0.0

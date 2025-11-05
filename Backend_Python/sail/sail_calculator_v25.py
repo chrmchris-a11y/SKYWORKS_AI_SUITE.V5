@@ -59,61 +59,13 @@ def calculate_sail_v25(
             f"ARC {residual_arc}->{arc_clamped}"
         )
     
-    # SORA 2.5 SAIL Determination Table (JAR_doc_25 Table 7)
-    # Format: (Final_GRC, Residual_ARC) -> SAIL
-    # This is the complete table from the official JARUS document
-    sail_table = {
-        # GRC = 1
-        (1, 1): "I",   (1, 2): "I",   (1, 3): "II",  (1, 4): "II",
-        (1, 5): "III", (1, 6): "III", (1, 7): "IV",  (1, 8): "IV",
-        (1, 9): "V",   (1, 10): "V",
-        
-        # GRC = 2
-    (2, 1): "I",   (2, 2): "II",  (2, 3): "II",  (2, 4): "II",
-        (2, 5): "III", (2, 6): "IV",  (2, 7): "IV",  (2, 8): "V",
-        (2, 9): "V",   (2, 10): "VI",
-        
-        # GRC = 3
-        (3, 1): "II",  (3, 2): "II",  (3, 3): "III", (3, 4): "IV",
-        (3, 5): "IV",  (3, 6): "V",   (3, 7): "V",   (3, 8): "VI",
-        (3, 9): "VI",  (3, 10): "VI",
-        
-        # GRC = 4
-    (4, 1): "II",  (4, 2): "III", (4, 3): "III", (4, 4): "V",
-        (4, 5): "V",   (4, 6): "VI",  (4, 7): "VI",  (4, 8): "VI",
-        (4, 9): "VI",  (4, 10): "VI",
-        
-        # GRC = 5
-        (5, 1): "III", (5, 2): "IV",  (5, 3): "V",   (5, 4): "VI",
-        (5, 5): "VI",  (5, 6): "VI",  (5, 7): "VI",  (5, 8): "VI",
-        (5, 9): "VI",  (5, 10): "VI",
-        
-        # GRC = 6
-    (6, 1): "IV",  (6, 2): "V",   (6, 3): "VI",  (6, 4): "V",
-        (6, 5): "VI",  (6, 6): "VI",  (6, 7): "VI",  (6, 8): "VI",
-        (6, 9): "VI",  (6, 10): "VI",
-        
-        # GRC = 7+
-        (7, 1): "V",   (7, 2): "VI",  (7, 3): "VI",  (7, 4): "VI",
-        (7, 5): "VI",  (7, 6): "VI",  (7, 7): "VI",  (7, 8): "VI",
-        (7, 9): "VI",  (7, 10): "VI",
-        
-        (8, 1): "VI",  (8, 2): "VI",  (8, 3): "VI",  (8, 4): "VI",
-        (8, 5): "VI",  (8, 6): "VI",  (8, 7): "VI",  (8, 8): "VI",
-        (8, 9): "VI",  (8, 10): "VI",
-        
-        (9, 1): "VI",  (9, 2): "VI",  (9, 3): "VI",  (9, 4): "VI",
-        (9, 5): "VI",  (9, 6): "VI",  (9, 7): "VI",  (9, 8): "VI",
-        (9, 9): "VI",  (9, 10): "VI",
-        
-        (10, 1): "VI", (10, 2): "VI", (10, 3): "VI", (10, 4): "VI",
-        (10, 5): "VI", (10, 6): "VI", (10, 7): "VI", (10, 8): "VI",
-        (10, 9): "VI", (10, 10): "VI",
-    }
+    # Centralized SORA 2.5 table import (single source of truth)
+    from sail.data.sail_tables_25 import SAIL_TABLE_25 as sail_table
     
     # Look up SAIL from table
     key = (grc_clamped, arc_clamped)
-    sail = sail_table.get(key, "VI")  # Default to highest SAIL if not found
+    # High rows handled by centralized helper/table; fall back to VI if missing
+    sail = sail_table.get(key, "VI")
     
     # Build explanation
     explanation = (

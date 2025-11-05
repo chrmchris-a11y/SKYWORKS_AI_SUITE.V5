@@ -591,6 +591,7 @@ async def calculate_sail(request: SailRequest):
                     "final_grc": grc_val,
                     "residual_arc": f"ARC-{_normalize_arc_token_to_letter(request.residual_arc)}" if request.residual_arc else None,
                     "sora_version": version,
+                    "reference": "EASA AMC/GM SORA 2.0 Annex D (Table D.1) – Category C trigger (GRC>7)",
                     "notes": "Category C (Certified) operation required per SORA 2.0 when final GRC > 7",
                 }
 
@@ -614,6 +615,7 @@ async def calculate_sail(request: SailRequest):
         result = await _router_calculate_sail(_req)
         result = dict(result)
         result["final_grc"] = grc_val
+        # Echo numeric residual ARC without letter-binning (no a–d mapping)
         result["residual_arc"] = f"ARC-{arc_num}"
         result["sora_version"] = "2.5"
         # explicit source for tests/clients

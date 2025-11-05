@@ -1,24 +1,24 @@
-name: CI - Build & Tests (Windows)
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "**" ]
 
 jobs:
-  build-and-test:
+  build-test-golden:
     runs-on: windows-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup .NET 8
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      - name: Setup Python 3.11
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -26,10 +26,168 @@ jobs:
       - name: Install Python dependencies
         shell: pwsh
         run: |
+          cd Backend_Python
           python -m pip install --upgrade pip
-          pip install -r Backend_Python/requirements.txt
+          pip install fastapi uvicorn pydantic pyyaml pytest
+          python --version
 
-      - name: Run build-and-test with Python (PowerShell orchestration)
+      - name: Dotnet info
         shell: pwsh
         run: |
-          pwsh -NoProfile -ExecutionPolicy Bypass -File Tools/run-dotnet-tests-with-python.ps1 -BackendPath "$env:GITHUB_WORKSPACE\Backend" -PythonPath "$env:GITHUB_WORKSPACE\Backend_Python" -Port 8001 -HealthTimeoutSeconds 60
+          dotnet --info
+
+      - name: Prepare artifacts directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE/artifacts" | Out-Null
+
+      - name: Build .NET solution
+        shell: pwsh
+        run: |
+          cd Backend
+          dotnet restore Skyworks.sln
+          dotnet build Skyworks.sln --configuration Release --nologo
+
+      - name: Ensure ports free (5210, 8001)
+        shell: pwsh
+        run: |
+          $ports = 5210,8001
+          foreach ($p in $ports) {
+            $conns = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -eq $p }
+            if ($conns) {
+              $pids = $conns | Select-Object -ExpandProperty OwningProcess -Unique
+              foreach ($pid in $pids) {
+                Write-Host "Killing PID $pid on port $p"
+                Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+              }
+            }
+          }
+
+      - name: Publish .NET API (Release)
+        shell: pwsh
+        run: |
+          cd Backend/src/Skyworks.Api
+          dotnet publish Skyworks.Api.csproj --configuration Release --nologo -o out
+
+      - name: Start Python FastAPI (8001)
+        shell: pwsh
+        run: |
+          cd Backend_Python
+          $out = Join-Path $env:GITHUB_WORKSPACE 'artifacts/python_fastapi.log'
+          $err = Join-Path $env:GITHUB_WORKSPACE 'artifacts/python_fastapi.err'
+          Start-Process -FilePath python -ArgumentList '-m uvicorn main:app --host 0.0.0.0 --port 8001' -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err
+
+      - name: Start .NET API (5210)
+        shell: pwsh
+        run: |
+          $out = Join-Path $env:GITHUB_WORKSPACE 'artifacts/dotnet_api.log'
+          $err = Join-Path $env:GITHUB_WORKSPACE 'artifacts/dotnet_api.err'
+          $wd  = Join-Path $env:GITHUB_WORKSPACE 'Backend/src/Skyworks.Api'
+          $dll = Join-Path $wd 'out/Skyworks.Api.dll'
+          Start-Process -FilePath dotnet -ArgumentList '"' + $dll + '" --urls http://localhost:5210' -NoNewWindow -RedirectStandardOutput $out -RedirectStandardError $err -WorkingDirectory $wd
+
+      - name: Wait for Python health
+        shell: pwsh
+        run: |
+          $deadline = (Get-Date).AddSeconds(120)
+          do {
+            try {
+              $r = Invoke-WebRequest -UseBasicParsing http://localhost:8001/health -TimeoutSec 3
+              if ($r.StatusCode -eq 200) { exit 0 }
+            } catch { }
+            Start-Sleep -Seconds 1
+          } while ((Get-Date) -lt $deadline)
+          throw 'Python FastAPI health check failed'
+
+      - name: Wait for .NET API info
+        shell: pwsh
+        run: |
+          $deadline = (Get-Date).AddSeconds(120)
+          do {
+            try {
+              $r = Invoke-WebRequest -UseBasicParsing http://localhost:5210/api/sora/info -TimeoutSec 3
+              if ($r.StatusCode -eq 200) { exit 0 }
+            } catch { }
+            Start-Sleep -Seconds 1
+          } while ((Get-Date) -lt $deadline)
+          throw '.NET API info endpoint failed to respond in time'
+
+      - name: Echo service responses
+        shell: pwsh
+        run: |
+          Write-Host '--- GET /api/sora/info ---'
+          try { (Invoke-WebRequest -UseBasicParsing http://localhost:5210/api/sora/info -TimeoutSec 5).Content | Write-Output } catch { Write-Host 'error calling .NET info' }
+          Write-Host '--- GET /health ---'
+          try { (Invoke-WebRequest -UseBasicParsing http://localhost:8001/health -TimeoutSec 5).Content | Write-Output } catch { Write-Host 'error calling python health' }
+
+      - name: Golden checks
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:GITHUB_WORKSPACE 'artifacts/golden_checks.log'
+          python .\Tools\ci_golden_checks.py *>&1 | Tee-Object -FilePath $log
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run Python tests
+        shell: pwsh
+        run: |
+          cd Backend_Python
+          $junit = Join-Path $env:GITHUB_WORKSPACE 'artifacts/pytest.junit.xml'
+          pytest -q --junitxml "$junit"
+
+      - name: Run .NET tests
+        shell: pwsh
+        run: |
+          cd Backend
+          dotnet test Skyworks.sln --configuration Release --verbosity minimal --nologo --logger "trx;LogFileName=dotnet.trx"
+
+      - name: Upload CI artifacts (logs and reports)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-artifacts
+          path: |
+            artifacts/**
+            **/TestResults/*.trx
+            Backend/**/TestResults/*.trx
+
+      - name: Show last lines on failure (quick triage)
+        if: failure()
+        shell: pwsh
+        run: |
+          Write-Host '--- python_fastapi.log (tail) ---'
+          Get-Content "$env:GITHUB_WORKSPACE\artifacts\python_fastapi.log" -Tail 200 -ErrorAction SilentlyContinue
+          Write-Host '--- python_fastapi.err (tail) ---'
+          Get-Content "$env:GITHUB_WORKSPACE\artifacts\python_fastapi.err" -Tail 200 -ErrorAction SilentlyContinue
+          Write-Host '--- dotnet_api.log (tail) ---'
+          Get-Content "$env:GITHUB_WORKSPACE\artifacts\dotnet_api.log" -Tail 200 -ErrorAction SilentlyContinue
+          Write-Host '--- dotnet_api.err (tail) ---'
+          Get-Content "$env:GITHUB_WORKSPACE\artifacts\dotnet_api.err" -Tail 200 -ErrorAction SilentlyContinue
+          Write-Host '--- listening ports (5210/8001) ---'
+          Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -in 5210,8001 } | Format-Table -AutoSize
+
+  web-step51:
+    runs-on: windows-latest
+    needs: build-test-golden
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+
+      - name: Install and test web (Step 51)
+        shell: pwsh
+        run: |
+          cd web
+          npm ci || npm install
+          npm run -s build
+          npm run -s test
+
+      - name: Upload web build
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: web/dist/**

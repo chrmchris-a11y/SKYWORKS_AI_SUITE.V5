@@ -1,0 +1,53 @@
+# SORA Orchestration Service - Sonnet 4.5 Calibration
+
+critical_fixes:
+  grc_2_0:
+    - Remove: "Population density inference from Scenario"
+    - Action: "Pass Scenario enum directly to Python engine"
+    - Validation: "input.Scenario_V2_0 required, no PD mapping"
+    
+  grc_2_5:
+    - Remove: "MTOM_kg fallback to MaxCharacteristicDimension"
+    - Action: "Require explicit MTOM_kg and MaxSpeed - reject if missing"
+    - Sub250g: "Apply iGRC=1 only if MTOM ≤ 0.25kg AND speed within bin"
+    
+  arc_inputs:
+    - Add: "IsNearAerodrome, DistanceToAerodrome_km, IsInCTR"
+    - Units: "2.0=feet (convert), 2.5=meters (direct)"
+    - Normalization: "Suburban/Industrial → Urban"
+    - Remove: "Default MaxHeightAGL=120m"
+    
+  explicit_arc:
+    - Restrict: "Only in test mode (_allowExplicitARC flag)"
+    - Production: "Always derive from AEC decision tree"
+    
+  scope_validation:
+    - Add: "ReasonCode: OOS.SAIL_VI, OOS.GRC_GE_6, OOS.GRC5_PLUS_ARCd"
+    - Field: "result.OutOfScopeReason for HTTP 400"
+    
+  async_pattern:
+    - Remove: "All .Result blocking calls"
+    - Pattern: "async/await with sync wrapper"
+
+required_model_changes:
+  PythonGRCRequest_2_0:
+    add: ["string Scenario"]
+    remove: ["int PopulationDensity", "double MTOM_kg", "string EnvironmentType"]
+  
+  PythonGRCRequest_2_5:
+    add: ["double MaxSpeed_mps"]
+  
+  PythonARCRequest_2_0:
+    add: ["double? DistanceToAerodrome_nm", "bool IsInCTR"]
+  
+  PythonARCRequest_2_5:
+    add: ["double? DistanceToAerodrome_km", "bool IsInCTR", "bool IsNearAerodrome"]
+  
+  ARCEnvironmentInput:
+    add: ["bool IsNearAerodrome", "double? DistanceToAerodrome_km", "bool IsInCTR"]
+  
+  AirRiskInput:
+    add: ["bool? IsNearAerodrome", "double? DistanceToAerodrome_km", "bool? IsInCTR", "double? MaxSpeed"]
+  
+  SORACompleteResult:
+    add: ["string? OutOfScopeReason"]

@@ -1,192 +1,279 @@
-using Microsoft.AspNetCore.Mvc;
-using Skyworks.Core.Models.SAIL;
-using Skyworks.Core.Services;
-using Skyworks.Core.Services.Orchestration;
-using System.Text.Json.Serialization;
+﻿using Microsoft.AspNetCore.Mvc;
+using Skyworks.Api.Services;
+using System.ComponentModel.DataAnnotations;
 
-namespace Skyworks.Api.Controllers;
-
-/// <summary>
-/// SAIL Determination API - JARUS SORA 2.0 Step #7
-/// Determines Specific Assurance and Integrity Level (SAIL) based on Final GRC and Residual ARC
-/// </summary>
-[ApiController]
-[Route("api/sail")] 
-public class SAILController : ControllerBase
+namespace Skyworks.Api.Controllers
 {
-    private readonly ISAILService _sailService;
-    private readonly ILogger<SAILController> _logger;
-    private readonly ISORAOrchestrationService _orchestration;
-
-    public SAILController(ISAILService sailService, ILogger<SAILController> logger, ISORAOrchestrationService orchestration)
+    [ApiController]
+    [Route("api/sail")]
+    public class SAILController : ControllerBase
     {
-        _sailService = sailService;
-        _logger = logger;
-        _orchestration = orchestration;
-    }
+        private readonly PythonCalculationClient _pythonClient;
+        private readonly ILogger<SAILController> _logger;
 
-    /// <summary>
-    /// Determine SAIL level from Final GRC and Residual ARC (SORA 2.0 Table 5)
-    /// </summary>
-    /// <param name="input">Final GRC (1-7) and Residual ARC (a-d)</param>
-    /// <returns>SAIL level (I-VI) with compliance requirements</returns>
-    [HttpPost("determine")]
-    [ProducesResponseType(typeof(SAILResult), 200)]
-    [ProducesResponseType(400)]
-    public IActionResult DetermineSAIL([FromBody] SAILInput input)
-    {
-        try
+        public SAILController(PythonCalculationClient pythonClient, ILogger<SAILController> logger)
         {
-            _logger.LogInformation("SAIL determination requested: GRC={GRC}, ARC={ARC}", 
-                input.FinalGRC, input.ResidualARC);
-            
-            var result = _sailService.DetermineSAIL(input);
-            
-            if (!result.IsSupported)
+            _pythonClient = pythonClient;
+            _logger = logger;
+        }
+
+        [HttpPost("calculate")]
+        public async Task<ActionResult<SAILResponse>> CalculateSAIL([FromBody] SAILRequest request)
+        {
+            var startTime = DateTime.UtcNow;
+            var correlationId = HttpContext.TraceIdentifier;
+
+            try
             {
-                _logger.LogWarning("SAIL determination failed: {Notes}", result.Notes);
-                return BadRequest(new { error = result.Notes });
-            }
-            
-            _logger.LogInformation("SAIL determined: {SAIL} for GRC={GRC}, ARC={ARC}", 
-                result.SAIL, input.FinalGRC, input.ResidualARC);
-            
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error determining SAIL");
-            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Determine composite SAIL for multi-segment missions
-    /// Rule: Composite SAIL = Highest segment SAIL (SORA 2.0 Section 2.4.2(g))
-    /// </summary>
-    /// <param name="segments">List of mission segments with individual GRC/ARC values</param>
-    /// <returns>Composite SAIL with segment breakdown</returns>
-    [HttpPost("composite")]
-    [ProducesResponseType(typeof(CompositeSAILResult), 200)]
-    [ProducesResponseType(400)]
-    public IActionResult DetermineCompositeSAIL([FromBody] List<MissionSegment> segments)
-    {
-        try
-        {
-            if (segments == null || segments.Count == 0)
-            {
-                return BadRequest(new { error = "At least one segment required" });
-            }
-            
-            _logger.LogInformation("Composite SAIL determination requested for {Count} segments", segments.Count);
-            
-            var result = _sailService.DetermineCompositeSAIL(segments);
-            
-            _logger.LogInformation("Composite SAIL determined: {SAIL} (critical segment: {Segment})", 
-                result.CompositeSAIL, result.CriticalSegment);
-            
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error determining composite SAIL");
-            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
-        }
-    }
-
-    /// <summary>
-    /// Get required OSO count for a given SAIL level
-    /// </summary>
-    /// <param name="sail">SAIL level (I-VI)</param>
-    /// <returns>Number of required Operational Safety Objectives</returns>
-    [HttpGet("oso-count/{sail}")]
-    [ProducesResponseType(typeof(OSOCountResult), 200)]
-    public IActionResult GetOSOCount(SAILLevel sail)
-    {
-        var count = _sailService.GetRequiredOSOCount(sail);
-        var requirements = _sailService.GetOSORobustnessRequirements(sail);
-        
-        return Ok(new OSOCountResult
-        {
-            SAIL = sail,
-            RequiredOSOCount = count,
-            OSORequirements = requirements,
-            Reference = "JARUS SORA 2.0 Table 6 - Operational Safety Objectives"
-        });
-    }
-
-    /// <summary>
-    /// Calculate iGRC, Final GRC, ARC (initial/residual) and SAIL from full inputs.
-    /// Thin wrapper over the SORA orchestration pipeline; returns a concise summary for UI live validation.
-    /// </summary>
-    /// <param name="request">Minimal SORA input payload (version, drone/ground risk, air risk). OSOs optional.</param>
-    /// <returns>Calculated values and advisory notes</returns>
-    [HttpPost("calculate")]
-    [ProducesResponseType(typeof(CalculateSAILResponse), 200)]
-    [ProducesResponseType(400)]
-    public IActionResult Calculate([FromBody] SORACompleteRequest request)
-    {
-        try
-        {
-            if (request == null)
-                return BadRequest(new { error = "Request body is required" });
-
-            if (request.SoraVersion != "2.0" && request.SoraVersion != "2.5")
-                return BadRequest(new { error = "Invalid SORA version. Use '2.0' or '2.5'" });
-
-            var result = _orchestration.ExecuteComplete(request);
-            if (!result.IsSuccessful)
-                return BadRequest(new { error = string.Join("; ", result.Errors ?? new()), warnings = result.Warnings });
-
-            var response = new CalculateSAILResponse
-            {
-                SoraVersion = result.SoraVersion,
-                IGRC = result.IntrinsicGRC,
-                FinalGRC = result.FinalGRC,
-                InitialARC = result.InitialARC?.ToString().Replace("ARC_", string.Empty),
-                ResidualARC = result.ResidualARC?.ToString().Replace("ARC_", string.Empty),
-                SAIL = result.SAILLabel,
-                Steps = new List<string>()
+                // Validate common fields
+                if (string.IsNullOrEmpty(request.SoraVersion) || 
+                    (request.SoraVersion != "2.0" && request.SoraVersion != "2.5"))
                 {
-                    result.GroundRiskNotes,
-                    result.AirRiskNotes,
-                    result.SAILNotes
-                }.Where(s => !string.IsNullOrWhiteSpace(s)).ToList(),
-                Warnings = result.Warnings ?? new()
+                    return BadRequest("soraVersion must be '2.0' or '2.5'");
+                }
+
+                if (request.SoraVersion == "2.0")
+                {
+                    return await HandleSora20(request, startTime, correlationId);
+                }
+                else
+                {
+                    return await HandleSora25(request, startTime, correlationId);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "Python service unreachable for correlation {CorrelationId}", correlationId);
+                Response.Headers.Add("x-correlation-id", correlationId);
+                return StatusCode(502, "Python calculation service unavailable");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error calculating SAIL for correlation {CorrelationId}", correlationId);
+                return StatusCode(500, "Internal server error");
+            }
+        }
+
+        private async Task<ActionResult<SAILResponse>> HandleSora20(SAILRequest request, DateTime startTime, string correlationId)
+        {
+            // Validate SORA 2.0 specific fields
+            if (request.FinalGrc < 1 || request.FinalGrc > 7)
+            {
+                return BadRequest("finalGrc must be between 1 and 7 for SORA 2.0");
+            }
+
+            if (string.IsNullOrEmpty(request.ResidualArc))
+            {
+                return BadRequest("residualArc is required for SORA 2.0");
+            }
+
+            var normalizedArc = NormalizeArcLetter(request.ResidualArc);
+            if (normalizedArc == null || !new[] { "a", "b", "c", "d" }.Contains(normalizedArc))
+            {
+                return BadRequest("residualArc must be 'a', 'b', 'c', or 'd' for SORA 2.0");
+            }
+
+            // "The SAIL defined in Step #9 is the level of robustness required to satisfy the safety objectives specified in Annex E." (EASA AMC/GM – SORA)
+            // Category-C path stops SAIL for GRC > 7
+            if (request.FinalGrc > 7)
+            {
+                var categoryResponse = new SAILResponse
+                {
+                    Sail = null,
+                    SailLevel = null,
+                    OsoCount = null,
+                    Category = "C",
+                    Reference = "JARUS SORA 2.0 Table 5 (GRC×ARC→SAIL), AMC Annex E link - Category C for GRC>7",
+                    FinalGrc = request.FinalGrc,
+                    ResidualArc = normalizedArc,
+                    SoraVersion = "2.0"
+                };
+
+                LogCalculation("2.0", request.FinalGrc, normalizedArc, null, null, "C", startTime);
+                return Ok(categoryResponse);
+            }
+
+            // Map via standard SORA 2.0 table (Table 5 – Determination of SAIL)
+            var sail = MapSora20ToSail(request.FinalGrc, normalizedArc);
+            
+            // "In Annex E the 24 Operational Safety Objectives… are listed with their associated levels of robustness." (EASA AMC/GM – SORA)
+            // OSO count: derived count per SAIL from Annex-E applicability for SORA 2.0 only
+            var osoCount = GetOsoCountForSail(sail);
+
+            var response = new SAILResponse
+            {
+                Sail = sail,
+                SailLevel = sail,
+                OsoCount = osoCount,
+                Category = null,
+                Reference = "JARUS SORA 2.0 Table 5 (GRC×ARC→SAIL), AMC Annex E link",
+                FinalGrc = request.FinalGrc,
+                ResidualArc = normalizedArc,
+                SoraVersion = "2.0"
             };
 
+            LogCalculation("2.0", request.FinalGrc, normalizedArc, null, sail, null, startTime);
             return Ok(response);
         }
-        catch (Exception ex)
+
+        private async Task<ActionResult<SAILResponse>> HandleSora25(SAILRequest request, DateTime startTime, string correlationId)
         {
-            _logger.LogError(ex, "Error calculating SAIL");
-            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+            // Validate SORA 2.5 specific fields
+            if (request.FinalGrc < 1 || request.FinalGrc > 10)
+            {
+                return BadRequest("finalGrc must be between 1 and 10 for SORA 2.5");
+            }
+
+            if (!request.ResidualArcLevel.HasValue)
+            {
+                return BadRequest("residualArcLevel is required for SORA 2.5");
+            }
+
+            // Residual ARC is numeric in 2.5; do not bin to letters
+            if (request.ResidualArcLevel < 1 || request.ResidualArcLevel > 10)
+            {
+                return BadRequest("residualArcLevel must be between 1 and 10 for SORA 2.5");
+            }
+
+            // Reject any letter ARC for 2.5
+            if (!string.IsNullOrEmpty(request.ResidualArc))
+            {
+                return BadRequest("Use residualArcLevel (numeric) for SORA 2.5, not residualArc");
+            }
+
+            string sail;
+            string reference;
+
+            // If finalGrc >= 9 ⇒ sail="VI" for any residual ARC
+            // Rationale: high-GRC rows collapse to SAIL VI in the 2.5 mapping
+            if (request.FinalGrc >= 9)
+            {
+                sail = "VI";
+                reference = "SORA 2.5 Annex D/Table mapping (numeric ARC), high-GRC rule (9–10→VI)";
+            }
+            else
+            {
+                // Call Python /sail/calculate v2.5 path
+                var pythonResponse = await _pythonClient.CalculateSAIL25Async(request.FinalGrc, request.ResidualArcLevel.Value);
+                sail = pythonResponse.Sail;
+                reference = "SORA 2.5 Annex D/Table mapping (numeric ARC)";
+            }
+
+            var response = new SAILResponse
+            {
+                Sail = sail,
+                SailLevel = sail,
+                OsoCount = null, // Do not return osoCount for 2.5; 2.5 Annex-E profile differs
+                Category = null,
+                Reference = reference,
+                FinalGrc = request.FinalGrc,
+                ResidualArcLevel = request.ResidualArcLevel,
+                SoraVersion = "2.5"
+            };
+
+            LogCalculation("2.5", request.FinalGrc, null, request.ResidualArcLevel, sail, null, startTime);
+            return Ok(response);
         }
+
+        private string? NormalizeArcLetter(string arcInput)
+        {
+            if (string.IsNullOrEmpty(arcInput)) return null;
+            
+            var normalized = arcInput.ToLowerInvariant()
+                .Replace("arc-", "")
+                .Replace("arc_", "")
+                .Replace("arc", "")
+                .Trim();
+            
+            return normalized;
+        }
+
+        private string MapSora20ToSail(int grc, string arc)
+        {
+            // Standard SORA 2.0 mapping table (Table 5 – Determination of SAIL)
+            return (grc, arc) switch
+            {
+                (1, "a") => "I",
+                (1, "b") => "I",
+                (1, "c") => "II",
+                (1, "d") => "II",
+                (2, "a") => "I",
+                (2, "b") => "I",
+                (2, "c") => "II",
+                (2, "d") => "III",
+                (3, "a") => "I",
+                (3, "b") => "II",
+                (3, "c") => "III",
+                (3, "d") => "IV",
+                (4, "a") => "II",
+                (4, "b") => "III",
+                (4, "c") => "IV",
+                (4, "d") => "V",
+                (5, "a") => "III",
+                (5, "b") => "IV",
+                (5, "c") => "V",
+                (5, "d") => "VI",
+                (6, "a") => "III",
+                (6, "b") => "IV",
+                (6, "c") => "V",
+                (6, "d") => "VI",
+                (7, "a") => "IV",
+                (7, "b") => "V",
+                (7, "c") => "VI",
+                (7, "d") => "VI",
+                _ => throw new ArgumentException($"Invalid GRC/ARC combination: {grc}/{arc}")
+            };
+        }
+
+        private int GetOsoCountForSail(string sail)
+        {
+            // Annex E lists 24 OSOs; SAIL determines robustness level to satisfy them (counts are derived, not invented)
+            return sail switch
+            {
+                "I" => 6,
+                "II" => 10,
+                "III" => 15,
+                "IV" => 18,
+                "V" => 21,
+                "VI" => 24,
+                _ => throw new ArgumentException($"Invalid SAIL: {sail}")
+            };
+        }
+
+        private void LogCalculation(string version, int grc, string? arcToken, int? arcLevel, string? sail, string? category, DateTime startTime)
+        {
+            var duration = DateTime.UtcNow.Subtract(startTime).TotalMilliseconds;
+            _logger.LogInformation("SAIL calculation: {SoraVersion} GRC={FinalGrc} ARC={ArcToken}{ArcLevel} → SAIL={Sail} Category={Category} ({DurationMs}ms)",
+                version, grc, arcToken, arcLevel.HasValue ? arcLevel.ToString() : "", sail, category, duration);
+        }
+    }
+
+    public class SAILRequest
+    {
+        [Required]
+        public string SoraVersion { get; set; } = "";
+        
+        [Required]
+        public int FinalGrc { get; set; }
+        
+        // For SORA 2.0
+        public string? ResidualArc { get; set; }
+        
+        // For SORA 2.5
+        public int? ResidualArcLevel { get; set; }
+    }
+
+    public class SAILResponse
+    {
+        public string? Sail { get; set; }
+        public string? SailLevel { get; set; }
+        public int? OsoCount { get; set; }
+        public string? Category { get; set; }
+        public string Reference { get; set; } = "";
+        public int FinalGrc { get; set; }
+        public string? ResidualArc { get; set; }
+        public int? ResidualArcLevel { get; set; }
+        public string SoraVersion { get; set; } = "";
     }
 }
 
-/// <summary>
-/// OSO count result
-/// </summary>
-public class OSOCountResult
-{
-    public SAILLevel SAIL { get; set; }
-    public int RequiredOSOCount { get; set; }
-    public Dictionary<string, string> OSORequirements { get; set; } = new();
-    public string Reference { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Concise response for SAIL calculation suitable for UI live panel
-/// </summary>
-public class CalculateSAILResponse
-{
-    public string SoraVersion { get; set; } = "2.5";
-    [JsonPropertyName("iGRC")] public int? IGRC { get; set; }
-    public int? FinalGRC { get; set; }
-    public string? InitialARC { get; set; } // a..d
-    public string? ResidualARC { get; set; } // a..d
-    public string? SAIL { get; set; } // I..VI
-    public List<string> Steps { get; set; } = new();
-    public List<string> Warnings { get; set; } = new();
-}

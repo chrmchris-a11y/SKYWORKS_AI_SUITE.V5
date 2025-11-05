@@ -18,6 +18,18 @@ builder.Services.AddHttpClient("PythonService", client =>
   client.Timeout = TimeSpan.FromSeconds(10);
 });
 
+// Typed HttpClient for legacy API-layer PythonCalculationClient (used by SAILController)
+builder.Services.Configure<Skyworks.Api.Services.PythonServiceOptions>(options =>
+{
+  options.BaseUrl = builder.Configuration.GetValue<string>("PythonService:BaseUrl") ?? "http://localhost:8001";
+});
+builder.Services.AddHttpClient<Skyworks.Api.Services.PythonCalculationClient>((sp, client) =>
+{
+  var opt = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<Skyworks.Api.Services.PythonServiceOptions>>().Value;
+  client.BaseAddress = new Uri(opt.BaseUrl ?? "http://localhost:8001");
+  client.Timeout = TimeSpan.FromSeconds(10);
+});
+
 // Localization - 13 supported languages (EN, EL, DE, FR, ES, IT, RU, ZH, PL, HR, SL, UK, CS)
 builder.Services.AddLocalization();
 builder.Services.Configure<RequestLocalizationOptions>(options =>
@@ -288,6 +300,13 @@ if (Directory.Exists(frontendRoot))
     RequestPath = "/app",
     FileProvider = fp
   });
+
+  // Map favicon to an existing PNG in Frontend/assets to remove 404 noise
+  var assetsPath = Path.Combine(frontendRoot, "assets", "logo drone skyworks.png");
+  if (File.Exists(assetsPath))
+  {
+    app.MapGet("/favicon.ico", () => Results.File(assetsPath, contentType: "image/png"));
+  }
 }
 
 // Root redirect to /app (simpler UX) - must be before MapControllers

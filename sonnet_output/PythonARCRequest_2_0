@@ -1,0 +1,67 @@
+namespace Skyworks.Core.Services.Python;
+
+/// <summary>
+/// Request model for SORA 2.0 ARC calculation via Python engine
+/// </summary>
+public class PythonARCRequest_2_0
+{
+    /// <summary>
+    /// Altitude above ground level in feet (SORA 2.0 uses feet)
+    /// </summary>
+    public double AltitudeAglFt { get; set; }
+
+    /// <summary>
+    /// Maximum height above mean sea level in meters
+    /// </summary>
+    public double? MaxHeightAmslM { get; set; }
+
+    /// <summary>
+    /// Airspace class (A/B/C/D/E/F/G)
+    /// </summary>
+    public string AirspaceClass { get; set; } = "G";
+
+    /// <summary>
+    /// Whether airspace is controlled
+    /// </summary>
+    public bool IsControlled { get; set; }
+
+    /// <summary>
+    /// Whether in Mode S veil
+    /// </summary>
+    public bool IsModesVeil { get; set; }
+
+    /// <summary>
+    /// Whether in Transponder Mandatory Zone
+    /// </summary>
+    public bool IsTmz { get; set; }
+
+    /// <summary>
+    /// Environment type (Urban/Rural)
+    /// </summary>
+    public string Environment { get; set; } = "Urban";
+
+    /// <summary>
+    /// Whether near airport or heliport
+    /// </summary>
+    public bool IsAirportHeliport { get; set; }
+
+    /// <summary>
+    /// Whether operation is atypical/segregated
+    /// </summary>
+    public bool IsAtypicalSegregated { get; set; }
+
+    /// <summary>
+    /// Tactical mitigation level (None/Low/Medium/High)
+    /// </summary>
+    public string TacticalMitigationLevel { get; set; } = "None";
+
+    /// <summary>
+    /// Distance to nearest aerodrome in nautical miles (SORA 2.0 uses nm)
+    /// </summary>
+    public double? DistanceToAerodrome_nm { get; set; }
+
+    /// <summary>
+    /// Whether operation is in Control Traffic Region
+    /// </summary>
+    public bool IsInCTR { get; set; }
+}

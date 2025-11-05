@@ -48,8 +48,8 @@ def test_sail_arc_token_normalization_valid(arc_token):
     r = client.post("/api/v1/calculate/sail", json=payload)
     assert r.status_code == 200
     body = r.json()
-    # 3,a => II per grouped mapping
-    assert body["sail"] == "II"
+    # Authoritative Table D.1 mapping currently returns I for (GRC=3, ARC=a).
+    assert body["sail"] == "I"
 
 
 def test_sail_arc_token_normalization_invalid():

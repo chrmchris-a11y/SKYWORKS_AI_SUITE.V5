@@ -27,27 +27,14 @@ public class PythonCalculationClient : IPythonCalculationClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<PythonCalculationClient> _logger;
     private readonly string _baseUrl;
-    private readonly JsonSerializerOptions _jsonOptions;
 
     public PythonCalculationClient(IHttpClientFactory httpClientFactory, ILogger<PythonCalculationClient> logger, IConfiguration configuration)
     {
         _httpClient = httpClientFactory.CreateClient("PythonService");
         _logger = logger;
-        // Prefer appsettings, then environment variable, then default
-        _baseUrl = configuration.GetValue<string>("PythonService:BaseUrl")
-                   ?? Environment.GetEnvironmentVariable("PYTHON_API_BASE")
-                   ?? "http://localhost:8001";
+        _baseUrl = configuration.GetValue<string>("PythonService:BaseUrl") ?? "http://localhost:8001";
         _httpClient.BaseAddress = new Uri(_baseUrl);
         _httpClient.Timeout = TimeSpan.FromSeconds(10);
-        
-        // Configure JSON options to match Python expectations
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            WriteIndented = false,
-            PropertyNameCaseInsensitive = true
-        };
     }
 
     public async Task<bool> HealthCheck()
@@ -68,97 +55,28 @@ public class PythonCalculationClient : IPythonCalculationClient
     {
         try
         {
-            // Create a clean request object that matches Python Pydantic model exactly
-            var pythonRequest = new Dictionary<string, object?>
+            // Normalize request: lowercase mitigation enums + scenario name conversion for Python compatibility
+            var normalizedReq = new
             {
-                ["mtom_kg"] = request.MTOM_kg,
-                ["population_density"] = request.PopulationDensity
+                max_dimension_m = request.MaxDimensionM > 0 ? request.MaxDimensionM : (request.DimensionM > 0 ? request.DimensionM : 1.0),
+                operational_scenario = string.IsNullOrWhiteSpace(request.OperationalScenario) ? (request.Scenario ?? string.Empty) : request.OperationalScenario,
+                m1_strategic = ToTitleCase(request.M1Strategic),
+                m2_ground_impact = ToTitleCase(string.IsNullOrWhiteSpace(request.M2GroundImpact) ? (request.M2Impact ?? "") : request.M2GroundImpact),
+                m3_emergency_response = ToTitleCase(string.IsNullOrWhiteSpace(request.M3EmergencyResponse) ? (request.M3ERP ?? "") : request.M3EmergencyResponse),
             };
-
-            // Only add mitigation fields if they have values
-            if (!string.IsNullOrEmpty(request.M1Strategic))
-            {
-                pythonRequest["m1_strategic"] = NormalizeMitigationLevel(request.M1Strategic);
-            }
-
-            if (!string.IsNullOrEmpty(request.M2Impact))
-            {
-                pythonRequest["m2_impact"] = NormalizeMitigationLevel(request.M2Impact);
-            }
-
-            if (!string.IsNullOrEmpty(request.M3ERP))
-            {
-                pythonRequest["m3_erp"] = NormalizeMitigationLevel(request.M3ERP);
-            }
-
-            var json = JsonSerializer.Serialize(pythonRequest, _jsonOptions);
+            var json = JsonSerializer.Serialize(normalizedReq);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            _logger.LogInformation("Sending GRC 2.0 request to Python: {Json}", json);
-            
             var response = await _httpClient.PostAsync("/api/v1/calculate/grc/2.0", content);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Python API returned {StatusCode}: {Error}", 
-                    response.StatusCode, errorContent);
-                return null;
-            }
+            response.EnsureSuccessStatusCode();
             
             var responseJson = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation("Python GRC 2.0 response: {Response}", responseJson);
-
-            // First try strict model deserialization
-            var parsed = JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, _jsonOptions);
-            if (parsed != null && (parsed.IntrinsicGRC > 0 || parsed.FinalGRC > 0))
-                return parsed;
-
-            // Fallback: manual parse supporting intrinsic_grc | initial_grc shapes
-            try
-            {
-                using var doc = JsonDocument.Parse(responseJson);
-                var root = doc.RootElement;
-                int intrinsic = 0;
-                int final = 0;
-                int m1 = 0, m2 = 0, m3 = 0;
-                string notes = string.Empty;
-                string source = string.Empty;
-
-                if (root.TryGetProperty("intrinsic_grc", out var ig)) intrinsic = ig.GetInt32();
-                if (intrinsic == 0 && root.TryGetProperty("initial_grc", out var initg)) intrinsic = initg.GetInt32();
-                if (root.TryGetProperty("final_grc", out var fg)) final = fg.GetInt32();
-                if (root.TryGetProperty("m1_effect", out var m1e)) m1 = m1e.GetInt32();
-                if (root.TryGetProperty("m2_effect", out var m2e)) m2 = m2e.GetInt32();
-                if (root.TryGetProperty("m3_effect", out var m3e)) m3 = m3e.GetInt32();
-                if (root.TryGetProperty("notes", out var n)) notes = n.GetString() ?? string.Empty;
-                if (root.TryGetProperty("source", out var s)) source = s.GetString() ?? string.Empty;
-
-                if (intrinsic > 0 || final > 0)
-                {
-                    return new PythonGRCResponse
-                    {
-                        IntrinsicGRC = intrinsic,
-                        FinalGRC = final,
-                        M1Effect = m1,
-                        M2Effect = m2,
-                        M3Effect = m3,
-                        Notes = notes,
-                        Source = source
-                    };
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "GRC 2.0: Could not parse alternate response shapes");
-            }
-
-            return parsed; // may be null
+            return JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Python GRC 2.0 call failed - {Message}", ex.Message);
-            return null;
+            _logger.LogError(ex, "Error calling Python GRC 2.0 calculation");
+            throw;
         }
     }
 
@@ -166,249 +84,122 @@ public class PythonCalculationClient : IPythonCalculationClient
     {
         try
         {
-            // Create a clean request object for SORA 2.5
-            var pythonRequest = new Dictionary<string, object?>
+            // SORA 2.5 (Annex F) expects specific snake_case fields with extra=forbid.
+            // Map strictly to Python model: mtom_kg, population_density, max_characteristic_dimension_m, max_speed_ms,
+            // and granular mitigations m1a/m1b/m1c + m2_impact. Omit fields not recognized by FastAPI model.
+            var normalizedReq = new
             {
-                ["mtom_kg"] = request.MTOM_kg,
-                ["population_density"] = request.PopulationDensity
+                mtom_kg = request.WeightKg ?? (request.MTOM_kg > 0 ? (double?)request.MTOM_kg : (double?)null),
+                population_density = request.PopulationDensity,
+                max_characteristic_dimension_m = request.MaxCharacteristicDimensionM > 0 ? (double?)request.MaxCharacteristicDimensionM : (request.MaxDimensionM > 0 ? (double?)request.MaxDimensionM : (double?)null),
+                max_speed_ms = request.MaxSpeedMs > 0 ? request.MaxSpeedMs : (request.MaxSpeed_mps > 0 ? request.MaxSpeed_mps : 0),
+                m1a_sheltering = string.IsNullOrWhiteSpace(request.M1A_Sheltering) ? null : ToTitleCase(request.M1A_Sheltering!),
+                m1b_operational = string.IsNullOrWhiteSpace(request.M1B_Operational) ? null : ToTitleCase(request.M1B_Operational!),
+                m1c_ground_observation = string.IsNullOrWhiteSpace(request.M1C_GroundObservation) ? null : ToTitleCase(request.M1C_GroundObservation!),
+                m2_impact = string.IsNullOrWhiteSpace(request.M2Impact) ? null : ToTitleCase(request.M2Impact!),
             };
-
-            // Add SORA 2.5 authoritative fields (Table 2)
-            if (request.MaxCharacteristicDimensionM.HasValue)
-            {
-                pythonRequest["max_characteristic_dimension_m"] = request.MaxCharacteristicDimensionM.Value;
-            }
-
-            // Add legacy max_dimension_m field for backward compatibility with Python calculator
-            if (request.MaxDimensionM.HasValue)
-            {
-                pythonRequest["max_dimension_m"] = request.MaxDimensionM.Value;
-            }
-
-            // Add max_speed_ms if provided
-            if (request.MaxSpeedMs.HasValue)
-            {
-                pythonRequest["max_speed_ms"] = request.MaxSpeedMs.Value;
-            }
-
-            if (!string.IsNullOrEmpty(request.OperationMode))
-            {
-                pythonRequest["operation_mode"] = request.OperationMode;
-            }
-
-            if (!string.IsNullOrEmpty(request.OverflownArea))
-            {
-                pythonRequest["overflown_area"] = request.OverflownArea;
-            }
-
-            // Add mitigations if they exist
-            if (!string.IsNullOrEmpty(request.M1A_Sheltering))
-            {
-                pythonRequest["m1a_sheltering"] = NormalizeMitigationLevel(request.M1A_Sheltering);
-            }
-
-            if (!string.IsNullOrEmpty(request.M1B_Operational))
-            {
-                pythonRequest["m1b_operational"] = NormalizeMitigationLevel(request.M1B_Operational);
-            }
-
-            if (!string.IsNullOrEmpty(request.M1C_GroundObservation))
-            {
-                pythonRequest["m1c_ground_observation"] = NormalizeMitigationLevel(request.M1C_GroundObservation);
-            }
-
-            if (!string.IsNullOrEmpty(request.M2Impact))
-            {
-                // FIX #12: SORA 2.5 M2 only accepts None/Medium/High (no Low) - map Low→None
-                pythonRequest["m2_impact"] = NormalizeMitigationLevel_SORA25_M2(request.M2Impact);
-            }
-
-            var json = JsonSerializer.Serialize(pythonRequest, _jsonOptions);
+            var json = JsonSerializer.Serialize(normalizedReq);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
-            
-            _logger.LogInformation("Sending GRC 2.5 request to Python: {Json}", json);
             
             var response = await _httpClient.PostAsync("/api/v1/calculate/grc/2.5", content);
             
+            // Read response body before checking status (for error message extraction)
+            var responseJson = await response.Content.ReadAsStringAsync();
+            
+            // If error response, try to extract structured error message (handles string, array, or object)
             if (!response.IsSuccessStatusCode)
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Python API returned {StatusCode}: {Error}", 
-                    response.StatusCode, errorContent);
-                return null;
-            }
-            
-            var responseJson = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation("Python GRC 2.5 response: {Response}", responseJson);
-
-            // Unwrap optional envelope { ok, data, error }
-            try
-            {
-                using JsonDocument envDoc = JsonDocument.Parse(responseJson);
-                var root = envDoc.RootElement;
-                if (root.TryGetProperty("data", out var dataEl) && dataEl.ValueKind == JsonValueKind.Object)
+                string? detailMsg = null;
+                try
                 {
-                    responseJson = dataEl.GetRawText();
-                }
-            }
-            catch { /* fall through with original responseJson */ }
-            
-            // First, try normal deserialization (snake_case fields)
-            var result = JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, _jsonOptions);
-            if (result != null && (result.IntrinsicGRC > 0 || result.FinalGRC > 0))
-            {
-                return result;
-            }
-
-            // Fallback: parse snake_case or camelCase manually
-            try
-            {
-                using JsonDocument doc = JsonDocument.Parse(responseJson);
-                var root = doc.RootElement;
-
-                int intrinsic = 0;
-                int final = 0;
-                int m1 = 0, m2 = 0, m3 = 0;
-                string dimensionCategory = string.Empty;
-                string notes = string.Empty;
-                string source = string.Empty;
-
-                // Prefer snake_case
-                if (root.TryGetProperty("intrinsic_grc", out var ig)) intrinsic = ig.GetInt32();
-                if (root.TryGetProperty("final_grc", out var fg)) final = fg.GetInt32();
-                // Older/alternate schema uses "initial_grc" instead of "intrinsic_grc"
-                if (intrinsic == 0 && root.TryGetProperty("initial_grc", out var initg)) intrinsic = initg.GetInt32();
-                if (root.TryGetProperty("m1_effect", out var m1e)) m1 = m1e.GetInt32();
-                if (root.TryGetProperty("m2_effect", out var m2e)) m2 = m2e.GetInt32();
-                if (root.TryGetProperty("m3_effect", out var m3e)) m3 = m3e.GetInt32();
-                if (root.TryGetProperty("dimension_category", out var dc)) dimensionCategory = dc.GetString() ?? string.Empty;
-                if (root.TryGetProperty("notes", out var n)) notes = n.GetString() ?? string.Empty;
-                if (root.TryGetProperty("source", out var s)) source = s.GetString() ?? string.Empty;
-
-                // If snake_case not present, try camelCase
-                if (intrinsic == 0 && final == 0)
-                {
-                    if (root.TryGetProperty("intrinsicGRC", out var igc)) intrinsic = igc.GetInt32();
-                    if (root.TryGetProperty("finalGRC", out var fgc)) final = fgc.GetInt32();
-                    if (intrinsic == 0 && root.TryGetProperty("initialGRC", out var initGc)) intrinsic = initGc.GetInt32();
-                    if (root.TryGetProperty("m1Effect", out var m1c)) m1 = m1c.GetInt32();
-                    if (root.TryGetProperty("m2Effect", out var m2c)) m2 = m2c.GetInt32();
-                    if (root.TryGetProperty("m3Effect", out var m3c)) m3 = m3c.GetInt32();
-                    if (root.TryGetProperty("dimensionCategory", out var dcc)) dimensionCategory = dcc.GetString() ?? string.Empty;
-                    if (root.TryGetProperty("notes", out var nc)) notes = nc.GetString() ?? string.Empty;
-                    if (root.TryGetProperty("reference", out var rc)) source = rc.GetString() ?? string.Empty;
-                }
-
-                if (intrinsic > 0 || final > 0)
-                {
-                    return new PythonGRCResponse
+                    using var errorDoc = JsonDocument.Parse(responseJson);
+                    var root = errorDoc.RootElement;
+                    if (root.TryGetProperty("detail", out var detailProp))
                     {
-                        IntrinsicGRC = intrinsic,
-                        FinalGRC = final,
-                        M1Effect = m1,
-                        M2Effect = m2,
-                        M3Effect = m3,
-                        DimensionCategory = dimensionCategory,
-                        Notes = notes,
-                        Source = source
-                    };
+                        switch (detailProp.ValueKind)
+                        {
+                            case JsonValueKind.String:
+                                detailMsg = detailProp.GetString();
+                                break;
+                            case JsonValueKind.Array:
+                                // Typical FastAPI/Pydantic validation error: array of {loc, msg, type}
+                                var parts = new List<string>();
+                                foreach (var item in detailProp.EnumerateArray())
+                                {
+                                    string loc = string.Empty;
+                                    if (item.TryGetProperty("loc", out var locProp))
+                                    {
+                                        try { loc = string.Join('.', locProp.EnumerateArray().Select(e => e.ToString())); } catch { }
+                                    }
+                                    string msg = item.TryGetProperty("msg", out var msgProp) ? (msgProp.GetString() ?? string.Empty) : item.ToString();
+                                    parts.Add(string.IsNullOrWhiteSpace(loc) ? msg : $"{loc}: {msg}");
+                                }
+                                detailMsg = string.Join("; ", parts);
+                                break;
+                            case JsonValueKind.Object:
+                                detailMsg = detailProp.ToString();
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        // No 'detail' property; include entire root as context
+                        detailMsg = root.ToString();
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "GRC 2.5: Could not parse alternate response shapes");
+                catch (Exception)
+                {
+                    // If JSON parsing fails, fall through to EnsureSuccessStatusCode
+                }
+
+                if (!string.IsNullOrWhiteSpace(detailMsg))
+                {
+                    throw new HttpRequestException($"Python GRC 2.5 returned {(int)response.StatusCode}: {detailMsg}");
+                }
+
+                response.EnsureSuccessStatusCode(); // Throw with generic status code message
             }
             
-            return result; // may be null -> caller will handle
+            return JsonSerializer.Deserialize<PythonGRCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Python GRC 2.5 call failed - {Message}", ex.Message);
-            return null;
+            _logger.LogError(ex, "Error calling Python GRC 2.5 calculation");
+            throw;
         }
-    }
-
-    /// <summary>
-    /// Normalize mitigation level strings to match Python enum expectations exactly
-    /// </summary>
-    private string? NormalizeMitigationLevel(string? level)
-    {
-        if (string.IsNullOrWhiteSpace(level))
-            return null;
-
-        return level.Trim().ToLowerInvariant() switch
-        {
-            "low" or "Low" or "LOW" => "Low",
-            "medium" or "Medium" or "MEDIUM" => "Medium",
-            "high" or "High" or "HIGH" => "High",
-            _ => level.Trim() // Return as-is if not recognized
-        };
-    }
-
-    /// <summary>
-    /// FIX #12: SORA 2.5 M2 normalization - Low→None (M2Level25 enum: None/Medium/High only)
-    /// </summary>
-    private string? NormalizeMitigationLevel_SORA25_M2(string? level)
-    {
-        if (string.IsNullOrWhiteSpace(level))
-            return "None";
-
-        return level.Trim().ToLowerInvariant() switch
-        {
-            "low" or "Low" or "LOW" or "none" or "None" or "NONE" => "None",
-            "medium" or "Medium" or "MEDIUM" => "Medium",
-            "high" or "High" or "HIGH" => "High",
-            _ => "None" // Default to None if not recognized
-        };
     }
 
     public async Task<PythonARCResponse?> CalculateARC_2_0(PythonARCRequest_2_0 request)
     {
         try
         {
-            var json = JsonSerializer.Serialize(request, _jsonOptions);
+            // Normalize request: title-case enums for Python compatibility
+            var normalizedReq = new
+            {
+                max_height_agl_m = request.MaxHeightAglM > 0 ? request.MaxHeightAglM : (request.AltitudeAglFt > 0 ? request.AltitudeAglFt * 0.3048 : 0),
+                max_height_amsl_m = request.MaxHeightAmslM,
+                airspace_class = request.AirspaceClass,
+                is_controlled = request.IsControlled,
+                is_modes_veil = request.IsModesVeil,
+                is_tmz = request.IsTmz,
+                environment = ToTitleCase(request.Environment),
+                is_airport_heliport = request.IsAirportHeliport,
+                is_atypical_segregated = request.IsAtypicalSegregated,
+                tactical_mitigation_level = ToTitleCase(request.TacticalMitigationLevel),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            _logger.LogInformation("Sending ARC 2.0 request to Python: {Json}", json);
-            
-            var response = await _httpClient.PostAsync("/arc/v2.0/initial", content);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Python ARC 2.0 API returned {StatusCode}: {Error}", 
-                    response.StatusCode, errorContent);
-                return null;
-            }
+            var response = await _httpClient.PostAsync("/api/v1/calculate/arc/2.0", content);
+            response.EnsureSuccessStatusCode();
             
             var responseJson = await response.Content.ReadAsStringAsync();
-            // FastAPI may return an envelope { ok, data, error } with snake_case fields
-            // Normalize to PythonARCResponse, tolerating both residual_arc|final_arc and initial_arc
-            try
-            {
-                using var doc = JsonDocument.Parse(responseJson);
-                var root = doc.RootElement;
-
-                // Unwrap envelope if present
-                if (root.TryGetProperty("data", out var dataEl) && dataEl.ValueKind == JsonValueKind.Object)
-                {
-                    var data = dataEl;
-                    return ParseArcResponseObject(data);
-                }
-
-                // No envelope; parse directly
-                return ParseArcResponseObject(root);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "ARC 2.0: Could not parse response, returning null");
-                return null;
-            }
+            return JsonSerializer.Deserialize<PythonARCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Python ARC 2.0 call failed - {Message}", ex.Message);
-            return null;
+            _logger.LogError(ex, "Error calling Python ARC 2.0 calculation");
+            throw;
         }
     }
 
@@ -416,126 +207,133 @@ public class PythonCalculationClient : IPythonCalculationClient
     {
         try
         {
-            var json = JsonSerializer.Serialize(request, _jsonOptions);
+            // Normalize request: title-case enums for Python compatibility
+            var normalizedReq = new
+            {
+                max_height_agl_m = request.MaxHeightAglM > 0 ? request.MaxHeightAglM : request.AltitudeAglM,
+                max_speed_ms = request.MaxSpeedMs,
+                airspace_class = request.AirspaceClass,
+                is_controlled = request.IsControlled,
+                is_modes_veil = request.IsModesVeil,
+                is_tmz = request.IsTmz,
+                environment = ToTitleCase(request.Environment),
+                is_airport_heliport = request.IsAirportHeliport,
+                is_atypical_segregated = request.IsAtypicalSegregated,
+                tactical_mitigation_level = ToTitleCase(request.TacticalMitigationLevel),
+            };
+            var json = JsonSerializer.Serialize(normalizedReq);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            _logger.LogInformation("Sending ARC 2.5 request to Python: {Json}", json);
-            
-            var response = await _httpClient.PostAsync("/arc/v2.5/initial", content);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Python ARC 2.5 API returned {StatusCode}: {Error}", 
-                    response.StatusCode, errorContent);
-                return null;
-            }
+            var response = await _httpClient.PostAsync("/api/v1/calculate/arc/2.5", content);
+            response.EnsureSuccessStatusCode();
             
             var responseJson = await response.Content.ReadAsStringAsync();
-            // Normalize to PythonARCResponse, tolerating both residual_arc|final_arc and initial_arc
-            try
-            {
-                using var doc = JsonDocument.Parse(responseJson);
-                var root = doc.RootElement;
-
-                // Unwrap envelope if present
-                if (root.TryGetProperty("data", out var dataEl) && dataEl.ValueKind == JsonValueKind.Object)
-                {
-                    var data = dataEl;
-                    return ParseArcResponseObject(data);
-                }
-
-                // No envelope; parse directly
-                return ParseArcResponseObject(root);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "ARC 2.5: Could not parse response, returning null");
-                return null;
-            }
+            return JsonSerializer.Deserialize<PythonARCResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Python ARC 2.5 call failed - {Message}", ex.Message);
-            return null;
+            _logger.LogError(ex, "Error calling Python ARC 2.5 calculation");
+            throw;
         }
-    }
-
-    /// <summary>
-    /// Helper to parse ARC response objects from Python, supporting multiple shapes.
-    /// </summary>
-    private PythonARCResponse ParseArcResponseObject(JsonElement obj)
-    {
-        // Prefer explicit fields if present
-        string initialArc = string.Empty;
-        string finalArc = string.Empty;
-        int aec = 0;
-        int density = 0;
-        int tme = 0;
-        string notes = string.Empty;
-        string source = string.Empty;
-
-        // Accept both snake_case and camelCase
-        if (obj.TryGetProperty("initial_arc", out var ia)) initialArc = ia.GetString() ?? string.Empty;
-        if (string.IsNullOrEmpty(initialArc) && obj.TryGetProperty("initialARC", out var ia2)) initialArc = ia2.GetString() ?? string.Empty;
-
-        // final_arc (legacy) or residual_arc (authoritative)
-        if (obj.TryGetProperty("final_arc", out var fa)) finalArc = fa.GetString() ?? string.Empty;
-        if (string.IsNullOrEmpty(finalArc) && obj.TryGetProperty("residual_arc", out var ra)) finalArc = ra.GetString() ?? string.Empty;
-        if (string.IsNullOrEmpty(finalArc) && obj.TryGetProperty("finalARC", out var fa2)) finalArc = fa2.GetString() ?? string.Empty;
-        if (string.IsNullOrEmpty(finalArc) && obj.TryGetProperty("residualARC", out var ra2)) finalArc = ra2.GetString() ?? string.Empty;
-
-        // Fallback: if final/residual not present, use initial as best-effort so downstream SAIL calls don't 400
-        if (string.IsNullOrEmpty(finalArc) && !string.IsNullOrEmpty(initialArc))
-        {
-            finalArc = initialArc;
-        }
-
-        if (obj.TryGetProperty("aec", out var aecEl) && aecEl.ValueKind == JsonValueKind.Number) aec = aecEl.GetInt32();
-        if (obj.TryGetProperty("density_rating", out var dr) && dr.ValueKind == JsonValueKind.Number) density = dr.GetInt32();
-        if (obj.TryGetProperty("tactical_mitigation_effect", out var tmeEl) && tmeEl.ValueKind == JsonValueKind.Number) tme = tmeEl.GetInt32();
-        if (obj.TryGetProperty("notes", out var n)) notes = n.GetString() ?? string.Empty;
-        if (obj.TryGetProperty("source", out var s)) source = s.GetString() ?? string.Empty;
-
-        return new PythonARCResponse
-        {
-            InitialARC = initialArc,
-            FinalARC = finalArc,
-            AEC = aec,
-            DensityRating = density,
-            TacticalMitigationEffect = tme,
-            Notes = notes,
-            Source = source
-        };
     }
 
     public async Task<PythonSAILResponse?> CalculateSAIL(PythonSAILRequest request)
     {
         try
         {
-            var json = JsonSerializer.Serialize(request, _jsonOptions);
+            object normalizedReq;
+            // SORA 2.5 requires numeric residual_arc_level (1..10). For 2.0 keep legacy final_arc letter.
+            if (string.Equals(request.SoraVersion, "2.5", StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedReq = new
+                {
+                    sora_version = "2.5",
+                    final_grc = request.FinalGRC,
+                    residual_arc_level = request.ResidualARCLevel ?? 0,
+                };
+            }
+            else
+            {
+                // Normalize request: SAIL 2.0 expects ARC enums like "ARC-a" (hyphens)
+                normalizedReq = new
+                {
+                    sora_version = string.IsNullOrWhiteSpace(request.SoraVersion) ? "2.0" : request.SoraVersion,
+                    final_grc = request.FinalGRC,
+                    final_arc = ToARCEnum(string.IsNullOrWhiteSpace(request.ResidualARC) ? request.FinalARC : request.ResidualARC),
+                };
+            }
+            var json = JsonSerializer.Serialize(normalizedReq);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            _logger.LogInformation("Sending SAIL request to Python: {Json}", json);
-            
             var response = await _httpClient.PostAsync("/api/v1/calculate/sail", content);
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError("Python SAIL API returned {StatusCode}: {Error}", 
-                    response.StatusCode, errorContent);
-                return null;
-            }
+            response.EnsureSuccessStatusCode();
             
             var responseJson = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<PythonSAILResponse>(responseJson, _jsonOptions);
+            return JsonSerializer.Deserialize<PythonSAILResponse>(responseJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Python SAIL call failed - {Message}", ex.Message);
-            return null;
+            _logger.LogError(ex, "Error calling Python SAIL calculation");
+            throw;
         }
+    }
+
+    // Normalize uppercase enum strings to title-case for Python
+    private string ToTitleCase(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return s ?? string.Empty;
+        var lower = s.ToLowerInvariant();
+        if (lower == "none") return "None";
+        if (lower == "low") return "Low";
+        if (lower == "medium") return "Medium";
+        if (lower == "high") return "High";
+        // Environments
+        if (lower == "rural") return "Rural";
+        if (lower == "urban") return "Urban";
+        if (lower == "suburban") return "Suburban";
+        if (lower == "controlled") return "Controlled";
+        if (lower == "industrial") return "Industrial";
+        // Default: capitalize first letter
+        return char.ToUpperInvariant(s[0]) + s.Substring(1).ToLowerInvariant();
+    }
+
+    // Normalize ARC enum from e.g., "ARC_a" -> "ARC-a"
+    private string ToARCEnum(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return s ?? string.Empty;
+        // Python ARCRating uses lowercase suffix with hyphens: ARC-a, ARC-b, ARC-c, ARC-d
+        return s.Replace("_", "-");
+    }
+
+    // Combine M1 sub-mitigations into a single robustness level
+    private string CombineM1(PythonGRCRequest_2_5 r)
+    {
+        var levels = new[] { r.M1A_Sheltering, r.M1B_Operational, r.M1C_GroundObservation }
+            .Where(v => !string.IsNullOrWhiteSpace(v))
+            .Select(v => v!.Trim().ToLowerInvariant())
+            .ToList();
+        if (levels.Count == 0) return "None";
+        if (levels.Contains("high")) return "High";
+        if (levels.Contains("medium")) return "Medium";
+        if (levels.Contains("low")) return "Low";
+        return "None";
+    }
+
+    // Convert .NET OperationalScenario enum to Python scenario string
+    // Based on JARUS SORA 2.0 Table 2 scenario names
+    private string ToScenarioString(string dotnetScenario)
+    {
+        return dotnetScenario switch
+        {
+            "VLOS_SparselyPopulated" => "VLOS_Sparsely",
+            "BVLOS_SparselyPopulated" => "BVLOS_Sparsely",
+            "VLOS_Populated" => "VLOS_Populated",
+            "BVLOS_Populated" => "BVLOS_Populated",
+            "VLOS_GatheringOfPeople" => "VLOS_Gathering",
+            "BVLOS_GatheringOfPeople" => "BVLOS_Gathering",
+            "ControlledGroundArea" => "VLOS_Controlled",
+            _ => dotnetScenario // Pass through if already correct
+        };
     }
 }
 
@@ -547,63 +345,79 @@ public class PythonCalculationClient : IPythonCalculationClient
 
 public class PythonGRCRequest_2_0
 {
-    [JsonPropertyName("mtom_kg")]
-    public double MTOM_kg { get; set; }
+    [JsonPropertyName("max_dimension_m")]
+    public double MaxDimensionM { get; set; }
 
-    // SORA 2.0 Table 2: scenario string (e.g., "VLOS_Controlled", "BVLOS_Populated")
-    [JsonPropertyName("scenario")]
-    public string Scenario { get; set; } = "VLOS_Sparsely";
-
-    // SORA 2.0 Table 2: aircraft characteristic dimension in meters
-    [JsonPropertyName("dimension_m")]
-    public double DimensionM { get; set; }
-
-    // Footprint containment quality: "Poor", "Adequate", "Good"
-    [JsonPropertyName("containment_quality")]
-    public string ContainmentQuality { get; set; } = "Adequate";
-
-    // Deprecated: kept for backward compatibility, use scenario instead
-    [JsonPropertyName("population_density")]
-    public double PopulationDensity { get; set; }
+    [JsonPropertyName("operational_scenario")]
+    public string OperationalScenario { get; set; } = string.Empty;
 
     [JsonPropertyName("m1_strategic")]
-    public string? M1Strategic { get; set; }
+    public string M1Strategic { get; set; } = "None";
 
-    [JsonPropertyName("m2_impact")]
+    [JsonPropertyName("m2_ground_impact")]
+    public string M2GroundImpact { get; set; } = "Medium";
+
+    [JsonPropertyName("m3_emergency_response")]
+    public string M3EmergencyResponse { get; set; } = "Medium";
+
+    // Legacy aliases used by SORAOrchestrationService (do not serialize directly)
+    [JsonIgnore]
+    public string? Scenario { get; set; }
+
+    [JsonIgnore]
+    public double DimensionM { get; set; }
+
+    [JsonIgnore]
+    public string? ContainmentQuality { get; set; }
+
+    [JsonIgnore]
     public string? M2Impact { get; set; }
 
-    [JsonPropertyName("m3_erp")]
+    [JsonIgnore]
     public string? M3ERP { get; set; }
-    
-    // Deprecated: kept for backward compatibility, use scenario instead
-    [JsonPropertyName("environment_type")]
-    public string? EnvironmentType { get; set; }
 }
 
 public class PythonGRCRequest_2_5
 {
-    [JsonPropertyName("mtom_kg")]
-    public double MTOM_kg { get; set; }
+    [JsonPropertyName("max_dimension_m")]
+    public double MaxDimensionM { get; set; }
+
+    [JsonPropertyName("max_speed_ms")]
+    public double MaxSpeedMs { get; set; }
+
+    [JsonPropertyName("weight_kg")]
+    public double? WeightKg { get; set; }
 
     [JsonPropertyName("population_density")]
     public double PopulationDensity { get; set; }
 
-    // Optional context to support Python models that consider dimension/speed
-    [JsonPropertyName("max_dimension_m")]
-    public double? MaxDimensionM { get; set; }
+    [JsonPropertyName("is_controlled_ground")]
+    public bool IsControlledGround { get; set; }
 
-    [JsonPropertyName("max_speed_ms")]
-    public double? MaxSpeedMs { get; set; }
+    [JsonPropertyName("m1_strategic")]
+    public string M1Strategic { get; set; } = "None";
 
-    // SORA 2.5 Authoritative: Table 2 requires scenario + dimension
+    [JsonPropertyName("m2_ground_impact")]
+    public string M2GroundImpact { get; set; } = "Medium";
+
+    [JsonPropertyName("m3_emergency_response")]
+    public string M3EmergencyResponse { get; set; } = "Medium";
+
+    // Accept additional Annex F fields for FE/Smoke binding
+    [JsonPropertyName("mtom_kg")]
+    public double MTOM_kg { get; set; }
+
+    [JsonPropertyName("max_speed_mps")]
+    public double MaxSpeed_mps { get; set; }
+
     [JsonPropertyName("max_characteristic_dimension_m")]
-    public double? MaxCharacteristicDimensionM { get; set; }
+    public double MaxCharacteristicDimensionM { get; set; }
 
     [JsonPropertyName("operation_mode")]
-    public string? OperationMode { get; set; }  // "VLOS" or "BVLOS"
+    public string? OperationMode { get; set; }
 
     [JsonPropertyName("overflown_area")]
-    public string? OverflownArea { get; set; }  // "Sparsely", "Populated", "Gathering"
+    public string? OverflownArea { get; set; }
 
     [JsonPropertyName("m1a_sheltering")]
     public string? M1A_Sheltering { get; set; }
@@ -616,9 +430,6 @@ public class PythonGRCRequest_2_5
 
     [JsonPropertyName("m2_impact")]
     public string? M2Impact { get; set; }
-    
-    [JsonPropertyName("environment_type")]
-    public string? EnvironmentType { get; set; }
 }
 
 public class PythonGRCResponse
@@ -654,9 +465,8 @@ public class PythonGRCResponse
 
 public class PythonARCRequest_2_0
 {
-    // CRITICAL FIX: Use correct field name that Python expects
-    [JsonPropertyName("altitude_agl_ft")]
-    public double AltitudeAglFt { get; set; }
+    [JsonPropertyName("max_height_agl_m")]
+    public double MaxHeightAglM { get; set; }
 
     [JsonPropertyName("max_height_amsl_m")]
     public double MaxHeightAmslM { get; set; }
@@ -685,19 +495,21 @@ public class PythonARCRequest_2_0
     [JsonPropertyName("tactical_mitigation_level")]
     public string TacticalMitigationLevel { get; set; } = "None";
 
-    // Optional proximity fields (advisory)
-    [JsonPropertyName("is_in_ctr")]
-    public bool IsInCtr { get; set; }
+    // Legacy/alternate inputs
+    [JsonIgnore]
+    public double AltitudeAglFt { get; set; }
 
-    [JsonPropertyName("distance_to_aerodrome_nm")]
-    public double? DistanceToAerodromeNm { get; set; }
+    [JsonIgnore]
+    public double? DistanceToAerodrome_nm { get; set; }
+
+    [JsonIgnore]
+    public bool? IsInCTR { get; set; }
 }
 
 public class PythonARCRequest_2_5
 {
-    // CRITICAL FIX: Use correct field name that Python expects
-    [JsonPropertyName("altitude_agl_m")]
-    public double AltitudeAglM { get; set; }
+    [JsonPropertyName("max_height_agl_m")]
+    public double MaxHeightAglM { get; set; }
 
     [JsonPropertyName("max_speed_ms")]
     public double MaxSpeedMs { get; set; }
@@ -726,12 +538,19 @@ public class PythonARCRequest_2_5
     [JsonPropertyName("tactical_mitigation_level")]
     public string TacticalMitigationLevel { get; set; } = "None";
 
-    // Optional proximity fields (advisory)
-    [JsonPropertyName("is_in_ctr")]
-    public bool IsInCtr { get; set; }
+    // Additional optional fields
+    [JsonIgnore]
+    public double? DistanceToAerodrome_km { get; set; }
 
-    [JsonPropertyName("distance_to_aerodrome_km")]
-    public double? DistanceToAerodromeKm { get; set; }
+    [JsonIgnore]
+    public bool? IsInCTR { get; set; }
+
+    [JsonIgnore]
+    public bool? IsNearAerodrome { get; set; }
+
+    // Legacy alias used by Orchestration
+    [JsonIgnore]
+    public double AltitudeAglM { get; set; }
 }
 
 public class PythonARCResponse
@@ -770,30 +589,28 @@ public class PythonSAILRequest
     [JsonPropertyName("final_grc")]
     public int FinalGRC { get; set; }
 
-    [JsonPropertyName("residual_arc")]  // FIXED: Python expects residual_arc, not final_arc
-    public string ResidualARC { get; set; } = string.Empty;
+    [JsonPropertyName("final_arc")]
+    public string FinalARC { get; set; } = string.Empty;
+
+    // SORA 2.5 numeric residual ARC (preferred for 2.5)
+    [JsonPropertyName("residual_arc_level")]
+    public int? ResidualARCLevel { get; set; }
+
+    // Alias used by Orchestration
+    [JsonIgnore]
+    public string? ResidualARC { get; set; }
 }
 
 public class PythonSAILResponse
 {
-    // Category C handling (SORA 2.5 GRC > 7)
-    [JsonPropertyName("category")]
-    public string? Category { get; set; }
-
     [JsonPropertyName("sail")]
     public string SAIL { get; set; } = string.Empty;
 
     [JsonPropertyName("final_grc")]
     public int FinalGRC { get; set; }
 
-    [JsonPropertyName("residual_arc")]
-    public string? ResidualARC { get; set; }
-
     [JsonPropertyName("final_arc")]
     public string FinalARC { get; set; } = string.Empty;
-
-    [JsonPropertyName("oso_count")]
-    public int? OsoCount { get; set; }
 
     [JsonPropertyName("sora_version")]
     public string SoraVersion { get; set; } = string.Empty;
