@@ -966,9 +966,11 @@
               <select id="m1a_25" onchange="calculateGRC25()">
                 <option value="0">None (0)</option>
                 <option value="-1">Low (-1)</option>
-                <option value="-2">Medium (-2)</option>
               </select>
             </label>
+            <div style="font-size:11px; color:#666; margin-top:4px;">
+              ⚠️ JARUS SORA 2.5 Table 5: M1A has only <strong>None / Low (-1)</strong>. High sheltering = 0 credit (no mitigation needed).
+            </div>
           </div>
           <div>
             <label style="color:#0d47a1; font-weight:600;">M1(B) - Operational restrictions
@@ -2486,13 +2488,13 @@
                   try {
                   const v = selectedCategory === 'SORA-2.5' ? '2.5' : '2.0';
                   const body = {
-                    SoraVersion: v,
-                    MissionId: document.getElementById('missionId').value || undefined,
-                    MissionName: document.getElementById('missionName').value || undefined,
-                    DroneId: droneId,
-                    GroundRisk: {},
-                    AirRisk: {},
-                    ImplementedOSOs: parseOSOs(document.getElementById('osos').value)
+                    soraVersion: v,
+                    missionId: document.getElementById('missionId').value || undefined,
+                    missionName: document.getElementById('missionName').value || undefined,
+                    droneId: droneId,
+                    groundRisk: {},
+                    airRisk: {},
+                    implementedOSOs: parseOSOs(document.getElementById('osos').value)
                   };
 
                   if (v === '2.5') {
@@ -2504,25 +2506,26 @@
                     const m2 = parseInt(document.getElementById('m2_25')?.value || '0');
                     
                     // Map numeric values back to robustness levels for API
-                    if (m1a === -1) mitigations25.push({ Type: 'M1A', Robustness: 'Low' });
-                    else if (m1a === -2) mitigations25.push({ Type: 'M1A', Robustness: 'Medium' });
+                    // ✅ CORRECTED: M1A Sheltering per JARUS SORA 2.5 Table 5
+                    // M1A has ONLY: None (0) / Low (-1) - NO Medium!
+                    if (m1a === -1) mitigations25.push({ type: 'M1A', robustness: 'Low' });
                     
-                    if (m1b === -1) mitigations25.push({ Type: 'M1B', Robustness: 'Medium' });
-                    else if (m1b === -2) mitigations25.push({ Type: 'M1B', Robustness: 'High' });
+                    if (m1b === -1) mitigations25.push({ type: 'M1B', robustness: 'Medium' });
+                    else if (m1b === -2) mitigations25.push({ type: 'M1B', robustness: 'High' });
                     
-                    if (m1c === -1) mitigations25.push({ Type: 'M1C', Robustness: 'Low' });
+                    if (m1c === -1) mitigations25.push({ type: 'M1C', robustness: 'Low' });
                     
-                    if (m2 === -1) mitigations25.push({ Type: 'M2', Robustness: 'Medium' });
-                    else if (m2 === -2) mitigations25.push({ Type: 'M2', Robustness: 'High' });
+                    if (m2 === -1) mitigations25.push({ type: 'M2', robustness: 'Medium' });
+                    else if (m2 === -2) mitigations25.push({ type: 'M2', robustness: 'High' });
                     
-                    body.GroundRisk = {
-                      PopulationDensity: Number(document.getElementById('populationDensity').value || 0),
+                    body.groundRisk = {
+                      populationDensity: Number(document.getElementById('populationDensity').value || 0),
                       // Derive controlled ground area from the selected population density option
                       // When "Controlled Ground Area" is selected, value === 'controlled'
-                      IsControlledGroundArea: (document.getElementById('populationDensity')?.value === 'controlled'),
-                      MaxCharacteristicDimension: Number(document.getElementById('maxDimension').value || 0),
-                      MaxSpeed: Number(document.getElementById('maxSpeed').value || 0),
-                      Mitigations: mitigations25
+                      isControlledGroundArea: (document.getElementById('populationDensity')?.value === 'controlled'),
+                      maxCharacteristicDimension: Number(document.getElementById('maxDimension').value || 0),
+                      maxSpeed: Number(document.getElementById('maxSpeed').value || 0),
+                      mitigations: mitigations25
                     };
                   } else {
                     // Build SORA 2.0 mitigations from structured dropdowns
@@ -2533,19 +2536,19 @@
                     
                     // Map numeric values back to robustness levels for API
                     // M1 - Strategic Mitigation (Reduce people at risk)
-                    if (m1 === -1) mitigations20.push({ Type: 'M1', Robustness: 'Low' });
-                    else if (m1 === -2) mitigations20.push({ Type: 'M1', Robustness: 'Medium' });
-                    else if (m1 === -4) mitigations20.push({ Type: 'M1', Robustness: 'High' });
+                    if (m1 === -1) mitigations20.push({ type: 'M1', robustness: 'Low' });
+                    else if (m1 === -2) mitigations20.push({ type: 'M1', robustness: 'Medium' });
+                    else if (m1 === -4) mitigations20.push({ type: 'M1', robustness: 'High' });
                     
                     // ✅ CORRECTED: M2 - Impact Reduction - JARUS SORA 2.0 AMC Annex F Table 3
                     // M2 has ONLY: None (0) / Medium (-1) / High (-2) - NO "Low" level!
-                    if (m2 === -1) mitigations20.push({ Type: 'M2', Robustness: 'Medium' });  // Medium: -1 GRC
-                    else if (m2 === -2) mitigations20.push({ Type: 'M2', Robustness: 'High' }); // High: -2 GRC
+                    if (m2 === -1) mitigations20.push({ type: 'M2', robustness: 'Medium' });  // Medium: -1 GRC
+                    else if (m2 === -2) mitigations20.push({ type: 'M2', robustness: 'High' }); // High: -2 GRC
                     // Note: m2 === 0 means None (no mitigation)
                     
                     // M3 - Emergency Response Plan
-                    if (m3 === 0) mitigations20.push({ Type: 'M3', Robustness: 'Medium' });
-                    else if (m3 === -1) mitigations20.push({ Type: 'M3', Robustness: 'High' });
+                    if (m3 === 0) mitigations20.push({ type: 'M3', robustness: 'Medium' });
+                    else if (m3 === -1) mitigations20.push({ type: 'M3', robustness: 'High' });
                     // Note: m3 === +1 means None (no mitigation), so we don't add it
                     
                     // Compute KE for SORA 2.0 (per JAR_doc_06 Table 2 guidance)
@@ -2569,48 +2572,48 @@
                     const shelteringElement = document.getElementById('sheltering');
                     const sheltering = shelteringElement ? shelteringElement.value || 'High' : 'High';
                     
-                    body.GroundRisk = {
-                      Scenario_V2_0: document.getElementById('scenario20').value,
-                      MaxCharacteristicDimension: Number(document.getElementById('maxDimension20').value || 0),
-                      KineticEnergy: ke20 !== undefined ? Math.round(ke20) : undefined,
-                      Mitigations: mitigations20,
-                      IsControlledGroundArea: document.getElementById('controlledGround20')?.value === 'true' || false,
+                    body.groundRisk = {
+                      scenario_V2_0: document.getElementById('scenario20').value,
+                      maxCharacteristicDimension: Number(document.getElementById('maxDimension20').value || 0),
+                      kineticEnergy: ke20 !== undefined ? Math.round(ke20) : undefined,
+                      mitigations: mitigations20,
+                      isControlledGroundArea: document.getElementById('controlledGround20')?.value === 'true' || false,
                       
                       // ✅ ADDED: Required fields for Backend API
-                      PopulationDensity: populationDensity,
-                      Sheltering: sheltering
+                      populationDensity: populationDensity,
+                      sheltering: sheltering
                     };
                   }
 
                   const explicitARC = document.getElementById('explicitARC').value;
-                  body.AirRisk = {
-                    ExplicitARC: explicitARC || undefined,
-                    AirspaceControl: document.getElementById('airspaceControl').value,
-                    AirspaceClass: document.getElementById('airspaceClass')?.value || 'G',
-                    LocationType: document.getElementById('locationType').value,
-                    Environment: document.getElementById('environment').value,
-                    Typicality: document.getElementById('typicality').value,
-                    MaxHeightAGL: Number(document.getElementById('maxHeightAGL').value || 0),
-                    MaxHeightAMSL: Number(document.getElementById('maxHeightAMSL')?.value || 0),
-                    IsModeS_Veil: document.getElementById('isModeS')?.checked || false,
-                    IsTMZ: document.getElementById('isTMZ')?.checked || false,
+                  body.airRisk = {
+                    explicitARC: explicitARC || undefined,
+                    airspaceControl: document.getElementById('airspaceControl').value,
+                    airspaceClass: document.getElementById('airspaceClass')?.value || 'G',
+                    locationType: document.getElementById('locationType').value,
+                    environment: document.getElementById('environment').value,
+                    typicality: document.getElementById('typicality').value,
+                    maxHeightAGL: Number(document.getElementById('maxHeightAGL').value || 0),
+                    maxHeightAMSL: Number(document.getElementById('maxHeightAMSL')?.value || 0),
+                    isModeS_Veil: document.getElementById('isModeS')?.checked || false,
+                    isTMZ: document.getElementById('isTMZ')?.checked || false,
                     // Aerodrome proximity (advisory)
-                    IsInCTR: document.getElementById('isInCtr')?.checked || false,
-                    IsNearAerodrome: document.getElementById('isNearAerodrome')?.checked || false,
-                    DistanceToAerodrome_km: (function(){
+                    isInCTR: document.getElementById('isInCtr')?.checked || false,
+                    isNearAerodrome: document.getElementById('isNearAerodrome')?.checked || false,
+                    distanceToAerodrome_km: (function(){
                       const v = document.getElementById('distanceToAerodromeKm')?.value;
                       return v ? Number(v) : undefined;
                     })(),
-                    StrategicMitigations: parseList(document.getElementById('strategicMitigations').value),
-                    IsAtypicalSegregated: document.getElementById('isAtypicalSegregated').value === 'true',
+                    strategicMitigations: parseList(document.getElementById('strategicMitigations').value),
+                    isAtypicalSegregated: document.getElementById('isAtypicalSegregated').value === 'true',
                     // NEW: Drone characteristics for GRC calculation
-                    MaxDimension: parseFloat(document.getElementById('maxDimensionManual')?.value || '0') || undefined,
-                    CruiseSpeed: parseFloat(document.getElementById('cruiseSpeedManual')?.value || '0') || undefined
+                    maxDimension: parseFloat(document.getElementById('maxDimensionManual')?.value || '0') || undefined,
+                    cruiseSpeed: parseFloat(document.getElementById('cruiseSpeedManual')?.value || '0') || undefined
                   };
 
                   try {
                     console.log('[SORA Request Body]', JSON.stringify(body, null, 2));
-                    const resp = await fetch('http://localhost:5210/api/SoraProxy/complete', {
+                    const resp = await fetch('http://localhost:5210/api/sora/complete', {
                       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
                     });
                     const data = await resp.json();
@@ -3430,7 +3433,7 @@
           
           // Make API call
           const baseUrl = window.location.origin;
-          const apiUrl = `${baseUrl}/api/SoraProxy/complete`;
+          const apiUrl = `${baseUrl}/api/sora/complete`;
           
           console.log('🚀 Quick Test Request:', requestBody);
           
