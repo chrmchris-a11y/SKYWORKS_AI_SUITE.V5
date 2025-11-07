@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDRA-S01 | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">PDRA-S01 - VLOS over Controlled Ground Area (≤25kg)</div>
+        <div class="card-body">
+          
+          <!-- Redirect Notice -->
+          <div class="card" style="background: var(--blue-50); border: 2px solid var(--blue-500);">
+            <div class="card-body">
+              <p style="margin: 0; font-size: 16px;">
+                ℹ️ <strong>This page has been superseded by the new PDRA & STS hub.</strong>
+              </p>
+              <p style="margin-top: 12px;">
+                <a href="pdrasts.html" class="btn btn-primary">→ Go to PDRA & STS Scenarios</a>
+              </p>
+            </div>
+          </div>
+
+          <!-- Navigation Tabs -->
+          <div class="toggle-group">
+            <button class="toggle-btn active" onclick="location.href='pdrasts.html'">All PDRA & STS</button>
+            <button class="toggle-btn" onclick="location.href='mission.html'">Back to SORA</button>
+          </div>
+
+          <!-- PDRA-S01 Description -->
+          <div class="card" style="margin-top: 20px;">
+            <div class="card-header">📋 PDRA-S01 Definition</div>
+            <div class="card-body">
+              <p><strong>Regulation:</strong> Commission Delegated Regulation (EU) 2019/945 Annex A.3 PDRA-S01</p>
+              <p><strong>Operation Type:</strong> VLOS over Controlled Ground Area</p>
+              <p><strong>Max MTOM:</strong> 25 kg</p>
+              <p><strong>Max Height:</strong> 120m AGL</p>
+              <p><strong>Max Speed:</strong> No limit (but must be safe)</p>
+              <p><strong>Ground Risk:</strong> Low (controlled area, no uninvolved persons)</p>
+              <p><strong>Air Risk:</strong> Low (VLOS, max 120m AGL)</p>
+            </div>
+          </div>
+
+          <!-- Compliance Checklist -->
+          <div class="card">
+            <div class="card-header">✅ Compliance Checklist</div>
+            <div class="card-body">
+              
+              <form id="pdra-s01-form">
+                
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" class="form-checkbox" id="check-mtom" required>
+                    <strong>UAS MTOM ≤ 25 kg</strong>
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" class="form-checkbox" id="check-vlos" required>
+                    <strong>Operation in VLOS only</strong> (pilot maintains direct visual contact)
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" class="form-checkbox" id="check-height" required>
+                    <strong>Max height ≤ 120m AGL</strong>
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" class="form-checkbox" id="check-controlled" required>
+                    <strong>Operations over controlled ground area</strong> (no uninvolved persons)
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" class="form-checkbox" id="check-airspace" required>
+                    <strong>Compliance with EU airspace regulations</strong> (no prohibited zones)
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" class="form-checkbox" id="check-training" required>
+                    <strong>Remote pilot has A2 certificate</strong> (or equivalent)
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" class="form-checkbox" id="check-insurance" required>
+                    <strong>Valid insurance</strong> (EU Regulation 785/2004)
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label>
+                    <input type="checkbox" class="form-checkbox" id="check-ops-manual" required>
+                    <strong>Operations manual prepared</strong>
+                  </label>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Ground Risk Buffer (m)</label>
+                  <input type="number" id="buffer-distance" class="form-input" value="30" min="0" max="500">
+                  <p class="text-muted">Minimum distance from uninvolved persons</p>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Flight Termination System</label>
+                  <select id="fts" class="form-select">
+                    <option value="Manual">Manual (RTH button)</option>
+                    <option value="Automatic">Automatic (geofence)</option>
+                    <option value="Parachute">Parachute system</option>
+                  </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary">✅ Validate PDRA-S01 Compliance</button>
+
+              </form>
+
+            </div>
+          </div>
+
+          <!-- Mitigation Measures -->
+          <div class="card">
+            <div class="card-header">🛡️ Pre-filled Mitigation Measures</div>
+            <div class="card-body">
+              
+              <div class="kpi-grid">
+                <div class="kpi-card">
+                  <div class="kpi-label">M1 (Strategic)</div>
+                  <div class="kpi-value">✅ HIGH</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">M2 (Impact)</div>
+                  <div class="kpi-value">✅ LOW</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">M3 (ERP)</div>
+                  <div class="kpi-value">✅ ADEQUATE</div>
+                </div>
+                <div class="kpi-card">
+                  <div class="kpi-label">SAIL</div>
+                  <div class="kpi-value">✅ I</div>
+                </div>
+              </div>
+
+              <p class="text-muted" style="margin-top: 20px;">
+                ℹ️ PDRA-S01 operations are pre-authorized under EU regulations. No full SORA assessment required.
+                However, operators must still comply with all operational limitations and mitigation measures.
+              </p>
+
+            </div>
+          </div>
+
+          <!-- Results -->
+          <div class="card">
+            <div class="card-header">📊 Validation Results</div>
+            <div class="card-body">
+              <div class="console" id="validation-console">
+                <pre>Awaiting validation...</pre>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // PDRA-S01 Validation
+    document.getElementById('pdra-s01-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const console = document.getElementById('validation-console');
+      console.innerHTML = '';
+      
+      const checks = [
+        'check-mtom', 'check-vlos', 'check-height', 'check-controlled',
+        'check-airspace', 'check-training', 'check-insurance', 'check-ops-manual'
+      ];
+      
+      let allPassed = true;
+      checks.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el.checked) {
+          console.innerHTML += `<div class="error">❌ ${el.nextSibling.textContent}</div>`;
+          allPassed = false;
+        }
+      });
+      
+      if (allPassed) {
+        console.innerHTML = `
+          <div class="success">✅ All PDRA-S01 requirements satisfied!</div>
+          <div class="success">✅ Operation is COMPLIANT with EU 2019/945 Annex A.3</div>
+          <div class="success">✅ No full SORA assessment needed</div>
+          <div class="success">✅ SAIL: I (lowest risk)</div>
+          <div class="success">✅ Ground Risk Buffer: ${document.getElementById('buffer-distance').value}m</div>
+          <div class="success">✅ Flight Termination: ${document.getElementById('fts').value}</div>
+        `;
+      } else {
+        console.innerHTML += `<div class="error">❌ PDRA-S01 compliance NOT met. Review checklist above.</div>`;
+      }
+    });
+  </script>
+</body>
+</html>

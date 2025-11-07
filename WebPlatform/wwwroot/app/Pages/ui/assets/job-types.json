@@ -1,0 +1,216 @@
+{
+  "jobTypes": [
+    {
+      "id": "facade-cleaning",
+      "category": "Cleaning",
+      "name": "Facade Cleaning",
+      "description": "High-rise building facade cleaning with drones",
+      "icon": "🏢",
+      "defaultHeight": 80,
+      "defaultSpeed": 3,
+      "defaultDuration": 45,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "photovoltaic-cleaning",
+      "category": "Cleaning",
+      "name": "Photovoltaic Cleaning",
+      "description": "Solar panel/photovoltaic installation cleaning",
+      "icon": "☀️",
+      "defaultHeight": 15,
+      "defaultSpeed": 2,
+      "defaultDuration": 30,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "solar-panel-cleaning",
+      "category": "Cleaning",
+      "name": "Solar Panel Cleaning",
+      "description": "Rooftop solar panel cleaning operations",
+      "icon": "🔆",
+      "defaultHeight": 12,
+      "defaultSpeed": 2,
+      "defaultDuration": 25,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "roof-cleaning",
+      "category": "Cleaning",
+      "name": "Roof Cleaning",
+      "description": "General roof cleaning and maintenance",
+      "icon": "🏠",
+      "defaultHeight": 20,
+      "defaultSpeed": 3,
+      "defaultDuration": 30,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "window-cleaning",
+      "category": "Cleaning",
+      "name": "Window Cleaning",
+      "description": "Commercial/residential window cleaning",
+      "icon": "🪟",
+      "defaultHeight": 25,
+      "defaultSpeed": 2,
+      "defaultDuration": 20,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-general",
+      "category": "Inspection",
+      "name": "General Inspection",
+      "description": "General infrastructure inspection",
+      "icon": "🔍",
+      "defaultHeight": 50,
+      "defaultSpeed": 5,
+      "defaultDuration": 40,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-infrastructure",
+      "category": "Inspection",
+      "name": "Infrastructure Inspection",
+      "description": "Bridges, roads, railways, utilities",
+      "icon": "🌉",
+      "defaultHeight": 60,
+      "defaultSpeed": 5,
+      "defaultDuration": 50,
+      "operationType": "EVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-wind-turbine",
+      "category": "Inspection",
+      "name": "Wind Turbine Inspection",
+      "description": "Wind turbine blade and tower inspection",
+      "icon": "🌬️",
+      "defaultHeight": 120,
+      "defaultSpeed": 4,
+      "defaultDuration": 60,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "videography-aerial",
+      "category": "Media",
+      "name": "Aerial Videography",
+      "description": "General aerial video recording",
+      "icon": "🎥",
+      "defaultHeight": 100,
+      "defaultSpeed": 8,
+      "defaultDuration": 35,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "videography-real-estate",
+      "category": "Media",
+      "name": "Real Estate Videography",
+      "description": "Property and real estate marketing videos",
+      "icon": "🏘️",
+      "defaultHeight": 80,
+      "defaultSpeed": 6,
+      "defaultDuration": 30,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "photography-aerial",
+      "category": "Media",
+      "name": "Aerial Photography",
+      "description": "General aerial photography",
+      "icon": "📷",
+      "defaultHeight": 90,
+      "defaultSpeed": 7,
+      "defaultDuration": 25,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "mapping-orthophoto",
+      "category": "Mapping",
+      "name": "Orthophoto Mapping",
+      "description": "2D orthophoto map creation",
+      "icon": "🗺️",
+      "defaultHeight": 120,
+      "defaultSpeed": 10,
+      "defaultDuration": 90,
+      "operationType": "BVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "mapping-3d-model",
+      "category": "Mapping",
+      "name": "3D Modeling",
+      "description": "Photogrammetry for 3D model generation",
+      "icon": "🏗️",
+      "defaultHeight": 80,
+      "defaultSpeed": 8,
+      "defaultDuration": 75,
+      "operationType": "EVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "surveillance",
+      "category": "Security",
+      "name": "Surveillance",
+      "description": "Security and monitoring operations",
+      "icon": "🔐",
+      "defaultHeight": 70,
+      "defaultSpeed": 6,
+      "defaultDuration": 120,
+      "operationType": "EVLOS",
+      "typicality": "Atypical"
+    },
+    {
+      "id": "delivery",
+      "category": "Logistics",
+      "name": "Package Delivery",
+      "description": "Small package delivery operations",
+      "icon": "📦",
+      "defaultHeight": 50,
+      "defaultSpeed": 12,
+      "defaultDuration": 20,
+      "operationType": "BVLOS",
+      "typicality": "Atypical"
+    }
+  ],
+  "categories": [
+    {
+      "id": "Cleaning",
+      "name": "Cleaning",
+      "icon": "🧹"
+    },
+    {
+      "id": "Inspection",
+      "name": "Inspection",
+      "icon": "🔍"
+    },
+    {
+      "id": "Media",
+      "name": "Media & Photography",
+      "icon": "📸"
+    },
+    {
+      "id": "Mapping",
+      "name": "Mapping & Surveying",
+      "icon": "🗺️"
+    },
+    {
+      "id": "Security",
+      "name": "Security",
+      "icon": "🛡️"
+    },
+    {
+      "id": "Logistics",
+      "name": "Logistics",
+      "icon": "🚚"
+    }
+  ]
+}

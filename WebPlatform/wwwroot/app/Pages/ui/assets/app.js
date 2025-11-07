@@ -84,31 +84,16 @@ let currentSoraVersion = "2.5";
 let lastResponse = null;
 
 // ═══════════════════════════════════════════════════════════════════
-// SORA VERSION TOGGLE
+// SORA VERSION TOGGLE (DEPRECATED - Use toggleFramework instead)
 // ═══════════════════════════════════════════════════════════════════
 
 function toggleSoraVersion(version) {
-  currentSoraVersion = version;
-  
-  // Update toggle button states
-  document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  document.querySelector(`[data-version="${version}"]`).classList.add('active');
-  
-  // Show/hide appropriate fieldsets
-  const sora25Fields = document.getElementById('sora25-fields');
-  const sora20Fields = document.getElementById('sora20-fields');
-  
+  // Legacy function - redirect to new toggleFramework
   if (version === "2.5") {
-    sora25Fields.classList.remove('hidden');
-    sora20Fields.classList.add('hidden');
-  } else {
-    sora25Fields.classList.add('hidden');
-    sora20Fields.classList.remove('hidden');
+    toggleFramework("sora25");
+  } else if (version === "2.0") {
+    toggleFramework("sora20");
   }
-  
-  logToConsole(`Switched to SORA ${version}`, 'success');
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -288,10 +273,13 @@ function clearConsole() {
 // ═══════════════════════════════════════════════════════════════════
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Attach toggle listeners
+  // Load job types
+  loadJobTypes();
+  
+  // Attach toggle listeners (NEW: framework toggle instead of version)
   document.querySelectorAll('.toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      toggleSoraVersion(btn.dataset.version);
+      toggleFramework(btn.dataset.framework);
     });
   });
   
@@ -301,9 +289,140 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener('submit', handleFormSubmit);
   }
   
-  // Initialize to 2.5
-  toggleSoraVersion('2.5');
+  // Attach job type change
+  const jobTypeSelect = document.getElementById('job-type');
+  if (jobTypeSelect) {
+    jobTypeSelect.addEventListener('change', handleJobTypeChange);
+  }
+  
+  // Attach action buttons
+  document.getElementById('btn-print')?.addEventListener('click', handlePrint);
+  document.getElementById('btn-pdf')?.addEventListener('click', handlePdfExport);
+  document.getElementById('btn-email')?.addEventListener('click', handleEmail);
+  
+  // Initialize to SORA 2.5
+  toggleFramework('sora25');
   
   logToConsole('✅ SKYWORKS Mission Planner Ready', 'success');
   logToConsole('SORA 2.5 Annex B + SORA 2.0 AMC1 Art.11 Compliant', 'success');
 });
+
+// ═══════════════════════════════════════════════════════════════════
+// JOB TYPES MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════
+
+let jobTypesData = null;
+
+async function loadJobTypes() {
+  try {
+    const response = await fetch('assets/job-types.json');
+    jobTypesData = await response.json();
+    
+    const select = document.getElementById('job-type');
+    if (!select) return;
+    
+    // Group by category
+    jobTypesData.categories.forEach(category => {
+      const optgroup = document.createElement('optgroup');
+      optgroup.label = `${category.icon} ${category.name}`;
+      
+      const categoryJobs = jobTypesData.jobTypes.filter(j => j.category === category.id);
+      categoryJobs.forEach(job => {
+        const option = document.createElement('option');
+        option.value = job.id;
+        option.textContent = `${job.icon} ${job.name}`;
+        optgroup.appendChild(option);
+      });
+      
+      select.appendChild(optgroup);
+    });
+    
+    logToConsole(`✅ Loaded ${jobTypesData.jobTypes.length} job types`, 'success');
+  } catch (err) {
+    logToConsole(`❌ Failed to load job types: ${err.message}`, 'error');
+  }
+}
+
+function handleJobTypeChange(event) {
+  const jobId = event.target.value;
+  if (!jobId || !jobTypesData) return;
+  
+  const job = jobTypesData.jobTypes.find(j => j.id === jobId);
+  if (!job) return;
+  
+  // Auto-fill form fields
+  document.getElementById('operation-type').value = job.operationType;
+  document.getElementById('max-height').value = job.defaultHeight;
+  document.getElementById('typicality').value = job.typicality;
+  
+  // Update description
+  document.getElementById('job-description').textContent = `${job.icon} ${job.description} (Default: ${job.defaultHeight}m, ${job.defaultDuration}min, ${job.defaultSpeed} m/s)`;
+  
+  logToConsole(`✅ Applied job template: ${job.name}`, 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FRAMEWORK TOGGLE (SORA 2.0 / 2.5 / PDRA / STS)
+// ═══════════════════════════════════════════════════════════════════
+
+let currentFramework = "sora25";
+
+function toggleFramework(framework) {
+  currentFramework = framework;
+  
+  // Update toggle button states
+  document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.querySelector(`[data-framework="${framework}"]`)?.classList.add('active');
+  
+  // Show/hide appropriate fieldsets
+  const sora25Fields = document.getElementById('sora25-fields');
+  const sora20Fields = document.getElementById('sora20-fields');
+  
+  if (framework === 'sora25') {
+    sora25Fields?.classList.remove('hidden');
+    sora20Fields?.classList.add('hidden');
+    logToConsole('✅ Switched to SORA 2.5 (Annex B)', 'success');
+  } else if (framework === 'sora20') {
+    sora25Fields?.classList.add('hidden');
+    sora20Fields?.classList.remove('hidden');
+    logToConsole('✅ Switched to SORA 2.0 (AMC1 Art.11)', 'success');
+  } else if (framework === 'pdra') {
+    sora25Fields?.classList.add('hidden');
+    sora20Fields?.classList.add('hidden');
+    logToConsole('� Redirecting to PDRA & STS hub...', 'success');
+    setTimeout(() => {
+      window.location.href = 'pdrasts.html';
+    }, 500);
+  } else if (framework === 'sts') {
+    sora25Fields?.classList.add('hidden');
+    sora20Fields?.classList.add('hidden');
+    logToConsole('� Redirecting to PDRA & STS hub...', 'success');
+    setTimeout(() => {
+      window.location.href = 'pdrasts.html';
+    }, 500);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ACTION BUTTONS (Print / PDF / Email)
+// ═══════════════════════════════════════════════════════════════════
+
+function handlePrint() {
+  logToConsole('🖨️ Printing mission dossier...', 'success');
+  window.print();
+}
+
+function handlePdfExport() {
+  logToConsole('📄 Exporting to PDF (jsPDF integration required)', 'warning');
+  alert('PDF export will be implemented with jsPDF library. For now, use Print → Save as PDF.');
+}
+
+function handleEmail() {
+  const subject = encodeURIComponent('SKYWORKS SORA Mission Dossier');
+  const body = encodeURIComponent(`Mission Details:\n\nFramework: ${currentFramework.toUpperCase()}\nJob Type: ${document.getElementById('job-type').value}\nOperation: ${document.getElementById('operation-type').value}\n\nGenerated by SKYWORKS SORA Suite v0.7.0`);
+  
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  logToConsole('📧 Email client opened', 'success');
+}

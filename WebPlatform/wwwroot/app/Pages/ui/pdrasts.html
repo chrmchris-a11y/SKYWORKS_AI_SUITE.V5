@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDRA & STS Scenarios | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+        <a href="pdrasts.html" class="active">PDRA & STS</a>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">PDRA & STS Standard Scenarios</div>
+        <div class="card-body">
+          
+          <!-- SCENARIO TABS -->
+          <div class="toggle-group" id="scenario-tabs">
+            <button class="toggle-btn active" data-scenario="STS-01">STS-01</button>
+            <button class="toggle-btn" data-scenario="STS-02">STS-02</button>
+            <button class="toggle-btn" data-scenario="PDRA-S01">PDRA-S01</button>
+            <button class="toggle-btn" data-scenario="PDRA-S02">PDRA-S02</button>
+            <button class="toggle-btn" data-scenario="PDRA-G01">PDRA-G01</button>
+            <button class="toggle-btn" data-scenario="PDRA-G02">PDRA-G02</button>
+            <button class="toggle-btn" data-scenario="PDRA-G03">PDRA-G03</button>
+          </div>
+
+          <!-- HERO SUMMARY -->
+          <div class="card" style="margin-top: 20px; background: linear-gradient(135deg, var(--blue-50) 0%, var(--green-50) 100%);">
+            <div class="card-header" id="scenario-title">Loading...</div>
+            <div class="card-body">
+              <div class="grid-2col">
+                <div>
+                  <p><strong>Scenario Code:</strong> <span id="scenario-code">—</span></p>
+                  <p><strong>Operation Mode:</strong> <span id="scenario-mode">—</span></p>
+                  <p><strong>Environment:</strong> <span id="scenario-env">—</span></p>
+                  <p><strong>Ground Area:</strong> <span id="scenario-ground">—</span></p>
+                </div>
+                <div>
+                  <p><strong>UAS Class:</strong> <span id="scenario-class">—</span></p>
+                  <p><strong>Max Height:</strong> <span id="scenario-height">—</span></p>
+                  <p><strong>Approval Mode:</strong> <span id="scenario-approval">—</span></p>
+                  <p><strong>Max Range:</strong> <span id="scenario-range">—</span></p>
+                </div>
+              </div>
+              <div style="margin-top: 16px; padding: 12px; background: var(--white); border-radius: 8px; border-left: 4px solid var(--blue-500);">
+                <p class="text-muted" id="scenario-scope" style="margin: 0;"></p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2-COLUMN LAYOUT -->
+          <div class="grid-2col">
+            
+            <!-- LEFT: ELIGIBILITY CHECKLIST -->
+            <div>
+              <div class="card">
+                <div class="card-header">✅ Eligibility Checklist (Optional)</div>
+                <div class="card-body">
+                  <p class="text-muted">Check if your operation meets all requirements:</p>
+                  <form id="eligibility-form">
+                    <div id="eligibility-items"></div>
+                    <button type="button" class="btn btn-primary" id="check-eligibility" style="margin-top: 12px;">
+                      ✅ Check Eligibility
+                    </button>
+                  </form>
+                </div>
+              </div>
+
+              <!-- DOCUMENTS REQUIRED -->
+              <div class="card">
+                <div class="card-header">📋 Required Documents</div>
+                <div class="card-body">
+                  <ul id="documents-list" style="list-style: none; padding: 0;"></ul>
+                </div>
+              </div>
+
+              <!-- REFERENCES -->
+              <div class="card">
+                <div class="card-header">🔗 Official References</div>
+                <div class="card-body">
+                  <div id="references-list"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- RIGHT: STATIC RESULTS -->
+            <div>
+              <!-- STATUS CARD -->
+              <div class="card">
+                <div class="card-header">📊 Scenario Status</div>
+                <div class="card-body">
+                  <div class="kpi-card" style="background: var(--green-50); border: 2px solid var(--green-500);">
+                    <div class="kpi-label">Status</div>
+                    <div class="kpi-value" style="color: var(--green-700);" id="scenario-result">—</div>
+                  </div>
+                  <p class="text-muted" style="margin-top: 12px;">
+                    ℹ️ This is a <strong>fixed scenario</strong> (STS or PDRA). No SORA computation required.
+                    ARC/GRC/SAIL values are predefined by the scenario envelope.
+                  </p>
+                </div>
+              </div>
+
+              <!-- COMPLIANCE INFO -->
+              <div class="card">
+                <div class="card-header">🛡️ Compliance Requirements</div>
+                <div class="card-body">
+                  <div class="kpi-grid">
+                    <div class="kpi-card">
+                      <div class="kpi-label">Approval Type</div>
+                      <div class="kpi-value" style="font-size: 14px;" id="approval-type">—</div>
+                    </div>
+                    <div class="kpi-card">
+                      <div class="kpi-label">UAS Class</div>
+                      <div class="kpi-value" style="font-size: 14px;" id="uas-class">—</div>
+                    </div>
+                  </div>
+                  <p class="text-muted" style="margin-top: 12px;">
+                    <strong>Declaration (STS):</strong> Submit declaration to Competent Authority before operations.<br>
+                    <strong>Operational Authorisation (PDRA):</strong> Apply for OA from National Aviation Authority (NAA).
+                  </p>
+                </div>
+              </div>
+
+              <!-- DOWNLOAD PACK -->
+              <div class="card">
+                <div class="card-header">📦 Download Pack</div>
+                <div class="card-body">
+                  <p class="text-muted">Download official forms, OM templates, and tables:</p>
+                  <div id="download-links" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+              </div>
+
+              <!-- ELIGIBILITY RESULT -->
+              <div class="card">
+                <div class="card-header">✅ Eligibility Result</div>
+                <div class="card-body">
+                  <div class="console" id="eligibility-console">
+                    <pre>Check eligibility to see results...</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- EXPORT ACTIONS -->
+          <div class="card">
+            <div class="card-header">🚀 Export Actions</div>
+            <div class="card-body">
+              <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary" id="btn-print">🖨️ Print Scenario Summary</button>
+                <button type="button" class="btn btn-secondary" id="btn-pdf">📄 Export to PDF</button>
+                <button type="button" class="btn btn-secondary" id="btn-om">📋 Generate OM Extract</button>
+                <button type="button" class="btn btn-primary" id="btn-back">← Back to Mission Planner</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/pdrasts.js"></script>
+</body>
+</html>
