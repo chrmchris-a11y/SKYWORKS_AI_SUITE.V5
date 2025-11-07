@@ -49,24 +49,24 @@ export interface GRC25Result {
 
 /**
  * Mitigation Credits (SORA 2.5 Table 5 + Annex B)
+ * ✅ ref: Backend GRCCalculationService.cs GetMitigationCredit_V2_5 (lines 283-301)
  * ✅ ref: Official JAR_doc_27 Annex B - STRICT COMPLIANCE
- * ⚠️  M1A: ONLY Low level exists (NO Medium per Annex B)
  */
 const MITIGATION_CREDITS_25 = {
-  // M1(A) Sheltering - ONLY Low (Annex B compliance)
+  // M1(A) Sheltering - ONLY Low (Annex B Tables 2-3)
   M1A_Low: -1,
   
-  // M1(B) Operational restrictions
+  // M1(B) Operational restrictions (Annex B Tables 4-5)
   M1B_Medium: -1,
   M1B_High: -2,
   
-  // M1(C) Ground observation
-  M1C_Low: -1,          // Only Low level defined
+  // M1(C) Ground observation (Annex B Tables 6-7)
+  M1C_Low: -1,
   
-  // M2 Impact dynamics (parachute, frangibility, etc.)
-  M2_Low: -1,           // NEW per Annex B
-  M2_Medium: -2,
-  M2_High: -3,
+  // M2 Impact dynamics (Annex B Table 8+)
+  M2_Low: -1,
+  M2_Medium: -1,    // ✅ FIXED: Same as Low per backend line 298
+  M2_High: -2,
 };
 
 /**
@@ -110,23 +110,30 @@ function determineIntrinsicGRC(input: GRC25Input): {
   
   // Simplified mapping (backend has authoritative Table 2 logic)
   if (populationDensity === "CGA") {
-    // Controlled Ground Area - always GRC 1
-    iGRC = 1;
+    // Controlled Ground Area - iGRC based on dimension
+    // Per Table 2: CGA row (≤1m=1, ≤3m=2, ≤8m=3, >8m=4)
+    if (ke < 100) iGRC = 1;        // ≤1m
+    else if (ke < 1000) iGRC = 2;  // ≤3m
+    else if (ke < 10000) iGRC = 3; // ≤8m
+    else iGRC = 4;                 // >8m
   } else if (populationDensity === "Rural") {
-    if (ke < 100) iGRC = 1;
-    else if (ke < 1000) iGRC = 2;
-    else if (ke < 10000) iGRC = 3;
-    else iGRC = 4;
+    // VLOS over Sparsely Populated - Per Table 2 row 2
+    if (ke < 100) iGRC = 2;         // ✅ FIXED: Was 1, now 2 (VLOS Sparse ≤1m = GRC 2)
+    else if (ke < 1000) iGRC = 3;   // ≤3m = GRC 3
+    else if (ke < 10000) iGRC = 4;  // ≤8m = GRC 4
+    else iGRC = 5;                  // >8m = GRC 5
   } else if (populationDensity === "Suburban") {
-    if (ke < 100) iGRC = 2;
-    else if (ke < 1000) iGRC = 3;
-    else if (ke < 10000) iGRC = 4;
-    else iGRC = 5;
+    // VLOS over Populated - Per Table 2 row 4
+    if (ke < 100) iGRC = 4;
+    else if (ke < 1000) iGRC = 5;
+    else if (ke < 10000) iGRC = 6;
+    else iGRC = 8;  // >8m in populated = GRC 8
   } else if (populationDensity === "Urban") {
-    if (ke < 100) iGRC = 3;
-    else if (ke < 1000) iGRC = 4;
-    else if (ke < 10000) iGRC = 5;
-    else iGRC = 6;
+    // BVLOS over Populated or higher - Per Table 2 row 5
+    if (ke < 100) iGRC = 5;
+    else if (ke < 1000) iGRC = 7;
+    else if (ke < 10000) iGRC = 8;
+    else iGRC = 10;  // Out of SORA scope
   }
   
   return {
@@ -152,6 +159,20 @@ export function calculateGRC25(input: GRC25Input): GRC25Result {
   
   let currentGRC = iGRC;
   auditTrail.push(`Intrinsic GRC = ${iGRC}`);
+  
+  // ✅ Small-UA Rule: If applied, iGRC=1 and NO mitigations apply
+  if (smallUARuleApplied) {
+    auditTrail.push(`✅ Small UA rule applies (≤250g, ≤25m/s) → Final GRC locked at 1, no mitigations`);
+    return {
+      intrinsicGRC: iGRC,
+      finalGRC: 1,
+      smallUARuleApplied: true,
+      mitigationsApplied: [],
+      auditTrail,
+      isValid: true,
+      validationMessage: "✅ Small UA rule applied - GRC locked at 1",
+    };
+  }
   
   // Step 2: Apply M1(A) Sheltering
   // ✅ Annex B compliance: ONLY "Low" level exists

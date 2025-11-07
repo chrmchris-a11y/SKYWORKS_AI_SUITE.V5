@@ -208,24 +208,25 @@ describe('SORA 2.5 GRC Compliance - Official Annex B', () => {
    * MUST enforce: Final GRC cannot be reduced below 1
    */
   it('Golden Test 6: SORA 2.5 enforces Final GRC ≥ 1 floor', () => {
-    // Small UA with aggressive mitigations (try to reduce below 1)
+    // ✅ Use Rural area with low KE to get iGRC=2, then apply aggressive mitigations
+    // KE = 0.5 × 1.5kg × 10² = 75J < 100J → iGRC=2 for Rural
     const input = {
-      mtomKg: 0.2,         // ≤ 0.25 kg
-      maxDimensionM: 0.3,
-      typicalSpeedMs: 15,  // ≤ 25 m/s → Small UA rule → iGRC = 1
-      populationDensity: 'CGA' as const,
+      mtomKg: 1.5,          // 1.5 kg
+      maxDimensionM: 1.2,    // > 1m
+      typicalSpeedMs: 10,    // Low speed → KE=75J < 100 → Rural iGRC=2
+      populationDensity: 'Rural' as const,  // Rural + KE<100 → iGRC = 2
       m1a: 'Low' as const,    // -1
       m1b: 'High' as const,   // -2
       m1c: 'Low' as const,    // -1
-      m2: 'High' as const,    // -2
+      m2: 'High' as const,    // -2 → Total: 2-1-2-1-2 = -4 → floor at 1
     };
     
     const result = calculateGRC25(input);
     
-    // ✅ iGRC should be 1 (small UA rule)
-    expect(result.intrinsicGRC).toBe(1);
+    // ✅ iGRC should be 2 (Rural + KE<100J)
+    expect(result.intrinsicGRC).toBe(2);
     
-    // ✅ Even with all mitigations, final GRC must be floored at 1
+    // ✅ Even with all mitigations (2-6=-4), final GRC must be floored at 1
     expect(result.finalGRC).toBe(1);
     
     // ✅ Audit trail should show floor enforcement

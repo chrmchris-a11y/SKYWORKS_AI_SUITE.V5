@@ -241,13 +241,15 @@ describe('🔒 Edge-Case Tests: EASA/JARUS Executive Validation', () => {
     
     const result = calculateSAIL(input);
     
-    // Per SAIL matrix: GRC=1 × ARC-b → SAIL I
-    expect(result.sail).toBe('SAIL_I');
+    // Per SAIL matrix: GRC=1 × ARC-b → SAIL II (per Table 5 line 115)
+    // ✅ FIXED: Official JARUS SORA Table 5 confirms GRC≤2 × ARC-b = SAIL II
+    expect(result.sail).toBe('II');  // NOT "I"! SAIL matrix line "≤2" row.
     expect(result.isValid).toBe(true);
     
     // Verify audit trail shows matrix lookup
+    // ✅ FIXED: Audit message is "SAIL II determined from Final GRC 1 × Residual ARC-b"
     expect(result.auditTrail.some(msg => 
-      msg.includes('GRC=1') && msg.includes('ARC-b')
+      msg.includes('GRC 1') && msg.includes('ARC-b')
     )).toBe(true);
   });
   
@@ -256,16 +258,18 @@ describe('🔒 Edge-Case Tests: EASA/JARUS Executive Validation', () => {
    * Test all GRC × ARC combinations for correct SAIL mapping
    */
   it('Edge-Case #6b: Should correctly map all GRC × ARC combinations', () => {
+    // ✅ FIXED: Per Official JARUS SORA 2.0 Table 5 (line 115):
+    // GRC ≤2 × ARC-a = I, ARC-b = II, ARC-c = IV, ARC-d = VI
     const testCases: Array<{ grc: number; arc: any; expectedSAIL: string }> = [
-      { grc: 1, arc: 'ARC-a', expectedSAIL: 'SAIL_I' },
-      { grc: 1, arc: 'ARC-b', expectedSAIL: 'SAIL_I' },
-      { grc: 2, arc: 'ARC-a', expectedSAIL: 'SAIL_I' },
-      { grc: 2, arc: 'ARC-b', expectedSAIL: 'SAIL_I' },
-      { grc: 3, arc: 'ARC-b', expectedSAIL: 'SAIL_II' },
-      { grc: 4, arc: 'ARC-b', expectedSAIL: 'SAIL_II' },
-      { grc: 5, arc: 'ARC-c', expectedSAIL: 'SAIL_III' },
-      { grc: 6, arc: 'ARC-c', expectedSAIL: 'SAIL_IV' },
-      { grc: 7, arc: 'ARC-d', expectedSAIL: 'SAIL_VI' },
+      { grc: 1, arc: 'ARC-a', expectedSAIL: 'I' },       // ✓ Correct
+      { grc: 1, arc: 'ARC-b', expectedSAIL: 'II' },      // ✅ FIXED: Was "I", now "II"
+      { grc: 2, arc: 'ARC-a', expectedSAIL: 'I' },       // ✓ Correct
+      { grc: 2, arc: 'ARC-b', expectedSAIL: 'II' },      // ✅ FIXED: Was "I", now "II"
+      { grc: 3, arc: 'ARC-b', expectedSAIL: 'II' },
+      { grc: 4, arc: 'ARC-b', expectedSAIL: 'III' },
+      { grc: 5, arc: 'ARC-c', expectedSAIL: 'IV' },
+      { grc: 6, arc: 'ARC-c', expectedSAIL: 'V' },
+      { grc: 7, arc: 'ARC-d', expectedSAIL: 'VI' },
     ];
     
     for (const { grc, arc, expectedSAIL } of testCases) {
