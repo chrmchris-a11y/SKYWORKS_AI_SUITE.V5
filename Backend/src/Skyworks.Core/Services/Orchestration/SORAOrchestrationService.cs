@@ -989,20 +989,17 @@ public class SORAOrchestrationService : ISORAOrchestrationService
                     "OOS.SAIL_VI");
         }
 
-        if (finalGRC >= 6)
+        // Per SAIL_SORA20_Official_Logic.md Table D.1:
+        // GRC 5 + ARC-d = SAIL V (VALID operation within SPECIFIC category)
+        // GRC 6 + ARC-d = SAIL V (VALID operation within SPECIFIC category)
+        // Only GRC ≥ 7 combinations are truly out of scope
+        
+        if (finalGRC >= 7)
         {
-            _logger?.LogWarning("Operation out of scope: High GRC ({GRC})", finalGRC);
+            _logger?.LogWarning("Operation out of scope: High GRC ({GRC}) requires CERTIFIED category", finalGRC);
             return (false, 
-                    $"Ground Risk Class {finalGRC} is out of scope for SPECIFIC category operations. GRC must be < 6.",
-                    "OOS.GRC_GE_6");
-        }
-
-        if (finalGRC >= 5 && residualARC == ARCRating.ARC_d)
-        {
-            _logger?.LogWarning("Operation out of scope: Combined high risk (GRC={GRC}, ARC=d)", finalGRC);
-            return (false,
-                    $"Combined high risk (GRC {finalGRC} with ARC-d) requires additional safety case review",
-                    "OOS.GRC5_PLUS_ARCd");
+                    $"Ground Risk Class {finalGRC} is out of scope for SPECIFIC category operations. GRC must be ≤ 6.",
+                    "OOS.GRC_GE_7");
         }
 
         return (true, "Operation is within SPECIFIC category scope", "");

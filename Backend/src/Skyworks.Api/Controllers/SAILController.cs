@@ -57,9 +57,10 @@ namespace Skyworks.Api.Controllers
         private async Task<ActionResult<SAILResponse>> HandleSora20(SAILRequest request, DateTime startTime, string correlationId)
         {
             // Validate SORA 2.0 specific fields
-            if (request.FinalGrc < 1 || request.FinalGrc > 7)
+            // Per EASA AMC/GM: GRC 1-7 have SAIL mappings, GRC 8+ → Category C
+            if (request.FinalGrc < 1 || request.FinalGrc > 8)
             {
-                return BadRequest("finalGrc must be between 1 and 7 for SORA 2.0");
+                return BadRequest("finalGrc must be between 1 and 8 for SORA 2.0");
             }
 
             if (string.IsNullOrEmpty(request.ResidualArc))
