@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^4.0.8",
+    "vitest": "^4.0.8"
+  }
+}
