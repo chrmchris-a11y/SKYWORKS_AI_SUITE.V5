@@ -918,11 +918,14 @@
           <div>
             <label style="color:#1b5e20; font-weight:600;">M3 - Emergency Response Plan
               <select id="m3_20" onchange="calculateGRC20()">
-                <option value="1">None (+1 penalty)</option>
-                <option value="0">Medium (0)</option>
-                <option value="-1">High (-1)</option>
+                <option value="1">Low (+1 penalty - inadequate ERP)</option>
+                <option value="0">Medium (0 - basic ERP)</option>
+                <option value="-1">High (-1 - robust ERP)</option>
               </select>
             </label>
+            <div style="font-size:11px; color:#666; margin-top:4px;">
+              📚 JARUS SORA 2.0 Table 8: M3 Low/Medium/High (Low gives +1 penalty if ERP inadequate)
+            </div>
           </div>
         </div>
         <div id="grc20Calculation" style="margin-top:12px; padding:10px; background:#c8e6c9; border:1px solid #4caf50; border-radius:6px; display:none;">
@@ -1091,7 +1094,7 @@
       <!-- NEW: Airspace Classification & Special Zones -->
       <div class="grid" style="background:#e3f2fd; padding:12px; border-radius:8px; margin-top:8px;">
         <div>
-          <label><strong>Airspace Class (ACE Categories)</strong>
+          <label><strong>Airspace Class (ICAO)</strong>
             <span class="help-icon" title="ICAO Airspace Classification A-G (applies to all SORA versions)">?</span>
             <select id="airspaceClass" onchange="updateARC(); updateAirspaceHelp()">
               <option value="G">Class G (Uncontrolled)</option>
@@ -1108,14 +1111,41 @@
           </div>
         </div>
         <div>
+          <label><strong>AEC (Airspace Encounter Category - Annex C)</strong>
+            <span class="help-icon" title="12 AEC categories per JARUS SORA Annex C Table C.1 → determines Initial ARC (a/b/c/d)">?</span>
+            <select id="aecCategory" onchange="updateARCFromAEC()">
+              <option value="">Auto-calculate from environment parameters</option>
+              <optgroup label="High Density (ARC-d)">
+                <option value="1">AEC 1: Airport Class B/C/D → ARC-d</option>
+                <option value="2">AEC 2: >500ft Mode-S/TMZ → ARC-d</option>
+                <option value="3">AEC 3: >500ft Controlled → ARC-d</option>
+              </optgroup>
+              <optgroup label="Medium Density (ARC-c)">
+                <option value="4">AEC 4: >500ft Uncontrolled Urban → ARC-c</option>
+                <option value="5">AEC 5: >500ft Uncontrolled Rural → ARC-c</option>
+                <option value="6">AEC 6: Airport Class E/F/G → ARC-c</option>
+                <option value="7">AEC 7: <500ft Mode-S/TMZ → ARC-c</option>
+                <option value="8">AEC 8: <500ft Controlled → ARC-c</option>
+                <option value="9">AEC 9: <500ft Uncontrolled Urban → ARC-c</option>
+              </optgroup>
+              <optgroup label="Low Density (ARC-b)">
+                <option value="10">AEC 10: <500ft Uncontrolled Rural → ARC-b</option>
+                <option value="11">AEC 11: Above FL600 (18,000m) → ARC-b</option>
+              </optgroup>
+              <optgroup label="Segregated (ARC-a)">
+                <option value="12">AEC 12: Atypical/Segregated (Annex G 3.20) → ARC-a</option>
+              </optgroup>
+            </select>
+          </label>
+          <div id="aecHelp" style="font-size:11px; color:#1565c0; margin-top:4px; padding:6px; background:#e1f5fe; border-radius:4px;">
+            Leave empty for auto-calculation or select specific AEC if pre-determined
+          </div>
+        </div>
+        <div>
           <label><strong>Special Airspace Zones</strong>
             <span class="help-icon" title="Special airspace zones affect ARC and require additional mitigation measures">?</span>
           </label>
           <div style="margin-top:8px; display:grid; grid-template-columns:1fr 1fr; gap:4px;">
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-              <input type="checkbox" id="isModeS" onchange="updateARC()" />
-              <span>Mode-S Veil / Transponder Mandatory</span>
-            </label>
             <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
               <input type="checkbox" id="isTMZ" onchange="updateARC()" />
               <span>TMZ (Transponder Mandatory Zone)</span>
@@ -1138,7 +1168,7 @@
             </label>
           </div>
           <div style="font-size:11px; color:#d84315; margin-top:4px; padding:6px; background:#fff3e0; border-radius:4px;">
-            ⚠️ Mode-S/TMZ zones → Higher ARC (AEC 2 or 7)
+            ⚠️ TMZ zones → Higher ARC (AEC 2 or 7). Mode-S veil is FAA term - EU uses TMZ/RMZ.
           </div>
         </div>
       </div>
@@ -1799,7 +1829,7 @@
               M3 (ERP): <strong>${m3}</strong> GRC<br>
               ───────────────────────<br>
               <strong style="font-size:16px;">Total Reduction: ${totalReduction} GRC</strong>${apiVerification}<br>
-              <em style="font-size:12px; color:#666;">Applied sequentially per JARUS rules</em>
+              <em style="font-size:12px; color:#666;">⚠️ Simplified preview - Backend applies M1→M2→M3 sequentially with column minimum check</em>
             </div>
           `;
         }
@@ -2596,7 +2626,6 @@
                     typicality: document.getElementById('typicality').value,
                     maxHeightAGL: Number(document.getElementById('maxHeightAGL').value || 0),
                     maxHeightAMSL: Number(document.getElementById('maxHeightAMSL')?.value || 0),
-                    isModeS_Veil: document.getElementById('isModeS')?.checked || false,
                     isTMZ: document.getElementById('isTMZ')?.checked || false,
                     // Aerodrome proximity (advisory)
                     isInCTR: document.getElementById('isInCtr')?.checked || false,
@@ -3366,6 +3395,44 @@
           arcDisplay.innerHTML = `<span style="color:#0d47a1; font-weight:700; font-size:18px;">ARC-${arc || 'b'}</span>`;
         }
         try { if (typeof updateSAILPanel === 'function') updateSAILPanel(); } catch {}
+      }
+
+      // ===== AEC to ARC Mapping (JARUS SORA 2.5 Annex C Table C.1) =====
+      function updateARCFromAEC() {
+        const aecCategory = document.getElementById('aecCategory')?.value || '';
+        const explicitARCDropdown = document.getElementById('explicitARC');
+        
+        if (!aecCategory || !explicitARCDropdown) {
+          return; // Auto-calculate mode or element not found
+        }
+        
+        // Map AEC to Initial ARC per JARUS SORA 2.5 Annex C Table C.1
+        // Reference: GRCCalculationService.cs lines 344-575
+        const aecToARC = {
+          '1': 'ARC-d',  // Airport Class B/C/D
+          '2': 'ARC-d',  // >500ft Mode-S/TMZ
+          '3': 'ARC-d',  // >500ft Controlled
+          '4': 'ARC-c',  // Assembly >1000
+          '5': 'ARC-c',  // Airport Class E/F/G
+          '6': 'ARC-c',  // <500ft Controlled
+          '7': 'ARC-c',  // RMZ
+          '8': 'ARC-c',  // <500ft Class E/F/G
+          '9': 'ARC-c',  // Other
+          '10': 'ARC-b', // Rural
+          '11': 'ARC-b', // FL600
+          '12': 'ARC-a'  // Segregated
+        };
+        
+        const arc = aecToARC[aecCategory];
+        if (arc) {
+          explicitARCDropdown.value = arc;
+          console.log(`[AEC Mapping] AEC ${aecCategory} → ${arc}`);
+        } else {
+          explicitARCDropdown.value = ''; // Auto-calculate
+        }
+        
+        // Update ARC display
+        updateARC();
       }
 
       // ============================================

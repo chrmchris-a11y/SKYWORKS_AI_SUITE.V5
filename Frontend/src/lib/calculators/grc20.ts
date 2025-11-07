@@ -16,8 +16,8 @@ export interface GRC20Input {
   intrinsicGRC: number;                 // From Table 2 (1-7)
   columnMinimumGRC: number;             // Column minimum (cannot reduce below this)
   m1: M1_20;                            // None | Low | Medium | High
-  m2: M2_20;                            // None | Medium | High (NO "Low"!)
-  m3: M3_20;                            // Low | Medium | High
+  m2: M2_20;                            // None | Low | High (✅ FIXED per Annex B)
+  m3: M3_20;                            // None | Adequate | Validated (✅ FIXED per Annex B)
 }
 
 /**
@@ -50,14 +50,15 @@ const MITIGATION_CREDITS_20 = {
   M1_High: -4,
   
   // M2 - Impact reduction (e.g., parachute)
-  // ⚠️ NO "Low" level for M2!
-  M2_Medium: -1,
+  // ✅ FIXED per Annex B: Changed Medium → Low
+  M2_Low: -1,
   M2_High: -2,
   
   // M3 - Emergency Response Plan
-  M3_Low: +1,           // Penalty if inadequate
-  M3_Medium: 0,         // Neutral (basic ERP)
-  M3_High: -1,          // Credit for robust ERP
+  // ✅ FIXED per Annex B: Changed Low/Medium/High → None/Adequate/Validated
+  M3_None: +1,          // Penalty if no ERP
+  M3_Adequate: 0,       // Neutral (basic ERP)
+  M3_Validated: -1,     // Credit for validated ERP
 };
 
 /**
@@ -116,7 +117,7 @@ export function calculateGRC20(input: GRC20Input): GRC20Result {
   // Step 2: Apply M2 (Impact reduction)
   if (m2 !== "None") {
     let credit = 0;
-    if (m2 === "Medium") credit = MITIGATION_CREDITS_20.M2_Medium;
+    if (m2 === "Low") credit = MITIGATION_CREDITS_20.M2_Low;
     else if (m2 === "High") credit = MITIGATION_CREDITS_20.M2_High;
     
     currentGRC += credit;
@@ -133,9 +134,9 @@ export function calculateGRC20(input: GRC20Input): GRC20Result {
   
   // Step 3: Apply M3 (Emergency Response Plan)
   let credit = 0;
-  if (m3 === "Low") credit = MITIGATION_CREDITS_20.M3_Low;         // +1 penalty
-  else if (m3 === "Medium") credit = MITIGATION_CREDITS_20.M3_Medium;  // 0
-  else if (m3 === "High") credit = MITIGATION_CREDITS_20.M3_High;      // -1
+  if (m3 === "None") credit = MITIGATION_CREDITS_20.M3_None;           // +1 penalty
+  else if (m3 === "Adequate") credit = MITIGATION_CREDITS_20.M3_Adequate;  // 0
+  else if (m3 === "Validated") credit = MITIGATION_CREDITS_20.M3_Validated; // -1
   
   currentGRC += credit;
   totalReduction -= credit;

@@ -24,10 +24,10 @@ export interface GRC25Input {
   populationDensity: Environment25;     // CGA | Rural | Suburban | Urban
   
   // Mitigations (Table 5)
-  m1a: M1A_Sheltering;                  // None | Low | Medium
+  m1a: M1A_Sheltering;                  // None | Low (✅ FIXED per Annex B - NO Medium!)
   m1b: M1B_OperationalRestrictions;     // None | Medium | High
   m1c: M1C_GroundObservation;           // None | Low
-  m2: M2_ImpactDynamics;                // None | Medium | High
+  m2: M2_ImpactDynamics;                // None | Low | Medium | High (✅ FIXED per Annex B)
 }
 
 /**

@@ -93,9 +93,10 @@ export const M1C_GroundObservation = ["None","Low"] as const;
 export type M1C_GroundObservation = typeof M1C_GroundObservation[number];
 
 // M2 - Impact dynamics reduced (per Table 5 + Annex B)
-// ✅ Credits: None=0, Medium=-1, High=-2
+// ✅ FIXED per JAR_doc_27: Added "Low" level (not in old drafts)
+// ✅ Credits: None=0, Low=-1, Medium=-2, High=-3
 // Note: parachute, frangibility, etc. affect robustness level
-export const M2_ImpactDynamics = ["None","Medium","High"] as const;
+export const M2_ImpactDynamics = ["None","Low","Medium","High"] as const;
 export type M2_ImpactDynamics = typeof M2_ImpactDynamics[number];
 
 // ════════════════════════════════════════════════════════════════
@@ -110,14 +111,15 @@ export const M1_20 = ["None","Low","Medium","High"] as const;
 export type M1_20 = typeof M1_20[number];
 
 // M2 - Impact reduction (e.g., parachute)
-// ✅ Credits: None=0, Medium=-1, High=-2
-// ⚠️ NO "Low" level for M2 in SORA 2.0!
-export const M2_20 = ["None","Medium","High"] as const;
+// ✅ FIXED per Annex B: Changed Medium → Low for SORA 2.0
+// ✅ Credits: None=0, Low=-1, High=-2
+export const M2_20 = ["None","Low","High"] as const;
 export type M2_20 = typeof M2_20[number];
 
 // M3 - Emergency Response Plan
-// ✅ Credits: Low=+1 (penalty if inadequate), Medium=0, High=-1
-export const M3_20 = ["Low","Medium","High"] as const;
+// ✅ FIXED per Annex B: Changed to None/Adequate/Validated terminology
+// ✅ Credits: None=+1 (penalty), Adequate=0, Validated=-1
+export const M3_20 = ["None","Adequate","Validated"] as const;
 export type M3_20 = typeof M3_20[number];
 
 // ════════════════════════════════════════════════════════════════
