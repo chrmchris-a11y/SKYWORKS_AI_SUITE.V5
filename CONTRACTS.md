@@ -17,8 +17,8 @@ Status: In effect (aliases in migration window)
   - POST /api/v1/calculate/sail
 - .NET API (proxy/composite)
   - GET /api/sora/info
-  - POST /api/proxora/grc/2.5
-  - POST /api/proxora/sora (composite)
+  - POST /api/soraproxy/complete (composite SORA workflow)
+  - POST /api/sora/complete (orchestration endpoint)
 
 ## Contracts by Version
 
