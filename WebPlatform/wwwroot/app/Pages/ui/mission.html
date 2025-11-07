@@ -5,6 +5,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mission Planner | SKYWORKS SORA Suite</title>
   <link rel="stylesheet" href="assets/styles.css">
+  <style>
+    .info-icon {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      background: var(--blue-500);
+      color: white;
+      border-radius: 50%;
+      text-align: center;
+      line-height: 18px;
+      font-size: 12px;
+      cursor: help;
+      margin-left: 6px;
+      font-weight: bold;
+    }
+    .info-icon:hover {
+      background: var(--blue-700);
+    }
+    .tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 400px;
+      background-color: #333;
+      color: #fff;
+      text-align: left;
+      border-radius: 8px;
+      padding: 12px;
+      position: absolute;
+      z-index: 1000;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -200px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-size: 13px;
+      line-height: 1.5;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    .tooltip .tooltiptext strong {
+      color: var(--blue-300);
+    }
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
 </head>
 <body>
   <div class="layout">
@@ -68,7 +117,13 @@
                     </div>
 
                     <div class="form-group">
-                      <label class="form-label">Operation Type</label>
+                      <label class="form-label">
+                        Operation Type
+                        <span class="tooltip">
+                          <span class="info-icon">?</span>
+                          <span class="tooltiptext" id="help-operation-type"></span>
+                        </span>
+                      </label>
                       <select id="operation-type" class="form-select">
                         <option value="VLOS">VLOS</option>
                         <option value="EVLOS">EVLOS</option>
@@ -318,6 +373,20 @@
     </main>
   </div>
 
+  <script src="assets/field-explanations.js"></script>
   <script src="assets/app.js"></script>
+  <script>
+    // Load tooltips after DOM ready
+    document.addEventListener('DOMContentLoaded', () => {
+      // Populate all tooltips
+      Object.keys(SORA_FIELD_EXPLANATIONS_EL).forEach(fieldId => {
+        const helpEl = document.getElementById(`help-${fieldId}`);
+        if (helpEl) {
+          const data = SORA_FIELD_EXPLANATIONS_EL[fieldId];
+          helpEl.innerHTML = `<strong>${data.title}</strong><br><br>${data.explanation}<br><br><em style="color: var(--slate-300);">Αναφορά: ${data.reference}</em>`;
+        }
+      });
+    });
+  </script>
 </body>
 </html>

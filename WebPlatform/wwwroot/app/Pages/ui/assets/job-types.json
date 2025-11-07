@@ -61,6 +61,42 @@
       "typicality": "Typical"
     },
     {
+      "id": "stadium-events-cleaning",
+      "category": "Cleaning",
+      "name": "Stadium/Events Cleaning",
+      "description": "Large venue cleaning (stadiums, arenas, outdoor events)",
+      "icon": "🏟️",
+      "defaultHeight": 30,
+      "defaultSpeed": 3,
+      "defaultDuration": 60,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "industrial-cleaning",
+      "category": "Cleaning",
+      "name": "Industrial Cleaning",
+      "description": "Factory, warehouse, industrial facility cleaning",
+      "icon": "🏭",
+      "defaultHeight": 40,
+      "defaultSpeed": 3,
+      "defaultDuration": 50,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "gutter-cleaning",
+      "category": "Cleaning",
+      "name": "Gutter Cleaning",
+      "description": "Roof gutter and drainage cleaning",
+      "icon": "💧",
+      "defaultHeight": 15,
+      "defaultSpeed": 2,
+      "defaultDuration": 25,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
       "id": "inspection-general",
       "category": "Inspection",
       "name": "General Inspection",
@@ -93,6 +129,90 @@
       "defaultHeight": 120,
       "defaultSpeed": 4,
       "defaultDuration": 60,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-solar-farm",
+      "category": "Inspection",
+      "name": "Solar Farm Inspection",
+      "description": "Large-scale solar farm inspection (thermal imaging)",
+      "icon": "☀️",
+      "defaultHeight": 50,
+      "defaultSpeed": 8,
+      "defaultDuration": 90,
+      "operationType": "BVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-power-lines",
+      "category": "Inspection",
+      "name": "Power Lines Inspection",
+      "description": "High-voltage power transmission lines",
+      "icon": "⚡",
+      "defaultHeight": 80,
+      "defaultSpeed": 6,
+      "defaultDuration": 70,
+      "operationType": "EVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-pipeline",
+      "category": "Inspection",
+      "name": "Pipeline Inspection",
+      "description": "Oil/gas pipeline corridor inspection",
+      "icon": "🛢️",
+      "defaultHeight": 60,
+      "defaultSpeed": 10,
+      "defaultDuration": 80,
+      "operationType": "BVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-railway",
+      "category": "Inspection",
+      "name": "Railway Inspection",
+      "description": "Railway tracks and infrastructure",
+      "icon": "🚂",
+      "defaultHeight": 50,
+      "defaultSpeed": 8,
+      "defaultDuration": 65,
+      "operationType": "EVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-building-facade",
+      "category": "Inspection",
+      "name": "Building Facade Inspection",
+      "description": "High-rise building facade structural inspection",
+      "icon": "🏢",
+      "defaultHeight": 100,
+      "defaultSpeed": 3,
+      "defaultDuration": 45,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-dam",
+      "category": "Inspection",
+      "name": "Dam Inspection",
+      "description": "Dam structure and reservoir inspection",
+      "icon": "🏗️",
+      "defaultHeight": 80,
+      "defaultSpeed": 5,
+      "defaultDuration": 55,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "inspection-telecom-tower",
+      "category": "Inspection",
+      "name": "Telecom Tower Inspection",
+      "description": "Cell towers and antenna inspection",
+      "icon": "📡",
+      "defaultHeight": 70,
+      "defaultSpeed": 4,
+      "defaultDuration": 40,
       "operationType": "VLOS",
       "typicality": "Typical"
     },
@@ -169,6 +289,90 @@
       "typicality": "Atypical"
     },
     {
+      "id": "search-rescue",
+      "category": "Emergency",
+      "name": "Search & Rescue",
+      "description": "Emergency search and rescue operations",
+      "icon": "🚁",
+      "defaultHeight": 100,
+      "defaultSpeed": 15,
+      "defaultDuration": 90,
+      "operationType": "BVLOS",
+      "typicality": "Atypical"
+    },
+    {
+      "id": "firefighting-support",
+      "category": "Emergency",
+      "name": "Firefighting Support",
+      "description": "Fire monitoring and thermal imaging",
+      "icon": "🔥",
+      "defaultHeight": 120,
+      "defaultSpeed": 10,
+      "defaultDuration": 60,
+      "operationType": "EVLOS",
+      "typicality": "Atypical"
+    },
+    {
+      "id": "precision-agriculture",
+      "category": "Agriculture",
+      "name": "Precision Agriculture",
+      "description": "Crop monitoring, NDVI mapping, spraying",
+      "icon": "🌾",
+      "defaultHeight": 40,
+      "defaultSpeed": 8,
+      "defaultDuration": 100,
+      "operationType": "BVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "livestock-monitoring",
+      "category": "Agriculture",
+      "name": "Livestock Monitoring",
+      "description": "Animal tracking and herd management",
+      "icon": "🐄",
+      "defaultHeight": 60,
+      "defaultSpeed": 10,
+      "defaultDuration": 70,
+      "operationType": "EVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "environmental-monitoring",
+      "category": "Environmental",
+      "name": "Environmental Monitoring",
+      "description": "Pollution, wildlife, ecosystem monitoring",
+      "icon": "🌍",
+      "defaultHeight": 80,
+      "defaultSpeed": 7,
+      "defaultDuration": 85,
+      "operationType": "BVLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "construction-progress",
+      "category": "Construction",
+      "name": "Construction Progress Tracking",
+      "description": "Site monitoring and progress documentation",
+      "icon": "👷",
+      "defaultHeight": 70,
+      "defaultSpeed": 6,
+      "defaultDuration": 45,
+      "operationType": "VLOS",
+      "typicality": "Typical"
+    },
+    {
+      "id": "volumetric-surveying",
+      "category": "Mapping",
+      "name": "Volumetric Surveying",
+      "description": "Stockpile and earthwork volume measurement",
+      "icon": "📐",
+      "defaultHeight": 100,
+      "defaultSpeed": 8,
+      "defaultDuration": 60,
+      "operationType": "EVLOS",
+      "typicality": "Typical"
+    },
+    {
       "id": "delivery",
       "category": "Logistics",
       "name": "Package Delivery",
@@ -208,9 +412,24 @@
       "icon": "🛡️"
     },
     {
-      "id": "Logistics",
-      "name": "Logistics",
-      "icon": "🚚"
+      "id": "Emergency",
+      "name": "Emergency Services",
+      "icon": "🚨"
+    },
+    {
+      "id": "Agriculture",
+      "name": "Agriculture",
+      "icon": "🌾"
+    },
+    {
+      "id": "Environmental",
+      "name": "Environmental",
+      "icon": "🌍"
+    },
+    {
+      "id": "Construction",
+      "name": "Construction",
+      "icon": "🏗️"
     }
   ]
 }
