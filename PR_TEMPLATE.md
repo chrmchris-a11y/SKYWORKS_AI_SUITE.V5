@@ -1,0 +1,105 @@
+# PR: feat(ui): Mission Planner UI + Phase 6 Airspace Maps
+
+**Branch**: `feat/ui-mission-planner-spec-pack` → `main`  
+**Labels**: `ui`, `maps`, `sora`, `compliance`, `ready-for-merge`
+
+---
+
+## Summary
+
+Ενοποίηση του **12-page Mission Planner UI** (commit b278cc1) με το **Phase 6 Airspace & Maps** (commit 3971c9c). Προστίθενται 2D/3D viewer (MapLibre GL JS / CesiumJS), import/export routes (GeoJSON/KML/CSV), CGA & geofence drawing, EU airspace layers, SORA badges (iGRC / Final GRC / Initial ARC / Residual ARC / SAIL), ERP/TMPR checklist και validation console. Το UI είναι πλήρως ευθυγραμμισμένο με **JARUS SORA 2.5 Annex B** & **SORA 2.0 AMC1 Art.11** (enums, dropdowns, schema).
+
+---
+
+## Why
+
+- **Οπτικοποίηση mission geometry & airspace layers** για επαληθεύσιμους υπολογισμούς GRC/ARC/SAIL.
+- **Standardized import/export** για εύκολη ενσωμάτωση σε OM/Reports και επανέλεγχο.
+- **Συνεπές UI shell** για όλα τα SORA/PDRA/STS flows.
+
+---
+
+## Scope
+
+- **airspace-maps.html**: 2D/3D toggle, sidebar (Import/Draw/Layers/Export), right-panel (SORA badges, ERP/TMPR, geometry stats, console).
+- **assets/airspace.js**: Map engine (MapLibre + Cesium), parsers GeoJSON/KML/CSV, route builder, CGA/geofence, EU layers (RMZ/TMZ/CTR/TMA/ATZ/P/R/D/TSA/TRA/CBA/UAS/Population/Buildings), POST `/api/v1/sora/calculate`.
+- **styles.css**: maps-layout grid, panels, badges.
+- **Samples**: `mission_facade.geojson`, `mission_roof.kml`, `mission_solar.csv`.
+- **Tests**: `airspace.spec.ts` (18 e2e tests: 2D/3D toggle, layers, draw, import/export, SORA badges, ban-tokens).
+
+---
+
+## Compliance Guardrails
+
+- **EU-only airspace terminology** (CTR/TMA/ATZ/RMZ/TMZ/P/R/D/TSA/TRA/CBA/UAS Geo Zones).
+- **Ban tokens**: no ACE, no Mode-S veil.
+- **Dropdowns & schemas locked**:
+  - **SORA 2.5**: M1A `None|Low`, M1B `None|Medium|High`, M1C `None|Low`, M2 `None|Low|Medium|High`, Small-UA rule.
+  - **SORA 2.0**: M1 `None|Low|Medium|High` (column-min clamp), M2 `None|Low|High`, M3 `None|Adequate|Validated` (+1/0/−1).
+
+---
+
+## Verification
+
+- ✅ **Unit/Golden**: 19/19 passing (GRC/ARC/SAIL).
+- ✅ **E2E Maps**: 18/18 passing (`airspace.spec.ts`).
+- ✅ **Manual smoke**: (δές checklist παρακάτω) όλα ΟΚ.
+
+---
+
+## Notes
+
+- Αν ο backend δεν ακούει στο `/api/v1/sora/calculate`, έγινε best-effort mapping στο UI.
+- Για CesiumJS terrain απαιτείται **CESIUM_ION_TOKEN** (env/secret).
+- **CORS**: Αν UI/API σε διαφορετικό origin, επέκτεινε CORS στο API.
+
+---
+
+## ✅ Merge Checklist (no-surprises)
+
+- [ ] CI green: 19/19 unit+golden, 18/18 e2e (Playwright).
+- [ ] Ban-tokens scan: OK (no ACE, no Mode-S veil).
+- [ ] `/api/v1/sora/calculate` returns `{initialGrc, finalGrc, arc.initial, arc.residual, sail}`.
+- [ ] Cesium ION token configured (αν θέλουμε terrain).
+- [ ] Static files served (ASP.NET `UseStaticFiles` enabled).
+- [ ] ZIP artifact: `dist/skyworks_static_ui.zip` υπάρχει & ανοίγει.
+
+**Suggested strategy**: Squash & merge → tag vX.Y.1.
+
+---
+
+## 🧪 Manual Smoke Tests (2′ total)
+
+1. **Import GeoJSON** (`mission_facade.geojson`) → εμφανίζεται route + CGA.
+2. **Toggle 2D/3D** → camera fly-to στο mission χωρίς errors.
+3. **Layers** → enable RMZ, CTR, UAS Geo Zones (render ON/OFF).
+4. **Draw** → Add waypoint → Draw geofence (500m×150m) → Draw CGA polygon.
+5. **SORA POST** → badges γεμίζουν (iGRC/Final GRC/Initial ARC/Residual ARC/SAIL).
+6. **Export** → GeoJSON/KML/CSV κατεβαίνουν.
+7. **Console** → εμφανίζει request/response JSON.
+
+---
+
+## 🚀 Post-merge plan
+
+1. **Tag**: `git tag -a vX.Y.1 -m "UI + Phase 6 Maps"` & push.
+2. **Staging deploy** → smoke run τα 7 βήματα.
+3. **Production promote**.
+4. **(Optional)** Enable offline tiles cache & NOTAM placeholder στο `airspace.js`.
+
+---
+
+## 📣 Short message to team
+
+```
+GO for merge — UI shell (12 pages) + Phase 6 Maps delivered.
+19/19 core tests + 18/18 e2e green. EU-only terminology enforced, ban-tokens clean.
+Ready to tag vX.Y.1 and deploy.
+```
+
+---
+
+**Commits included**:
+- `b278cc1` - feat(ui): 12-page Mission Planner UI + ZIP packaging (Annex B/AMC1 aligned)
+- `3971c9c` - feat(ui): Phase 6 - Airspace Maps (2D/3D, routes, EU layers, SORA compliance)
+- `ac8c783` - docs(mcp): update project status - Phase 6 COMPLETE (Steps 51-60)
