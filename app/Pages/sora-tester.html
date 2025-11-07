@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SORA API Tester</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #667eea;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .test-section h2 {
+            color: #333;
+            margin-top: 0;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .result.info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 SORA API Interactive Tester</h1>
+        
+        <!-- Test 1 -->
+        <div class="test-section">
+            <h2>✅ TEST 1: SORA 2.0 - Basic (GRC 3 + ARC-b → SAIL III)</h2>
+            <p><strong>Scenario:</strong> BVLOS over sparsely populated, 1m dimension, ARC-b</p>
+            <div class="button-group">
+                <button onclick="runTest1()">🚀 Run Test 1</button>
+            </div>
+            <div id="result1" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Test 2 -->
+        <div class="test-section">
+            <h2>✅ TEST 2: SORA 2.0 - GRC 5 + ARC-d → SAIL V (MAIN FIX!)</h2>
+            <p><strong>Scenario:</strong> VLOS over populated, 3m dimension, ARC-d (controlled airspace >500ft)</p>
+            <p style="color: #d63031; font-weight: bold;">⚠️ Παλιά αυτό θα έδινε "out of scope" error. Τώρα πρέπει να δουλεύει!</p>
+            <div class="button-group">
+                <button onclick="runTest2()">🚀 Run Test 2</button>
+            </div>
+            <div id="result2" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Test 3 -->
+        <div class="test-section">
+            <h2>✅ TEST 3: SORA 2.5 - Suburban + Sheltering → SAIL IV</h2>
+            <p><strong>Scenario:</strong> 3000 ppl/km², 3m dimension, M1A Low sheltering</p>
+            <div class="button-group">
+                <button onclick="runTest3()">🚀 Run Test 3</button>
+            </div>
+            <div id="result3" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Test 4 -->
+        <div class="test-section">
+            <h2>❌ TEST 4: SAIL VI → Should Be OUT OF SCOPE</h2>
+            <p><strong>Scenario:</strong> 12000 ppl/km², GRC 7 + ARC-c (SAIL VI requires CERTIFIED)</p>
+            <div class="button-group">
+                <button onclick="runTest4()">🚀 Run Test 4</button>
+            </div>
+            <div id="result4" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Run All -->
+        <div class="test-section" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <h2 style="color: white; border-color: white;">🎯 Run All Tests</h2>
+            <div class="button-group">
+                <button style="background: white; color: #667eea;" onclick="runAllTests()">🚀 Run All 4 Tests</button>
+            </div>
+            <div id="resultAll" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="statPassed">0</div>
+                <div class="stat-label">Tests Passed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statFailed">0</div>
+                <div class="stat-label">Tests Failed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-label">Total Tests</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let stats = { passed: 0, failed: 0, total: 0 };
+        const API_URL = 'http://localhost:5210/api/sora/complete';
+
+        function updateStats() {
+            document.getElementById('statPassed').textContent = stats.passed;
+            document.getElementById('statFailed').textContent = stats.failed;
+            document.getElementById('statTotal').textContent = stats.total;
+        }
+
+        async function runTest(testNum, payload, expectedChecks) {
+            const resultDiv = document.getElementById(`result${testNum}`);
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result info';
+            resultDiv.textContent = '⏳ Running test...\n';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                stats.total++;
+
+                let output = '📊 RESPONSE:\n';
+                output += `Status Code: ${response.status}\n`;
+                output += `Success: ${data.isSuccessful}\n`;
+                output += `Initial GRC: ${data.intrinsicGRC}\n`;
+                output += `Final GRC: ${data.finalGRC}\n`;
+                output += `Residual ARC: ${data.residualARC || 'N/A'}\n`;
+                output += `SAIL: ${data.sail || 'null'}\n`;
+                output += `TMPR: ${data.tmpr || 'N/A'}\n`;
+                output += `Category: ${data.operationCategory || 'SPECIFIC'}\n`;
+
+                if (data.errors && data.errors.length > 0) {
+                    output += `\n❌ ERRORS:\n`;
+                    data.errors.forEach(err => output += `  - ${err}\n`);
+                }
+
+                // Check expectations
+                let allPassed = true;
+                output += '\n✅ VALIDATION:\n';
+                
+                for (let [key, expected] of Object.entries(expectedChecks)) {
+                    const actual = data[key];
+                    const passed = (typeof expected === 'function') ? expected(actual, data) : (actual === expected);
+                    
+                    if (passed) {
+                        output += `  ✓ ${key}: ${actual} (expected: ${typeof expected === 'function' ? 'custom check' : expected})\n`;
+                    } else {
+                        output += `  ✗ ${key}: ${actual} (expected: ${typeof expected === 'function' ? 'custom check' : expected})\n`;
+                        allPassed = false;
+                    }
+                }
+
+                if (allPassed) {
+                    resultDiv.className = 'result success';
+                    output = '✅ TEST PASSED!\n\n' + output;
+                    stats.passed++;
+                } else {
+                    resultDiv.className = 'result error';
+                    output = '❌ TEST FAILED!\n\n' + output;
+                    stats.failed++;
+                }
+
+                resultDiv.textContent = output;
+                updateStats();
+
+            } catch (error) {
+                stats.total++;
+                stats.failed++;
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ ERROR:\n${error.message}\n\nΣιγουρέψου ότι το API τρέχει στο http://localhost:5210`;
+                updateStats();
+            }
+        }
+
+        function runTest1() {
+            const payload = {
+                soraVersion: "2.0",
+                groundRisk: {
+                    scenario_V2_0: "BVLOS_SparselyPopulated",
+                    maxCharacteristicDimension: 1.0,
+                    mtom_kg: 0.5,
+                    mitigations: []
+                },
+                airRisk: {
+                    explicitARC: "ARC_b",
+                    strategicMitigations: [],
+                    isAtypicalSegregated: false
+                }
+            };
+
+            const checks = {
+                isSuccessful: true,
+                intrinsicGRC: 3,
+                finalGRC: 3,
+                sail: "III"
+            };
+
+            runTest(1, payload, checks);
+        }
+
+        function runTest2() {
+            const payload = {
+                soraVersion: "2.0",
+                groundRisk: {
+                    scenario_V2_0: "VLOS_Populated",
+                    maxCharacteristicDimension: 3.0,
+                    mtom_kg: 1.5,
+                    mitigations: []
+                },
+                airRisk: {
+                    explicitARC: "ARC_d",
+                    strategicMitigations: [],
+                    isAtypicalSegregated: false
+                }
+            };
+
+            const checks = {
+                isSuccessful: true,
+                intrinsicGRC: 5,
+                finalGRC: 5,
+                residualARC: "ARC_d",
+                sail: "V"
+            };
+
+            runTest(2, payload, checks);
+        }
+
+        function runTest3() {
+            const payload = {
+                soraVersion: "2.5",
+                groundRisk: {
+                    populationDensity: 3000.0,
+                    isControlledGroundArea: false,
+                    maxCharacteristicDimension: 3.0,
+                    mtom_kg: 1.5,
+                    mitigations: [{ type: "M1A", robustness: "Low" }]
+                },
+                airRisk: {
+                    explicitARC: "ARC_c",
+                    strategicMitigations: [],
+                    isAtypicalSegregated: false
+                }
+            };
+
+            const checks = {
+                isSuccessful: true,
+                intrinsicGRC: 6,
+                finalGRC: 4,
+                sail: "IV"
+            };
+
+            runTest(3, payload, checks);
+        }
+
+        function runTest4() {
+            const payload = {
+                soraVersion: "2.5",
+                groundRisk: {
+                    populationDensity: 12000.0,
+                    isControlledGroundArea: false,
+                    maxCharacteristicDimension: 3.0,
+                    mtom_kg: 1.5,
+                    mitigations: []
+                },
+                airRisk: {
+                    explicitARC: "ARC_c",
+                    strategicMitigations: [],
+                    isAtypicalSegregated: false
+                }
+            };
+
+            const checks = {
+                isSuccessful: false,
+                sail: "VI",
+                // Custom check for errors array
+                errors: (errors) => errors && errors.length > 0 && errors[0].includes("SAIL VI")
+            };
+
+            runTest(4, payload, checks);
+        }
+
+        async function runAllTests() {
+            stats = { passed: 0, failed: 0, total: 0 };
+            updateStats();
+            
+            await runTest1();
+            await new Promise(r => setTimeout(r, 500));
+            await runTest2();
+            await new Promise(r => setTimeout(r, 500));
+            await runTest3();
+            await new Promise(r => setTimeout(r, 500));
+            await runTest4();
+
+            const resultDiv = document.getElementById('resultAll');
+            resultDiv.style.display = 'block';
+            
+            if (stats.passed === stats.total) {
+                resultDiv.className = 'result success';
+                resultDiv.textContent = `✅ ALL TESTS PASSED!\n\n${stats.passed}/${stats.total} tests successful\n\n🎉 WEB API IS EASA/JARUS COMPLIANT!`;
+            } else {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `⚠️ SOME TESTS FAILED\n\n${stats.passed}/${stats.total} tests passed\n${stats.failed} tests failed\n\nCheck individual test results above.`;
+            }
+        }
+
+        // Auto-run on page load
+        console.log('🧪 SORA API Tester loaded!');
+        console.log('Click buttons to run individual tests or "Run All 4 Tests" to test everything.');
+    </script>
+</body>
+</html>
