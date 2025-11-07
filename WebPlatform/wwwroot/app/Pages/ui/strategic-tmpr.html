@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strategic Mitigations / TMPR | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html" class="active">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">Strategic Mitigations & TMPR</div>
+        <div class="card-body">
+          
+          <p style="color: var(--slate-600); margin-bottom: 24px;">
+            Strategic mitigations reduce ground and air risk <strong>before</strong> flight.
+            <strong>Tactical Mitigation Performance Requirements (TMPR)</strong> map to OSOs.
+          </p>
+
+          <!-- Strategic Mitigations -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">Strategic Mitigations (M1 in SORA 2.0, M1A/B/C in SORA 2.5)</div>
+            <div class="card-body">
+              <ul style="line-height: 2; color: var(--slate-700);">
+                <li><strong>Time Exposure Reduction</strong>: Limit flight duration over populated areas</li>
+                <li><strong>Operational Restrictions</strong>: No-fly zones, altitude caps, speed limits</li>
+                <li><strong>Ground Observer Deployment</strong>: Personnel monitoring operational area</li>
+                <li><strong>Sheltering</strong>: Operations when people are indoors/shielded</li>
+                <li><strong>Ground Clearance</strong>: Notifying/evacuating people from operational area</li>
+                <li><strong>Population Density Selection</strong>: Operating in sparsely populated areas</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- TMPR Overview -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">Tactical Mitigation Performance Requirements (TMPR)</div>
+            <div class="card-body">
+              <p style="color: var(--slate-600); margin-bottom: 16px;">
+                TMPRs define <strong>minimum performance standards</strong> for UAS systems and operations.
+                Each TMPR maps to one or more <strong>Operational Safety Objectives (OSOs)</strong>.
+              </p>
+              
+              <h4 style="margin-bottom: 12px; color: var(--brand-600);">TMPR Categories</h4>
+              <ul style="line-height: 2; color: var(--slate-700);">
+                <li><strong>TMPR #1</strong>: UAS design & airworthiness (OSO #02, #04)</li>
+                <li><strong>TMPR #2</strong>: Maintenance & continued airworthiness (OSO #03)</li>
+                <li><strong>TMPR #3</strong>: Crew competency & training (OSO #05, #06)</li>
+                <li><strong>TMPR #4</strong>: Procedures (normal & contingency) (OSO #07, #08)</li>
+                <li><strong>TMPR #5</strong>: Detect & Avoid (DAA) (OSO #10)</li>
+                <li><strong>TMPR #6</strong>: C2 Link robustness (OSO #11, #12)</li>
+                <li><strong>TMPR #7</strong>: Automation & Human-Machine Interface (OSO #13)</li>
+                <li><strong>TMPR #8</strong>: Human error mitigation (OSO #14)</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- SAIL Mapping -->
+          <div style="background: var(--slate-50); padding: 16px; border-radius: 12px; border-left: 4px solid var(--brand-500);">
+            <h4 style="margin-bottom: 8px; color: var(--brand-600);">SAIL → OSO Rigor Mapping</h4>
+            <p style="color: var(--slate-700); margin: 0;">
+              Higher <strong>SAIL</strong> (Specific Assurance and Integrity Levels) requires:
+            </p>
+            <ul style="line-height: 2; color: var(--slate-700); margin-top: 8px;">
+              <li>SAIL I–II: Low OSO rigor (equivalent to "adequate")</li>
+              <li>SAIL III–IV: Medium OSO rigor (design assurance)</li>
+              <li>SAIL V–VI: High OSO rigor (certification-equivalent)</li>
+            </ul>
+            <p style="margin-top: 12px; color: var(--slate-600); font-style: italic;">
+              See <a href="sail-oso.html" style="color: var(--brand-500);">SAIL & OSOs page</a> for full matrix.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

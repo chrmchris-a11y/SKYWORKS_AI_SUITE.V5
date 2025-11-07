@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Airspace Maps | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html" class="active">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">EU Airspace Maps (Interactive Viewer)</div>
+        <div class="card-body">
+          
+          <p style="color: var(--slate-600); margin-bottom: 24px;">
+            Interactive map viewer for <strong>EU airspace zones</strong>: CTR, TMA, ATZ, RMZ, TMZ, Prohibited, Restricted, Danger, TSA, TRA, CBA, UAS Geo Zones.
+          </p>
+
+          <!-- Placeholder Map -->
+          <div style="width: 100%; height: 600px; background: var(--slate-50); border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--slate-200);">
+            <div style="text-align: center; color: var(--slate-600);">
+              <svg xmlns="http://www.w3.org/2000/svg" style="width: 80px; height: 80px; margin-bottom: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              <h3 style="margin-bottom: 8px; color: var(--brand-600);">Interactive Map Placeholder</h3>
+              <p style="max-width: 400px; margin: 0 auto; line-height: 1.6;">
+                Integrate with <strong>Eurocontrol AIXM</strong> or <strong>OpenAIP</strong> for real-time airspace data.
+                Display RMZ, TMZ, CTR, TMA, UAS Geo Zones, etc.
+              </p>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div style="margin-top: 24px;">
+            <h3 style="margin-bottom: 12px; font-size: 18px; color: var(--brand-600);">Zone Types (EU Only)</h3>
+            <div class="grid-2col">
+              <div class="card">
+                <div class="card-header">Controlled Zones</div>
+                <div class="card-body">
+                  <ul style="line-height: 2; color: var(--slate-700);">
+                    <li><strong>CTR</strong> — Control Zone</li>
+                    <li><strong>TMA</strong> — Terminal Maneuvering Area</li>
+                    <li><strong>ATZ</strong> — Aerodrome Traffic Zone</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">Communication Zones</div>
+                <div class="card-body">
+                  <ul style="line-height: 2; color: var(--slate-700);">
+                    <li><strong>RMZ</strong> — Radio Mandatory Zone</li>
+                    <li><strong>TMZ</strong> — Transponder Mandatory Zone</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">Restricted Zones</div>
+                <div class="card-body">
+                  <ul style="line-height: 2; color: var(--slate-700);">
+                    <li><strong>Prohibited</strong> — No entry</li>
+                    <li><strong>Restricted</strong> — Authorization required</li>
+                    <li><strong>Danger</strong> — High-risk areas</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">Temporary & UAS Zones</div>
+                <div class="card-body">
+                  <ul style="line-height: 2; color: var(--slate-700);">
+                    <li><strong>TSA</strong> — Temporary Segregated Area</li>
+                    <li><strong>TRA</strong> — Temporary Reserved Area</li>
+                    <li><strong>CBA</strong> — Cross-Border Area</li>
+                    <li><strong>UAS Geo Zone</strong> — UAS-specific restrictions</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- No Banned Tokens -->
+          <div style="background: var(--slate-50); padding: 16px; border-radius: 12px; border-left: 4px solid #ef4444; margin-top: 24px;">
+            <h4 style="margin-bottom: 8px; color: #ef4444;">🚫 Banned Tokens (Not Displayed)</h4>
+            <p style="color: var(--slate-700); margin: 0;">
+              This UI does <strong>NOT</strong> show non-EU airspace terms or restricted tokens.
+              Only <strong>EU EASA-compliant</strong> zones are displayed.
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ARC Engine | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html" class="active">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">ARC Engine (Annex C - Airspace Risk Class)</div>
+        <div class="card-body">
+          
+          <p style="color: var(--slate-600); margin-bottom: 24px;">
+            <strong>Airspace Risk Class (ARC)</strong> is determined by airspace characteristics and operational context.
+            Based on <strong>JARUS SORA Annex C</strong>.
+          </p>
+
+          <!-- AEC Table -->
+          <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 18px; color: var(--brand-600);">
+            Airspace Encounter Categories (AEC 1-12)
+          </h3>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <thead>
+              <tr style="background: var(--slate-50); border-bottom: 2px solid var(--slate-200);">
+                <th style="padding: 12px; text-align: left;">AEC</th>
+                <th style="padding: 12px; text-align: left;">Description</th>
+                <th style="padding: 12px; text-align: center;">Baseline iARC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">AEC 1</td>
+                <td style="padding: 12px;">Uncontrolled, Visual Meteorological Conditions (VMC), Low density</td>
+                <td style="padding: 12px; text-align: center;">ARC-a</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">AEC 2</td>
+                <td style="padding: 12px;">Uncontrolled, VMC, Medium density</td>
+                <td style="padding: 12px; text-align: center;">ARC-b</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">AEC 3</td>
+                <td style="padding: 12px;">Uncontrolled, VMC, High density</td>
+                <td style="padding: 12px; text-align: center;">ARC-c</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">AEC 4</td>
+                <td style="padding: 12px;">Controlled, VMC, Low density</td>
+                <td style="padding: 12px; text-align: center;">ARC-b</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">AEC 5</td>
+                <td style="padding: 12px;">Controlled, VMC, Medium density</td>
+                <td style="padding: 12px; text-align: center;">ARC-c</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">AEC 6</td>
+                <td style="padding: 12px;">Controlled, VMC, High density</td>
+                <td style="padding: 12px; text-align: center;">ARC-d</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">AEC 7-12</td>
+                <td style="padding: 12px;">Instrument Meteorological Conditions (IMC) scenarios</td>
+                <td style="padding: 12px; text-align: center;">ARC-c to ARC-d</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- ARC Step #5 Note -->
+          <div style="background: var(--slate-50); padding: 16px; border-radius: 12px; border-left: 4px solid var(--brand-500); margin-bottom: 24px;">
+            <h4 style="margin-bottom: 8px; color: var(--brand-600);">ARC Step #5: Tactical Mitigation Credit</h4>
+            <p style="color: var(--slate-700); margin: 0;">
+              If <strong>VLOS</strong> AND <strong>Low Time Exposure</strong> (controlled airspace, low traffic density):
+              <br><strong>Residual ARC = Initial ARC − 1 class</strong>
+            </p>
+            <p style="margin-top: 8px; color: var(--slate-600); font-style: italic;">
+              Example: AEC_9 → iARC = ARC-c → with Step #5 → rARC = ARC-b
+            </p>
+          </div>
+
+          <!-- Containment Factor -->
+          <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 18px; color: var(--brand-600);">
+            Airspace Containment
+          </h3>
+
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background: var(--slate-50); border-bottom: 2px solid var(--slate-200);">
+                <th style="padding: 12px; text-align: left;">Containment</th>
+                <th style="padding: 12px; text-align: center;">Effect on ARC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">None</td>
+                <td style="padding: 12px; text-align: center;">No credit</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Horizontal</td>
+                <td style="padding: 12px; text-align: center;">May reduce ARC (Annex C logic)</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Vertical</td>
+                <td style="padding: 12px; text-align: center;">May reduce ARC (Annex C logic)</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Horizontal & Vertical</td>
+                <td style="padding: 12px; text-align: center;">Maximum credit (full containment)</td>
+              </tr>
+            </tbody>
+          </table>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

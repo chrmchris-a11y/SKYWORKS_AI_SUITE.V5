@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iGRC 2.5 | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html" class="active">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">iGRC Table 2 (SORA 2.5)</div>
+        <div class="card-body">
+          
+          <p style="color: var(--slate-600); margin-bottom: 24px;">
+            <strong>Initial Ground Risk Class (iGRC)</strong> is determined by the UAS characteristics and operational area.
+            This table is sourced from <strong>KnowledgeBase JSON</strong> (no hard-coded values).
+          </p>
+
+          <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 18px; color: var(--brand-600);">
+            iGRC Mapping (Table 2)
+          </h3>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <thead>
+              <tr style="background: var(--slate-50); border-bottom: 2px solid var(--slate-200);">
+                <th style="padding: 12px; text-align: left; font-weight: 600;">Scenario</th>
+                <th style="padding: 12px; text-align: left; font-weight: 600;">Kinetic Energy</th>
+                <th style="padding: 12px; text-align: center; font-weight: 600;">iGRC</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Controlled Ground (Sparsely Populated)</td>
+                <td style="padding: 12px;">KE < 100 J</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600; color: var(--brand-600);">1</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Controlled Ground (Sparsely Populated)</td>
+                <td style="padding: 12px;">100 J ≤ KE < 1 kJ</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600; color: var(--brand-600);">2</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Controlled Ground (Sparsely Populated)</td>
+                <td style="padding: 12px;">1 kJ ≤ KE < 10 kJ</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600; color: var(--brand-600);">3</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Rural (Moderately Populated)</td>
+                <td style="padding: 12px;">KE < 100 J</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600; color: var(--brand-600);">2</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Rural (Moderately Populated)</td>
+                <td style="padding: 12px;">100 J ≤ KE < 1 kJ</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600; color: var(--brand-600);">3</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Urban (Densely Populated)</td>
+                <td style="padding: 12px;">KE < 100 J</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600; color: var(--brand-600);">3</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px;">Urban (Densely Populated)</td>
+                <td style="padding: 12px;">100 J ≤ KE < 1 kJ</td>
+                <td style="padding: 12px; text-align: center; font-weight: 600; color: var(--brand-600);">4</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="background: var(--slate-50); padding: 16px; border-radius: 12px; border-left: 4px solid var(--brand-500);">
+            <h4 style="margin-bottom: 8px; color: var(--brand-600);">Small-UA Exception</h4>
+            <p style="color: var(--slate-700); margin: 0;">
+              If <strong>MTOM ≤ 0.25 kg</strong> AND <strong>Max Speed ≤ 25 m/s</strong>, then <strong>iGRC = 1</strong> (regardless of scenario).
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

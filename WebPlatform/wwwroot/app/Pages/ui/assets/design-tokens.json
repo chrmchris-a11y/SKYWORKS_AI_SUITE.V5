@@ -1,0 +1,29 @@
+{
+  "brand": {
+    "500": "#2563eb",
+    "600": "#1e3a8a"
+  },
+  "slate": {
+    "50": "#f5f8fc",
+    "200": "#e2e8f0",
+    "600": "#475569"
+  },
+  "radius": {
+    "card": 16,
+    "button": 12
+  },
+  "shadow": {
+    "card": "0 8px 24px rgba(16,24,40,.06)"
+  },
+  "typography": {
+    "label": 12,
+    "body": 14,
+    "kpi": 22,
+    "h1": 22
+  },
+  "layout": {
+    "container": 1240,
+    "sidebar": 280,
+    "gutter": 12
+  }
+}
