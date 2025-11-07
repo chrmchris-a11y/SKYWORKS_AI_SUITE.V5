@@ -195,14 +195,44 @@ STS-01 (Visual Line of Sight operations) requires:
       • Two AI agents with persistent memory
       • 3x daily automated training
       • Logs and reports
-   ⏳ Step 6: Compliance Framework (NEXT)
-   ⏸️ Step 7: Security & Authentication
-   ⏸️ Step 8: Web Interface
-   ⏸️ Step 9: Documentation System
-   ⏸️ Step 10: Integration Testing
 
-Current Focus: Phase 1 Step 5.1 → Training Center validated and operational
-Next Step: Phase 1 Step 6 → Configure Compliance Framework
+✅ Phase 6: MISSION PLANNING & MAPS (Steps 51-60) ✅ COMPLETE
+   ✅ Step 51: GIS Mapping System (MapLibre GL JS + CesiumJS)
+   ✅ Step 52: Mission Templates (GeoJSON/KML/CSV samples) ✅ REBUILT
+   ✅ Step 53: Route Optimization (waypoints, geofence, CGA)
+   ✅ Step 54: Mission Documentation (export GeoJSON/KML/CSV/PNG)
+   ✅ Step 55: Real-time Maps (2D/3D toggle, Berlin default center)
+   ✅ Step 56: No-Fly Zones Integration (14 EU airspace layers)
+   ✅ Step 57: 3D Mapping (Cesium terrain, camera fly-to, point entities)
+   ✅ Step 58: Airspace Regulations (RMZ/TMZ/CTR/TMA/ATZ/P/R/D/TSA/TRA/CBA/UAS)
+   ✅ Step 59: User Interface (sidebar, map container, right panel, compliance badges)
+   ✅ Step 60: Full Mission Suite (airspace-maps.html + airspace.js + 18 e2e tests)
+
+⏳ Step 61: NEXT — Integration Phase (CURRENT FOCUS)
+   • Link airspace-maps.html → mission.html (SORA calculator)
+   • POST /api/v1/sora/calculate with missionGeometry payload
+   • Update compliance badges from API response
+   • Test end-to-end flow (import route → calculate SORA → export KML)
+
+⏸️ Step 7: Security & Authentication
+⏸️ Step 8: Web Interface expansion
+⏸️ Step 9: Documentation System
+⏸️ Step 10: Integration Testing
+
+Current Focus: Phase 6 COMPLETE (Steps 51-60) → Step 52 Mission Templates REBUILT
+Next Step: Step 61 → Integration Testing (airspace-maps ↔ mission calculator)
+
+Files Changed (Phase 6):
+• airspace-maps.html (142 lines) — 2D/3D viewer, import routes, EU layers, export
+• assets/airspace.js (671 lines) — Map engine, SORA API integration, geometry stats
+• assets/samples/*.{geojson,kml,csv} (3 files) — Demo missions (facade/roof/solar)
+• assets/styles.css (+150 lines) — Maps layout (header, maps-layout, right-panel)
+• e2e/ui/airspace.spec.ts (237 lines, 18 tests) — Ban tokens ✅, layer toggles ✅
+
+Branch: feat/ui-mission-planner-spec-pack (2 commits pushed)
+Commits:
+  1. b278cc1 — 12-page Mission Planner UI + ZIP packaging
+  2. 3971c9c — Phase 6 Airspace Maps (2D/3D, routes, EU layers, SORA)
 ```
 
 ---
