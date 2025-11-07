@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAIL & OSOs | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html" class="active">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">SAIL Matrix & OSO Buckets</div>
+        <div class="card-body">
+          
+          <p style="color: var(--slate-600); margin-bottom: 24px;">
+            <strong>SAIL (Specific Assurance and Integrity Level)</strong> is determined from <strong>fGRC + rARC</strong>.
+            Each SAIL dictates the rigor of <strong>Operational Safety Objectives (OSOs)</strong>.
+          </p>
+
+          <!-- SAIL Matrix -->
+          <h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 18px; color: var(--brand-600);">
+            SAIL Determination Matrix (Annex E)
+          </h3>
+
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px;">
+            <thead>
+              <tr style="background: var(--slate-50); border-bottom: 2px solid var(--slate-200);">
+                <th style="padding: 12px; text-align: left;">fGRC ↓ / rARC →</th>
+                <th style="padding: 12px; text-align: center;">ARC-a</th>
+                <th style="padding: 12px; text-align: center;">ARC-b</th>
+                <th style="padding: 12px; text-align: center;">ARC-c</th>
+                <th style="padding: 12px; text-align: center;">ARC-d</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">GRC 1</td>
+                <td style="padding: 12px; text-align: center; background: #d1fae5; font-weight: 600;">I</td>
+                <td style="padding: 12px; text-align: center; background: #d1fae5; font-weight: 600;">I</td>
+                <td style="padding: 12px; text-align: center; background: #fef3c7; font-weight: 600;">II</td>
+                <td style="padding: 12px; text-align: center; background: #fef3c7; font-weight: 600;">II</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">GRC 2</td>
+                <td style="padding: 12px; text-align: center; background: #d1fae5; font-weight: 600;">I</td>
+                <td style="padding: 12px; text-align: center; background: #fef3c7; font-weight: 600;">II</td>
+                <td style="padding: 12px; text-align: center; background: #fed7aa; font-weight: 600;">III</td>
+                <td style="padding: 12px; text-align: center; background: #fed7aa; font-weight: 600;">III</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">GRC 3</td>
+                <td style="padding: 12px; text-align: center; background: #fef3c7; font-weight: 600;">II</td>
+                <td style="padding: 12px; text-align: center; background: #fed7aa; font-weight: 600;">III</td>
+                <td style="padding: 12px; text-align: center; background: #fecaca; font-weight: 600;">IV</td>
+                <td style="padding: 12px; text-align: center; background: #fecaca; font-weight: 600;">IV</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">GRC 4</td>
+                <td style="padding: 12px; text-align: center; background: #fef3c7; font-weight: 600;">II</td>
+                <td style="padding: 12px; text-align: center; background: #fed7aa; font-weight: 600;">III</td>
+                <td style="padding: 12px; text-align: center; background: #fecaca; font-weight: 600;">IV</td>
+                <td style="padding: 12px; text-align: center; background: #fca5a5; font-weight: 600;">V</td>
+              </tr>
+              <tr style="border-bottom: 1px solid var(--slate-200);">
+                <td style="padding: 12px; font-weight: 600;">GRC ≥5</td>
+                <td style="padding: 12px; text-align: center; background: #fed7aa; font-weight: 600;">III</td>
+                <td style="padding: 12px; text-align: center; background: #fecaca; font-weight: 600;">IV</td>
+                <td style="padding: 12px; text-align: center; background: #fca5a5; font-weight: 600;">V</td>
+                <td style="padding: 12px; text-align: center; background: #f87171; font-weight: 600; color: white;">VI</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- OSO Buckets -->
+          <h3 style="margin-top: 32px; margin-bottom: 12px; font-size: 18px; color: var(--brand-600);">
+            Operational Safety Objectives (OSOs)
+          </h3>
+
+          <div class="card" style="margin-bottom: 16px;">
+            <div class="card-header">Ground Risk OSOs</div>
+            <div class="card-body">
+              <ul style="line-height: 2; color: var(--slate-700);">
+                <li><strong>OSO #01</strong>: Precise and updated UAS geo-data</li>
+                <li><strong>OSO #02</strong>: Reliable UAS design (ground impact)</li>
+                <li><strong>OSO #03</strong>: UAS maintenance</li>
+                <li><strong>OSO #04</strong>: UAS maintained in safe condition</li>
+                <li><strong>OSO #05</strong>: Remote crew competency</li>
+                <li><strong>OSO #06</strong>: Procedures (ConOps) designed & validated</li>
+                <li><strong>OSO #07</strong>: Normal procedures (checklists, SOPs)</li>
+                <li><strong>OSO #08</strong>: Emergency response plan</li>
+                <li><strong>OSO #09</strong>: External services supporting safe operations</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom: 16px;">
+            <div class="card-header">Air Risk OSOs</div>
+            <div class="card-body">
+              <ul style="line-height: 2; color: var(--slate-700);">
+                <li><strong>OSO #10</strong>: Detect & Avoid (DAA) capability</li>
+                <li><strong>OSO #11</strong>: C2 Link performance & robustness</li>
+                <li><strong>OSO #12</strong>: Loss of C2 Link contingency</li>
+                <li><strong>OSO #13</strong>: Automation & failsafe design</li>
+                <li><strong>OSO #14</strong>: Human-Machine Interface (HMI)</li>
+                <li><strong>OSO #15</strong>: Multi-crew coordination (if applicable)</li>
+                <li><strong>OSO #16</strong>: Adverse weather resilience</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">Adjacent Area & Operational OSOs</div>
+            <div class="card-body">
+              <ul style="line-height: 2; color: var(--slate-700);">
+                <li><strong>OSO #17</strong>: Traffic information & airspace awareness</li>
+                <li><strong>OSO #18</strong>: Crew coordination with ATC</li>
+                <li><strong>OSO #19</strong>: Safe recovery from technical failures</li>
+                <li><strong>OSO #20</strong>: Operational limitations & restrictions compliance</li>
+                <li><strong>OSO #21</strong>: Adverse operating conditions mitigation</li>
+                <li><strong>OSO #22</strong>: Operational control & monitoring</li>
+                <li><strong>OSO #23</strong>: Adjacent area/third-party risk management</li>
+                <li><strong>OSO #24</strong>: Security (cyber, physical, data protection)</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- SAIL Rigor Mapping -->
+          <div style="background: var(--slate-50); padding: 16px; border-radius: 12px; border-left: 4px solid var(--brand-500); margin-top: 24px;">
+            <h4 style="margin-bottom: 8px; color: var(--brand-600);">OSO Rigor by SAIL</h4>
+            <ul style="line-height: 2; color: var(--slate-700);">
+              <li><strong>SAIL I–II</strong>: Low rigor (self-declaration, documented procedures)</li>
+              <li><strong>SAIL III–IV</strong>: Medium rigor (design assurance, validation, independent review)</li>
+              <li><strong>SAIL V–VI</strong>: High rigor (certification-level assurance, EASA approval)</li>
+            </ul>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

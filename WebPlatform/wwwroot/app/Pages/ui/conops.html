@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ConOps | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html" class="active">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">Concept of Operations (ConOps)</div>
+        <div class="card-body">
+          
+          <p style="color: var(--slate-600); margin-bottom: 24px;">
+            Document your mission's operational concept, procedures, and contingency plans.
+          </p>
+
+          <div class="form-group">
+            <label class="form-label">Mission Title</label>
+            <input type="text" class="form-input" placeholder="e.g., Urban Delivery VLOS Operation">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Operational Description</label>
+            <textarea class="form-input" rows="6" placeholder="Describe the operation, flight paths, crew roles, equipment..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Normal Procedures</label>
+            <textarea class="form-input" rows="4" placeholder="Pre-flight checks, launch, cruise, landing..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Contingency Procedures</label>
+            <textarea class="form-input" rows="4" placeholder="Loss of link, system failures, emergency landings..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Emergency Response Plan (M3)</label>
+            <textarea class="form-input" rows="4" placeholder="Contacts, roles, notification procedures..."></textarea>
+          </div>
+
+          <button class="btn btn-primary">Save ConOps</button>
+          <button class="btn btn-secondary" style="margin-left: 12px;">Download PDF</button>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html" class="active">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">SKYWORKS SORA Suite - Dashboard</div>
+        <div class="card-body">
+          
+          <!-- KPI CARDS -->
+          <div class="dashboard-grid">
+            
+            <div class="dashboard-kpi">
+              <div class="kpi-label">Engine Status</div>
+              <div class="kpi-value">✅ Online</div>
+            </div>
+
+            <div class="dashboard-kpi">
+              <div class="kpi-label">Compliance</div>
+              <div class="kpi-value">100%</div>
+            </div>
+
+            <div class="dashboard-kpi">
+              <div class="kpi-label">Tests Passing</div>
+              <div class="kpi-value">19/19</div>
+            </div>
+
+            <div class="dashboard-kpi">
+              <div class="kpi-label">Version</div>
+              <div class="kpi-value">SORA 2.5 + 2.0</div>
+            </div>
+
+          </div>
+
+          <!-- LIVE BREAKDOWN PIPELINE -->
+          <div class="card">
+            <div class="card-header">Live Breakdown Pipeline</div>
+            <div class="card-body">
+              <p style="color: var(--slate-600); line-height: 1.8;">
+                The <strong>Mission Planner</strong> page enables real-time SORA calculations with full compliance to:
+              </p>
+              <ul style="color: var(--slate-700); line-height: 2; margin-left: 24px;">
+                <li><strong>JARUS SORA 2.5 Annex B</strong> (M1A/M1B/M1C/M2 with correct credits)</li>
+                <li><strong>EASA AMC1 Article 11</strong> (SORA 2.0 M1/M2/M3 terminology)</li>
+                <li><strong>iGRC Table 2</strong> (corrected mappings for Rural KE<100 → iGRC=2)</li>
+                <li><strong>Small-UA Rule</strong> (≤ 0.25 kg & ≤ 25 m/s → iGRC=1)</li>
+                <li><strong>ARC Step #5</strong> (VLOS low time exposure → residual ARC = initial - 1)</li>
+                <li><strong>SAIL Matrix</strong> (verified alignment with Annex E)</li>
+              </ul>
+              <p style="color: var(--slate-600); margin-top: 16px;">
+                POST <code>/api/v1/sora/calculate</code> returns:
+                <strong>iGRC, fGRC, iARC, rARC, SAIL</strong> with warnings/errors.
+              </p>
+              <a href="mission.html" class="btn btn-primary" style="margin-top: 16px;">Open Mission Planner</a>
+            </div>
+          </div>
+
+          <!-- QUICK LINKS -->
+          <div class="grid-2col">
+            <div class="card">
+              <div class="card-header">SORA 2.5 Resources</div>
+              <div class="card-body">
+                <a href="igrc25.html" class="btn btn-secondary" style="margin-bottom: 8px; display: block;">iGRC Table 2</a>
+                <a href="grc25.html" class="btn btn-secondary" style="margin-bottom: 8px; display: block;">GRC Credits (M1A/B/C, M2)</a>
+                <a href="arc.html" class="btn btn-secondary" style="display: block;">ARC Engine (Annex C)</a>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">SORA 2.0 Resources</div>
+              <div class="card-body">
+                <a href="grc20.html" class="btn btn-secondary" style="margin-bottom: 8px; display: block;">GRC Credits (M1/M2/M3)</a>
+                <a href="strategic-tmpr.html" class="btn btn-secondary" style="margin-bottom: 8px; display: block;">Strategic Mitigations</a>
+                <a href="sail-oso.html" class="btn btn-secondary" style="display: block;">SAIL & OSOs</a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>

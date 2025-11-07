@@ -1,4 +1,5 @@
 // Phase1 Step4 — Skyworks V5
+using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using Skyworks.AgentComm;
 using Skyworks.AgentComm.Services;
@@ -35,6 +36,17 @@ app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Skyworks API v1");
 });
+
+// Static files (serve UI from WebPlatform/wwwroot)
+var webPlatformRoot = Path.Combine(workspaceRoot, "WebPlatform", "wwwroot");
+if (Directory.Exists(webPlatformRoot))
+{
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(webPlatformRoot),
+        RequestPath = ""
+    });
+}
 
 // Enable controllers
 app.MapControllers();

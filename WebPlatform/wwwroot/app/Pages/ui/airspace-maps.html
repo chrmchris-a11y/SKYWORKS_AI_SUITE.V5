@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phase 6: Airspace Maps – Skyworks</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <!-- MapLibre GL JS (2D) -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <!-- CesiumJS (3D) - Placeholder for production ion token -->
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
+</head>
+<body>
+  <header class="header">
+    <h1>Phase 6: Airspace Maps & Mission Geography</h1>
+    <div class="header-actions">
+      <button id="toggle2D3D" class="btn-primary">Switch to 3D 🌍</button>
+      <button id="exportPNG" class="btn-secondary">📸 Snapshot</button>
+      <button id="exportMissionPack" class="btn-secondary">📦 Mission Pack (.zip)</button>
+    </div>
+  </header>
+
+  <div class="sidebar">
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="mission.html">Mission Planner</a>
+      <a href="conops.html">ConOps</a>
+      <a href="igrc25.html">iGRC 2.5</a>
+      <a href="grc25.html">GRC 2.5</a>
+      <a href="grc20.html">GRC 2.0</a>
+      <a href="arc.html">ARC</a>
+      <a href="strategic-tmpr.html">Strategic/TMPR</a>
+      <a href="sail-oso.html">SAIL/OSO</a>
+      <a href="airspace-maps.html" class="active">Airspace Maps</a>
+      <a href="drone-library.html">Drone Library</a>
+      <a href="subscriptions.html">Subscriptions</a>
+    </nav>
+
+    <div class="sidebar-section">
+      <h3>Plan</h3>
+      <label class="form-label">Import Route (GeoJSON/KML/CSV)</label>
+      <input type="file" id="importRouteFile" accept=".geojson,.kml,.csv" class="form-input">
+      <p class="help-text">Drag-and-drop or select file. CSV columns: lat, lon, alt_m (WGS84/EPSG:4326)</p>
+      
+      <button id="addWaypoint" class="btn-secondary full-width">➕ Add Waypoint</button>
+      <button id="drawGeofence" class="btn-secondary full-width">🔵 Draw Geofence (Cylinder)</button>
+      <button id="drawCGA" class="btn-secondary full-width">🟩 Draw CGA (Polygon)</button>
+      <button id="clearRoute" class="btn-secondary full-width">🗑️ Clear Route</button>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Layers (EU Airspace)</h3>
+      <label><input type="checkbox" id="layer_rmz" checked> RMZ (Radio Mandatory)</label>
+      <label><input type="checkbox" id="layer_tmz" checked> TMZ (Transponder Mandatory)</label>
+      <label><input type="checkbox" id="layer_ctr" checked> CTR (Control Zone)</label>
+      <label><input type="checkbox" id="layer_tma"> TMA (Terminal Maneuvering)</label>
+      <label><input type="checkbox" id="layer_atz"> ATZ (Aerodrome Traffic)</label>
+      <label><input type="checkbox" id="layer_prohibited" checked> Prohibited Zones</label>
+      <label><input type="checkbox" id="layer_restricted" checked> Restricted Zones</label>
+      <label><input type="checkbox" id="layer_danger"> Danger Zones</label>
+      <label><input type="checkbox" id="layer_tsa"> TSA (Temporary Segregated)</label>
+      <label><input type="checkbox" id="layer_tra"> TRA (Temporary Reserved)</label>
+      <label><input type="checkbox" id="layer_cba"> CBA (Cross-Border)</label>
+      <label><input type="checkbox" id="layer_uas" checked> UAS Geo Zones</label>
+      <label><input type="checkbox" id="layer_population"> Population Heatmap (iGRC proxy)</label>
+      <label><input type="checkbox" id="layer_buildings"> OSM Buildings (3D extrusions)</label>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Export</h3>
+      <button id="exportGeoJSON" class="btn-secondary full-width">📄 Export GeoJSON</button>
+      <button id="exportKML" class="btn-secondary full-width">📄 Export KML</button>
+      <button id="exportCSV" class="btn-secondary full-width">📊 Export CSV</button>
+    </div>
+  </div>
+
+  <main class="main-content maps-layout">
+    <!-- Map Container (2D/3D) -->
+    <div id="map2D" class="map-container"></div>
+    <div id="map3D" class="map-container" style="display:none;"></div>
+
+    <!-- Right Panel: Compliance & ERP/TMPR -->
+    <aside class="right-panel">
+      <div class="card">
+        <h3>SORA Compliance (Live)</h3>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">iGRC</div>
+            <div id="kpi_igrc" class="kpi-value">–</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Final GRC</div>
+            <div id="kpi_fgrc" class="kpi-value">–</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Initial ARC</div>
+            <div id="kpi_iarc" class="kpi-value">–</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Residual ARC</div>
+            <div id="kpi_rarc" class="kpi-value">–</div>
+          </div>
+        </div>
+        <div class="sail-badge" id="sailBadge">SAIL: –</div>
+      </div>
+
+      <div class="card">
+        <h3>ERP / TMPR</h3>
+        <label><input type="checkbox" id="erp_emergency_sites"> Emergency Landing Sites</label>
+        <label><input type="checkbox" id="erp_recovery_routes"> Recovery Routes</label>
+        <label><input type="checkbox" id="erp_muster_points"> Muster Points</label>
+        <label><input type="checkbox" id="erp_comms_backup"> Backup Comms (C2 link loss)</label>
+        <p class="help-text">M3 ERP: Emergency Response Plan overlays for SAIL III–VI</p>
+      </div>
+
+      <div class="card">
+        <h3>Mission Geometry</h3>
+        <div id="geometryStats">
+          <p><strong>Waypoints:</strong> <span id="stat_waypoints">0</span></p>
+          <p><strong>Path Length:</strong> <span id="stat_path_length">0 m</span></p>
+          <p><strong>Geofence:</strong> <span id="stat_geofence">None</span></p>
+          <p><strong>CGA Area:</strong> <span id="stat_cga_area">0 m²</span></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Validation Console</h3>
+        <div id="validationConsole" class="console"></div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="assets/airspace.js"></script>
+</body>
+</html>

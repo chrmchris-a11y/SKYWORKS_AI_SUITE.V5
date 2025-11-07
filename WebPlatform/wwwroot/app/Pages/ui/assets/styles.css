@@ -1,0 +1,530 @@
+/**
+ * SKYWORKS Mission Planner UI - Global Styles
+ * Design Tokens: design-tokens.json
+ * Pixel-parity with mockup spec
+ */
+
+:root {
+  /* Brand Colors */
+  --brand-500: #2563eb;
+  --brand-600: #1e3a8a;
+  
+  /* Slate Colors */
+  --slate-50: #f5f8fc;
+  --slate-200: #e2e8f0;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  
+  /* Radius */
+  --radius-card: 16px;
+  --radius-button: 12px;
+  
+  /* Shadows */
+  --shadow-card: 0 8px 24px rgba(16, 24, 40, 0.06);
+  
+  /* Typography */
+  --font-label: 12px;
+  --font-body: 14px;
+  --font-kpi: 22px;
+  --font-h1: 22px;
+  
+  /* Layout */
+  --container-width: 1240px;
+  --sidebar-width: 280px;
+  --gutter: 12px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--slate-50);
+  color: var(--slate-800);
+  font-size: var(--font-body);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LAYOUT: Header, Sidebar, Main Content
+   ═══════════════════════════════════════════════════════════════════ */
+
+.layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid var(--slate-200);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.header h1 {
+  font-size: var(--font-h1);
+  font-weight: 600;
+  color: var(--brand-600);
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  background: white;
+  border-right: 1px solid var(--slate-200);
+  padding: 24px 0;
+  position: sticky;
+  top: 64px;
+  height: calc(100vh - 64px);
+  overflow-y: auto;
+}
+
+.sidebar nav a {
+  display: block;
+  padding: 12px 24px;
+  color: var(--slate-600);
+  text-decoration: none;
+  font-size: var(--font-body);
+  transition: all 0.2s;
+}
+
+.sidebar nav a:hover {
+  background-color: var(--slate-50);
+  color: var(--brand-600);
+}
+
+.sidebar nav a.active {
+  background-color: var(--brand-500);
+  color: white;
+  font-weight: 500;
+}
+
+.main-content {
+  flex: 1;
+  padding: 32px;
+  max-width: calc(var(--container-width) - var(--sidebar-width));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CARDS
+   ═══════════════════════════════════════════════════════════════════ */
+
+.card {
+  background: white;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 24px;
+  margin-bottom: var(--gutter);
+}
+
+.card-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--slate-800);
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--slate-200);
+}
+
+.card-body {
+  color: var(--slate-700);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FORMS
+   ═══════════════════════════════════════════════════════════════════ */
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: var(--font-label);
+  font-weight: 500;
+  color: var(--slate-700);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--slate-200);
+  border-radius: 8px;
+  font-size: var(--font-body);
+  color: var(--slate-800);
+  background: white;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.form-checkbox {
+  margin-right: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BUTTONS
+   ═══════════════════════════════════════════════════════════════════ */
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: var(--radius-button);
+  font-size: var(--font-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background-color: var(--brand-500);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--brand-600);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.btn-secondary {
+  background-color: var(--slate-200);
+  color: var(--slate-700);
+}
+
+.btn-secondary:hover {
+  background-color: var(--slate-300);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   2-COLUMN LAYOUT (Mission Planner)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gutter);
+}
+
+@media (max-width: 1024px) {
+  .grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   LIVE BREAKDOWN PANEL
+   ═══════════════════════════════════════════════════════════════════ */
+
+.breakdown-panel {
+  position: sticky;
+  top: 100px;
+}
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.kpi-card {
+  background: var(--slate-50);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--slate-200);
+}
+
+.kpi-label {
+  font-size: var(--font-label);
+  color: var(--slate-600);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.kpi-value {
+  font-size: var(--font-kpi);
+  font-weight: 700;
+  color: var(--brand-600);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   VALIDATION CONSOLE
+   ═══════════════════════════════════════════════════════════════════ */
+
+.console {
+  background: var(--slate-800);
+  color: #10b981;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  margin-top: 16px;
+}
+
+.console pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.console .error {
+  color: #ef4444;
+}
+
+.console .warning {
+  color: #f59e0b;
+}
+
+.console .success {
+  color: #10b981;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   TOGGLE SWITCH (SORA 2.5 / 2.0)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.toggle-group {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.toggle-btn {
+  padding: 8px 16px;
+  border: 2px solid var(--slate-200);
+  border-radius: 8px;
+  background: white;
+  color: var(--slate-600);
+  font-size: var(--font-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.toggle-btn.active {
+  border-color: var(--brand-500);
+  background-color: var(--brand-500);
+  color: white;
+}
+
+.toggle-btn:hover:not(.active) {
+  border-color: var(--brand-500);
+  color: var(--brand-500);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════ */
+
+.hidden {
+  display: none !important;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mt-2 {
+  margin-top: 16px;
+}
+
+.mb-2 {
+  margin-bottom: 16px;
+}
+
+.text-error {
+  color: #ef4444;
+}
+
+.text-success {
+  color: #10b981;
+}
+
+.text-muted {
+  color: var(--slate-600);
+  font-size: var(--font-label);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DASHBOARD KPI CARDS
+   ═══════════════════════════════════════════════════════════════════ */
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.dashboard-kpi {
+  background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-600) 100%);
+  color: white;
+  padding: 24px;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.dashboard-kpi .kpi-label {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.dashboard-kpi .kpi-value {
+  color: white;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAPS LAYOUT (Phase 6: Airspace Maps)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid var(--slate-200);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-card);
+}
+
+.header h1 {
+  font-size: var(--font-h1);
+  color: var(--brand-600);
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.maps-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.right-panel {
+  background: var(--slate-50);
+  border-left: 1px solid var(--slate-200);
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.right-panel .card {
+  margin-bottom: 16px;
+}
+
+.right-panel h3 {
+  font-size: 16px;
+  color: var(--brand-600);
+  margin-bottom: 12px;
+}
+
+.right-panel label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--font-body);
+  color: var(--slate-700);
+  cursor: pointer;
+}
+
+.right-panel label input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.sail-badge {
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
+  color: white;
+  padding: 12px;
+  border-radius: var(--radius-button);
+  text-align: center;
+  font-weight: 600;
+  font-size: 18px;
+  margin-top: 16px;
+}
+
+.sidebar-section {
+  background: white;
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.sidebar-section h3 {
+  font-size: 16px;
+  color: var(--brand-600);
+  margin-bottom: 12px;
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.help-text {
+  font-size: 12px;
+  color: var(--slate-600);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+#geometryStats p {
+  margin-bottom: 8px;
+  font-size: var(--font-body);
+  color: var(--slate-700);
+}
+
+#geometryStats strong {
+  color: var(--brand-600);
+}
+
+#geometryStats span {
+  color: var(--slate-800);
+  font-weight: 600;
+}
+
+/* MapLibre GL JS / CesiumJS container fixes */
+.maplibregl-map, .cesium-viewer {
+  width: 100%;
+  height: 100%;
+}
+
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  display: none; /* Hide default attribution for cleaner UI */
+}

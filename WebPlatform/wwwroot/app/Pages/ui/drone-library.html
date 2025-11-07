@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drone Library | SKYWORKS SORA Suite</title>
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <nav>
+        <a href="index.html">Dashboard</a>
+        <a href="mission.html">Mission Planner</a>
+        <a href="conops.html">ConOps</a>
+        <a href="igrc25.html">iGRC 2.5</a>
+        <a href="grc25.html">GRC 2.5</a>
+        <a href="grc20.html">GRC 2.0</a>
+        <a href="arc.html">ARC Engine</a>
+        <a href="strategic-tmpr.html">Strategic / TMPR</a>
+        <a href="sail-oso.html">SAIL & OSOs</a>
+        <a href="airspace-maps.html">Airspace Maps</a>
+        <a href="drone-library.html" class="active">Drone Library</a>
+        <a href="subscriptions.html">Subscriptions</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <div class="card">
+        <div class="card-header">Drone Library</div>
+        <div class="card-body">
+          
+          <p style="color: var(--slate-600); margin-bottom: 24px;">
+            Pre-configured drone profiles for quick mission planning.
+            Auto-populates <strong>MTOM, Max Speed, Kinetic Energy</strong> for iGRC calculation.
+          </p>
+
+          <!-- Add Drone Form -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header">Add New Drone</div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Drone Name</label>
+                <input type="text" class="form-input" placeholder="e.g., DJI Mavic 3 Enterprise">
+              </div>
+
+              <div class="grid-2col">
+                <div class="form-group">
+                  <label class="form-label">MTOM (kg)</label>
+                  <input type="number" class="form-input" placeholder="0.895" step="0.001">
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Max Speed (m/s)</label>
+                  <input type="number" class="form-input" placeholder="19" step="0.1">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Kinetic Energy (J) [Auto-calculated]</label>
+                <input type="text" class="form-input" value="161.525 J" readonly style="background: var(--slate-50);">
+                <p class="text-muted">KE = 0.5 × MTOM × (Max Speed)²</p>
+              </div>
+
+              <button class="btn btn-primary">Add to Library</button>
+            </div>
+          </div>
+
+          <!-- Drone List -->
+          <div class="card">
+            <div class="card-header">Saved Drones</div>
+            <div class="card-body">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                  <tr style="background: var(--slate-50); border-bottom: 2px solid var(--slate-200);">
+                    <th style="padding: 12px; text-align: left;">Name</th>
+                    <th style="padding: 12px; text-align: center;">MTOM (kg)</th>
+                    <th style="padding: 12px; text-align: center;">Max Speed (m/s)</th>
+                    <th style="padding: 12px; text-align: center;">KE (J)</th>
+                    <th style="padding: 12px; text-align: center;">Small-UA?</th>
+                    <th style="padding: 12px; text-align: center;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr style="border-bottom: 1px solid var(--slate-200);">
+                    <td style="padding: 12px; font-weight: 600;">DJI Mavic 3 Enterprise</td>
+                    <td style="padding: 12px; text-align: center;">0.895</td>
+                    <td style="padding: 12px; text-align: center;">19</td>
+                    <td style="padding: 12px; text-align: center;">161.5</td>
+                    <td style="padding: 12px; text-align: center; color: #ef4444; font-weight: 600;">No</td>
+                    <td style="padding: 12px; text-align: center;">
+                      <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Use</button>
+                    </td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid var(--slate-200);">
+                    <td style="padding: 12px; font-weight: 600;">DJI Mini 2</td>
+                    <td style="padding: 12px; text-align: center;">0.249</td>
+                    <td style="padding: 12px; text-align: center;">16</td>
+                    <td style="padding: 12px; text-align: center;">31.8</td>
+                    <td style="padding: 12px; text-align: center; color: #10b981; font-weight: 600;">Yes ✅</td>
+                    <td style="padding: 12px; text-align: center;">
+                      <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Use</button>
+                    </td>
+                  </tr>
+                  <tr style="border-bottom: 1px solid var(--slate-200);">
+                    <td style="padding: 12px; font-weight: 600;">Autel EVO II Pro V3</td>
+                    <td style="padding: 12px; text-align: center;">1.127</td>
+                    <td style="padding: 12px; text-align: center;">20</td>
+                    <td style="padding: 12px; text-align: center;">225.4</td>
+                    <td style="padding: 12px; text-align: center; color: #ef4444; font-weight: 600;">No</td>
+                    <td style="padding: 12px; text-align: center;">
+                      <button class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">Use</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Small-UA Rule Reminder -->
+          <div style="background: var(--slate-50); padding: 16px; border-radius: 12px; border-left: 4px solid var(--brand-500); margin-top: 24px;">
+            <h4 style="margin-bottom: 8px; color: var(--brand-600);">Small-UA Exception</h4>
+            <p style="color: var(--slate-700); margin: 0;">
+              If <strong>MTOM ≤ 0.25 kg</strong> AND <strong>Max Speed ≤ 25 m/s</strong>:
+              <br><strong>iGRC = 1</strong> (regardless of scenario)
+            </p>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="assets/app.js"></script>
+</body>
+</html>
