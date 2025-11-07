@@ -49,12 +49,12 @@ export interface GRC25Result {
 
 /**
  * Mitigation Credits (SORA 2.5 Table 5 + Annex B)
- * ✅ ref: Backend GRCCalculationService.cs GetMitigationCredit_V2_5 (lines 286-297)
+ * ✅ ref: Official JAR_doc_27 Annex B - STRICT COMPLIANCE
+ * ⚠️  M1A: ONLY Low level exists (NO Medium per Annex B)
  */
 const MITIGATION_CREDITS_25 = {
-  // M1(A) Sheltering
+  // M1(A) Sheltering - ONLY Low (Annex B compliance)
   M1A_Low: -1,
-  M1A_Medium: -2,       // Requires high evidence/assurance
   
   // M1(B) Operational restrictions
   M1B_Medium: -1,
@@ -64,8 +64,9 @@ const MITIGATION_CREDITS_25 = {
   M1C_Low: -1,          // Only Low level defined
   
   // M2 Impact dynamics (parachute, frangibility, etc.)
-  M2_Medium: -1,
-  M2_High: -2,
+  M2_Low: -1,           // NEW per Annex B
+  M2_Medium: -2,
+  M2_High: -3,
 };
 
 /**
@@ -153,8 +154,9 @@ export function calculateGRC25(input: GRC25Input): GRC25Result {
   auditTrail.push(`Intrinsic GRC = ${iGRC}`);
   
   // Step 2: Apply M1(A) Sheltering
+  // ✅ Annex B compliance: ONLY "Low" level exists
   if (input.m1a !== "None") {
-    const credit = input.m1a === "Low" ? MITIGATION_CREDITS_25.M1A_Low : MITIGATION_CREDITS_25.M1A_Medium;
+    const credit = MITIGATION_CREDITS_25.M1A_Low;  // Only Low per JAR_doc_27
     currentGRC += credit;
     mitigationsApplied.push({ type: "M1(A) Sheltering", robustness: input.m1a, credit });
     auditTrail.push(`M1(A) ${input.m1a}: ${credit} → GRC = ${currentGRC}`);
@@ -177,8 +179,13 @@ export function calculateGRC25(input: GRC25Input): GRC25Result {
   }
   
   // Step 5: Apply M2 Impact dynamics
+  // ✅ Annex B: Added "Low" level (None|Low|Medium|High)
   if (input.m2 !== "None") {
-    const credit = input.m2 === "Medium" ? MITIGATION_CREDITS_25.M2_Medium : MITIGATION_CREDITS_25.M2_High;
+    let credit = 0;
+    if (input.m2 === "Low") credit = MITIGATION_CREDITS_25.M2_Low;
+    else if (input.m2 === "Medium") credit = MITIGATION_CREDITS_25.M2_Medium;
+    else if (input.m2 === "High") credit = MITIGATION_CREDITS_25.M2_High;
+    
     currentGRC += credit;
     mitigationsApplied.push({ type: "M2 Impact dynamics", robustness: input.m2, credit });
     auditTrail.push(`M2 ${input.m2}: ${credit} → GRC = ${currentGRC}`);
@@ -220,22 +227,22 @@ export function calculateGRC25(input: GRC25Input): GRC25Result {
 
 /**
  * Validate M1A/M1B combination
- * ✅ ref: JARUS SORA 2.5 Annex B - M1(A) Medium cannot be combined with M1(B)
+ * ✅ REMOVED: Per Official JAR_doc_27 Annex B, M1A has NO Medium level
+ *    Therefore, no combination validation needed (M1A is only None|Low)
  * 
- * @param m1a - M1(A) Sheltering level
+ * @param m1a - M1(A) Sheltering level (None | Low only)
  * @param m1b - M1(B) Operational restrictions level
- * @returns Validation result
+ * @returns Always valid now (M1A Medium doesn't exist)
  */
 export function validateM1Combination(m1a: M1A_Sheltering, m1b: M1B_OperationalRestrictions): {
   isValid: boolean;
   message: string;
 } {
-  if (m1a === "Medium" && m1b !== "None") {
-    return {
-      isValid: false,
-      message: "❌ M1(A) Medium cannot be combined with M1(B) per JARUS SORA 2.5 Annex B rules",
-    };
-  }
+  // No validation needed - M1A Medium does not exist per Annex B
+  return {
+    isValid: true,
+    message: "✅ M1A/M1B combination valid (M1A limited to None|Low per Annex B)",
+  };
   
   return {
     isValid: true,

@@ -78,8 +78,9 @@ export type TMPRLevel = typeof TMPRLevel[number];
 // ════════════════════════════════════════════════════════════════
 
 // M1(A) - Sheltering (per Table 5 + Annex B)
-// ✅ Credits: None=0, Low=-1, Medium=-2 (Medium requires high evidence/assurance)
-export const M1A_Sheltering = ["None","Low","Medium"] as const;
+// ✅ OFFICIAL ANNEX B: ONLY None | Low (NO Medium per JAR_doc_27)
+// ✅ Credits: None=0, Low=-1
+export const M1A_Sheltering = ["None","Low"] as const;
 export type M1A_Sheltering = typeof M1A_Sheltering[number];
 
 // M1(B) - Operational restrictions (per Table 5 + Annex B)

@@ -10,7 +10,7 @@ export type ARC = "ARC-a" | "ARC-b" | "ARC-c" | "ARC-d";
 
 /**
  * Strategic Mitigation Types
- * ✅ ref: JARUS SORA 2.5 Annex C Step #5
+ * ✅ ref: JARUS SORA 2.5 Annex C Step #5 + Operational limitation guidance
  */
 export interface StrategicMitigations {
   // Temporal mitigation (time-based restrictions)
@@ -24,6 +24,15 @@ export interface StrategicMitigations {
   
   // Traffic density source (for validation)
   trafficDensitySource: TrafficDensitySource;  // Empirical | Modelled | ANSP
+  
+  // ✅ NEW: Step #5 - VLOS with low time exposure
+  // Allows -1 ARC class reduction via operational limitation
+  // Requires: VLOS operation, boundary definition, chronological documentation
+  vlosLowTimeExposure?: {
+    enabled: boolean;
+    boundaryDefined: boolean;           // Operational volume defined
+    chronologyDocumented: boolean;      // Time exposure evidence
+  };
 }
 
 /**
@@ -104,6 +113,16 @@ export function applyStrategicMitigations(
   if (mitigations.uSpace === "Yes") {
     reduction += 1;
     mitigationsApplied.push("U-Space services");
+  }
+  
+  // ✅ Step #5: VLOS low time exposure operational limitation
+  // ref: EASA guidance - VLOS with documented low exposure → -1 ARC
+  if (mitigations.vlosLowTimeExposure?.enabled) {
+    const vlos = mitigations.vlosLowTimeExposure;
+    if (vlos.boundaryDefined && vlos.chronologyDocumented) {
+      reduction += 1;
+      mitigationsApplied.push("VLOS low time exposure (operational limitation per Step #5)");
+    }
   }
   
   // Cap reduction at 2 levels maximum
