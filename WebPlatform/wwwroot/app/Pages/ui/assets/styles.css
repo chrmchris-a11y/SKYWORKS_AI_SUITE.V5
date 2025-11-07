@@ -394,3 +394,137 @@ body {
 .dashboard-kpi .kpi-value {
   color: white;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   MAPS LAYOUT (Phase 6: Airspace Maps)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 64px;
+  background: white;
+  border-bottom: 1px solid var(--slate-200);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: var(--shadow-card);
+}
+
+.header h1 {
+  font-size: var(--font-h1);
+  color: var(--brand-600);
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.maps-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 0;
+  height: calc(100vh - 64px);
+  overflow: hidden;
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.right-panel {
+  background: var(--slate-50);
+  border-left: 1px solid var(--slate-200);
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.right-panel .card {
+  margin-bottom: 16px;
+}
+
+.right-panel h3 {
+  font-size: 16px;
+  color: var(--brand-600);
+  margin-bottom: 12px;
+}
+
+.right-panel label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--font-body);
+  color: var(--slate-700);
+  cursor: pointer;
+}
+
+.right-panel label input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+.sail-badge {
+  background: linear-gradient(135deg, var(--brand-500), var(--brand-600));
+  color: white;
+  padding: 12px;
+  border-radius: var(--radius-button);
+  text-align: center;
+  font-weight: 600;
+  font-size: 18px;
+  margin-top: 16px;
+}
+
+.sidebar-section {
+  background: white;
+  border-radius: var(--radius-card);
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.sidebar-section h3 {
+  font-size: 16px;
+  color: var(--brand-600);
+  margin-bottom: 12px;
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.help-text {
+  font-size: 12px;
+  color: var(--slate-600);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+#geometryStats p {
+  margin-bottom: 8px;
+  font-size: var(--font-body);
+  color: var(--slate-700);
+}
+
+#geometryStats strong {
+  color: var(--brand-600);
+}
+
+#geometryStats span {
+  color: var(--slate-800);
+  font-weight: 600;
+}
+
+/* MapLibre GL JS / CesiumJS container fixes */
+.maplibregl-map, .cesium-viewer {
+  width: 100%;
+  height: 100%;
+}
+
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  display: none; /* Hide default attribution for cleaner UI */
+}

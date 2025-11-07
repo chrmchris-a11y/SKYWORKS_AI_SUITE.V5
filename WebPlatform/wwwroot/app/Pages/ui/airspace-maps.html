@@ -3,115 +3,135 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Airspace Maps | SKYWORKS SORA Suite</title>
+  <title>Phase 6: Airspace Maps – Skyworks</title>
   <link rel="stylesheet" href="assets/styles.css">
+  <!-- MapLibre GL JS (2D) -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+  <!-- CesiumJS (3D) - Placeholder for production ion token -->
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.111/Build/Cesium/Cesium.js"></script>
 </head>
 <body>
-  <div class="layout">
-    <aside class="sidebar">
-      <nav>
-        <a href="index.html">Dashboard</a>
-        <a href="mission.html">Mission Planner</a>
-        <a href="conops.html">ConOps</a>
-        <a href="igrc25.html">iGRC 2.5</a>
-        <a href="grc25.html">GRC 2.5</a>
-        <a href="grc20.html">GRC 2.0</a>
-        <a href="arc.html">ARC Engine</a>
-        <a href="strategic-tmpr.html">Strategic / TMPR</a>
-        <a href="sail-oso.html">SAIL & OSOs</a>
-        <a href="airspace-maps.html" class="active">Airspace Maps</a>
-        <a href="drone-library.html">Drone Library</a>
-        <a href="subscriptions.html">Subscriptions</a>
-      </nav>
-    </aside>
+  <header class="header">
+    <h1>Phase 6: Airspace Maps & Mission Geography</h1>
+    <div class="header-actions">
+      <button id="toggle2D3D" class="btn-primary">Switch to 3D 🌍</button>
+      <button id="exportPNG" class="btn-secondary">📸 Snapshot</button>
+      <button id="exportMissionPack" class="btn-secondary">📦 Mission Pack (.zip)</button>
+    </div>
+  </header>
 
-    <main class="main-content">
-      <div class="card">
-        <div class="card-header">EU Airspace Maps (Interactive Viewer)</div>
-        <div class="card-body">
-          
-          <p style="color: var(--slate-600); margin-bottom: 24px;">
-            Interactive map viewer for <strong>EU airspace zones</strong>: CTR, TMA, ATZ, RMZ, TMZ, Prohibited, Restricted, Danger, TSA, TRA, CBA, UAS Geo Zones.
-          </p>
+  <div class="sidebar">
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="mission.html">Mission Planner</a>
+      <a href="conops.html">ConOps</a>
+      <a href="igrc25.html">iGRC 2.5</a>
+      <a href="grc25.html">GRC 2.5</a>
+      <a href="grc20.html">GRC 2.0</a>
+      <a href="arc.html">ARC</a>
+      <a href="strategic-tmpr.html">Strategic/TMPR</a>
+      <a href="sail-oso.html">SAIL/OSO</a>
+      <a href="airspace-maps.html" class="active">Airspace Maps</a>
+      <a href="drone-library.html">Drone Library</a>
+      <a href="subscriptions.html">Subscriptions</a>
+    </nav>
 
-          <!-- Placeholder Map -->
-          <div style="width: 100%; height: 600px; background: var(--slate-50); border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 2px dashed var(--slate-200);">
-            <div style="text-align: center; color: var(--slate-600);">
-              <svg xmlns="http://www.w3.org/2000/svg" style="width: 80px; height: 80px; margin-bottom: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
-              <h3 style="margin-bottom: 8px; color: var(--brand-600);">Interactive Map Placeholder</h3>
-              <p style="max-width: 400px; margin: 0 auto; line-height: 1.6;">
-                Integrate with <strong>Eurocontrol AIXM</strong> or <strong>OpenAIP</strong> for real-time airspace data.
-                Display RMZ, TMZ, CTR, TMA, UAS Geo Zones, etc.
-              </p>
-            </div>
-          </div>
+    <div class="sidebar-section">
+      <h3>Plan</h3>
+      <label class="form-label">Import Route (GeoJSON/KML/CSV)</label>
+      <input type="file" id="importRouteFile" accept=".geojson,.kml,.csv" class="form-input">
+      <p class="help-text">Drag-and-drop or select file. CSV columns: lat, lon, alt_m (WGS84/EPSG:4326)</p>
+      
+      <button id="addWaypoint" class="btn-secondary full-width">➕ Add Waypoint</button>
+      <button id="drawGeofence" class="btn-secondary full-width">🔵 Draw Geofence (Cylinder)</button>
+      <button id="drawCGA" class="btn-secondary full-width">🟩 Draw CGA (Polygon)</button>
+      <button id="clearRoute" class="btn-secondary full-width">🗑️ Clear Route</button>
+    </div>
 
-          <!-- Legend -->
-          <div style="margin-top: 24px;">
-            <h3 style="margin-bottom: 12px; font-size: 18px; color: var(--brand-600);">Zone Types (EU Only)</h3>
-            <div class="grid-2col">
-              <div class="card">
-                <div class="card-header">Controlled Zones</div>
-                <div class="card-body">
-                  <ul style="line-height: 2; color: var(--slate-700);">
-                    <li><strong>CTR</strong> — Control Zone</li>
-                    <li><strong>TMA</strong> — Terminal Maneuvering Area</li>
-                    <li><strong>ATZ</strong> — Aerodrome Traffic Zone</li>
-                  </ul>
-                </div>
-              </div>
+    <div class="sidebar-section">
+      <h3>Layers (EU Airspace)</h3>
+      <label><input type="checkbox" id="layer_rmz" checked> RMZ (Radio Mandatory)</label>
+      <label><input type="checkbox" id="layer_tmz" checked> TMZ (Transponder Mandatory)</label>
+      <label><input type="checkbox" id="layer_ctr" checked> CTR (Control Zone)</label>
+      <label><input type="checkbox" id="layer_tma"> TMA (Terminal Maneuvering)</label>
+      <label><input type="checkbox" id="layer_atz"> ATZ (Aerodrome Traffic)</label>
+      <label><input type="checkbox" id="layer_prohibited" checked> Prohibited Zones</label>
+      <label><input type="checkbox" id="layer_restricted" checked> Restricted Zones</label>
+      <label><input type="checkbox" id="layer_danger"> Danger Zones</label>
+      <label><input type="checkbox" id="layer_tsa"> TSA (Temporary Segregated)</label>
+      <label><input type="checkbox" id="layer_tra"> TRA (Temporary Reserved)</label>
+      <label><input type="checkbox" id="layer_cba"> CBA (Cross-Border)</label>
+      <label><input type="checkbox" id="layer_uas" checked> UAS Geo Zones</label>
+      <label><input type="checkbox" id="layer_population"> Population Heatmap (iGRC proxy)</label>
+      <label><input type="checkbox" id="layer_buildings"> OSM Buildings (3D extrusions)</label>
+    </div>
 
-              <div class="card">
-                <div class="card-header">Communication Zones</div>
-                <div class="card-body">
-                  <ul style="line-height: 2; color: var(--slate-700);">
-                    <li><strong>RMZ</strong> — Radio Mandatory Zone</li>
-                    <li><strong>TMZ</strong> — Transponder Mandatory Zone</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="card-header">Restricted Zones</div>
-                <div class="card-body">
-                  <ul style="line-height: 2; color: var(--slate-700);">
-                    <li><strong>Prohibited</strong> — No entry</li>
-                    <li><strong>Restricted</strong> — Authorization required</li>
-                    <li><strong>Danger</strong> — High-risk areas</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="card">
-                <div class="card-header">Temporary & UAS Zones</div>
-                <div class="card-body">
-                  <ul style="line-height: 2; color: var(--slate-700);">
-                    <li><strong>TSA</strong> — Temporary Segregated Area</li>
-                    <li><strong>TRA</strong> — Temporary Reserved Area</li>
-                    <li><strong>CBA</strong> — Cross-Border Area</li>
-                    <li><strong>UAS Geo Zone</strong> — UAS-specific restrictions</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- No Banned Tokens -->
-          <div style="background: var(--slate-50); padding: 16px; border-radius: 12px; border-left: 4px solid #ef4444; margin-top: 24px;">
-            <h4 style="margin-bottom: 8px; color: #ef4444;">🚫 Banned Tokens (Not Displayed)</h4>
-            <p style="color: var(--slate-700); margin: 0;">
-              This UI does <strong>NOT</strong> show non-EU airspace terms or restricted tokens.
-              Only <strong>EU EASA-compliant</strong> zones are displayed.
-            </p>
-          </div>
-
-        </div>
-      </div>
-    </main>
+    <div class="sidebar-section">
+      <h3>Export</h3>
+      <button id="exportGeoJSON" class="btn-secondary full-width">📄 Export GeoJSON</button>
+      <button id="exportKML" class="btn-secondary full-width">📄 Export KML</button>
+      <button id="exportCSV" class="btn-secondary full-width">📊 Export CSV</button>
+    </div>
   </div>
 
-  <script src="assets/app.js"></script>
+  <main class="main-content maps-layout">
+    <!-- Map Container (2D/3D) -->
+    <div id="map2D" class="map-container"></div>
+    <div id="map3D" class="map-container" style="display:none;"></div>
+
+    <!-- Right Panel: Compliance & ERP/TMPR -->
+    <aside class="right-panel">
+      <div class="card">
+        <h3>SORA Compliance (Live)</h3>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-label">iGRC</div>
+            <div id="kpi_igrc" class="kpi-value">–</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Final GRC</div>
+            <div id="kpi_fgrc" class="kpi-value">–</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Initial ARC</div>
+            <div id="kpi_iarc" class="kpi-value">–</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Residual ARC</div>
+            <div id="kpi_rarc" class="kpi-value">–</div>
+          </div>
+        </div>
+        <div class="sail-badge" id="sailBadge">SAIL: –</div>
+      </div>
+
+      <div class="card">
+        <h3>ERP / TMPR</h3>
+        <label><input type="checkbox" id="erp_emergency_sites"> Emergency Landing Sites</label>
+        <label><input type="checkbox" id="erp_recovery_routes"> Recovery Routes</label>
+        <label><input type="checkbox" id="erp_muster_points"> Muster Points</label>
+        <label><input type="checkbox" id="erp_comms_backup"> Backup Comms (C2 link loss)</label>
+        <p class="help-text">M3 ERP: Emergency Response Plan overlays for SAIL III–VI</p>
+      </div>
+
+      <div class="card">
+        <h3>Mission Geometry</h3>
+        <div id="geometryStats">
+          <p><strong>Waypoints:</strong> <span id="stat_waypoints">0</span></p>
+          <p><strong>Path Length:</strong> <span id="stat_path_length">0 m</span></p>
+          <p><strong>Geofence:</strong> <span id="stat_geofence">None</span></p>
+          <p><strong>CGA Area:</strong> <span id="stat_cga_area">0 m²</span></p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Validation Console</h3>
+        <div id="validationConsole" class="console"></div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="assets/airspace.js"></script>
 </body>
 </html>
