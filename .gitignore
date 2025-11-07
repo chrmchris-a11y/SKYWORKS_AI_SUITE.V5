@@ -50,3 +50,13 @@ vscode-skyworks-assistant/*.vsix
 # Local debug helpers
 Backend_Python/debug_*.py
 Backend_Python/_*.py
+# Ignore ZIP files
+*.zip
+
+# Ignore UI package folders
+skyworks_ui_package/code/react/
+skyworks_ui_package/previews/
+skyworks_ui_spec_assets/
+
+# Ignore duplicate files
+skyworks_ui_spec_assets/skyworks.enums.ts

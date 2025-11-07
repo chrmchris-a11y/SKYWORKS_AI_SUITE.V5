@@ -1,0 +1,33 @@
+=== ΓΕΝΙΚΟΣ ΣΤΟΧΟΣ ===
+Θέλω 12 οθόνες UI του “Skyworks AI Suite — SORA/PDRA/STS Mission Planner”, σε React+Tailwind.
+Ζήτα μου να σου δώσω το αρχείο .tsx κάθε οθόνης και συμπλήρωσέ το με widgets/validators.
+
+=== ΚΑΝΟΝΕΣ COMPLIANCE ===
+1) AEC (Annex C) -> Initial ARC (Table C.1) αυτόματα — όχι manual overrides.
+2) SORA 2.0 GRC: M1 -> M2 -> M3 με credits: M1 0/-1/-2/-4 (column-min clamp), M2 0/-1/-2, M3 +1/0/-1, Final GRC >= 1.
+3) SORA 2.5 GRC: M1(A/B/C) ξεχωριστά, M2, ERP στα OSOs (όχι mitigation).
+4) Small UA rule (<=250 g & <=25 m/s) μόνο αν αληθεύει από MTOM/speed.
+5) Strategic: Temporal, Spatial/Containment, U-space (Yes/No), Traffic Density Source. Μόνο αυτά αλλάζουν το Residual ARC.
+6) SAIL = πίνακας (Final GRC × Residual ARC). Αν GRC>7 -> εκτός “specific”.
+
+=== ΟΘΟΝΕΣ ΚΑΙ FIELDS ===
+01 Dashboard: KPI cards (Missions, Approval %, Avg SAIL), Recent Missions, Map snippet.
+02 Mission Planner: selector SORA 2.5 / 2.0 / PDRA / STS, stepper, KPI chips.
+03 ConOps: VLOS/BVLOS, Date/Time, Max Height AGL, polygon map draw, description.
+04 iGRC (2.5): Population Density (CGA/Rural/Suburban/Urban), MTOM, Dimension, Typical Speed, special rule toggle (auto), result.
+05 GRC (2.5): M1(A/B/C) dropdowns, M2 levels, Final GRC result + audit trail.
+06 GRC (2.0): M1/M2/M3 with exact credits + clamp, Final GRC>=1.
+07 ARC Engine: AEC 1–12, Airspace Class A–G, Environment, Altitude, Special zones -> Initial ARC.
+08 Strategic & TMPR: Temporal, Spatial/Containment, U-space, Traffic Density Source -> Residual ARC; TMPR levels.
+09 SAIL & OSOs: SAIL matrix, OSO checklist (robustness L/M/H), gaps.
+10 Airspace & Maps: UAS zones, CTR/TMA/ATZ, RMZ/TMZ, R/D/P, NOTAM, Weather; AEC helper; exports.
+11 Drone Library: table (Model, Class, MTOM, Dimension, Typical Speed, Tethered, Equipage, Validated).
+12 Subscriptions & Licensing: plans (49/69/99), license keys, payments (SEPA/CC/Revolut), renewals, greetings.
+
+=== ΔΗΜΙΟΥΡΓΙΑ ΚΩΔΙΚΑ ===
+• Παρήγαγε TS schemas (zod) για validators όπου γίνεται.
+• Dropdowns με κλειστά enums (A–G, AEC 1–12, Urban/Rural, VLOS/BVLOS, Altitude bands, RMZ/TMZ/CTR/R/D/P).
+• Live Breakdown panel (iGRC -> Final GRC -> Initial ARC -> Residual ARC -> SAIL -> OSOs).
+• Validation Console με blocking errors για out-of-scope.
+
+Ξεκίνα με την 01_Dashboard.tsx. Δώσε πλήρη κώδικα με Tailwind classes και mock δεδομένα.

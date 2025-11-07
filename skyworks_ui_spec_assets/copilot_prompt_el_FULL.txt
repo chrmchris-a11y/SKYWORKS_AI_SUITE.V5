@@ -1,0 +1,120 @@
+### Στόχος
+Να παραχθούν **όλα τα dropdowns και πεδία** (SORA 2.0 AMC και JARUS SORA 2.5) με πλήρεις validators και σωστούς υπολογισμούς iGRC → Final GRC → ARC (initial/residual) → SAIL (I–VI) → OSO/TMPR, **100% ευθυγραμμισμένα** με EASA/JARUS.
+
+---
+### Κανόνες ανάγνωσης γνώσης (ΠΟΛΥ ΣΗΜΑΝΤΙΚΟ)
+1) Δούλεψε **ΜΟΝΟ** με τα επίσημα έγγραφα που υπάρχουν στο repo μου: `KnowledgeBase/`.
+   - **JAR_doc_25** (SORA v2.5 Main Body) – πίνακας 5 (mitigations), Step #4/#5 (ARC), κανόνας ≤250g & ≤25m/s.
+   - **JAR_doc_27** (SORA v2.5 Annex B) – απαιτήσεις/robustness για M1(A/B/C), M2 (impact dynamics).
+   - **Annex C v1.0** – AEC → Initial ARC (Table C.1), στρατηγικές μειώσεις ARC (temporal/spatial/containment, U-space).
+   - **EASA Workshop PDFs (2023)** – αλλαγές 2.0→2.5 (M3 αφαιρέθηκε από 2.5 GRC, πάει στα OSOs).
+   - **AMC1 to Article 11 (SORA 2.0)** – Table 2/3, M1/M2/M3 credits & **column-min clamp**.
+   - **Annex D (TMPR)** – στόχοι risk ratio ανά Residual ARC.
+2) Μην αντλείς τίποτα από το διαδίκτυο. **Ψάξε** μέσα στο repo (code & KB). Αν βρεις πολλαπλές εκδόσεις, προτίμησε **SORA v2.5 (2024-05-13)**.
+3) Για κάθε αμφιβολία, **παράθεσε** στο σχόλιο του PR: *ακριβές απόσπασμα/πίνακα και σελίδα* από τα έγγραφα του repo (όχι links προς web).
+
+---
+### Παραδοτέα (αρχεία που θα δημιουργήσεις/ενημερώσεις)
+1) `web/src/lib/skyworks.enums.ts` — **όλα τα dropdowns** (βλ. λίστα πιο κάτω) + types.
+2) `web/src/lib/schemas/sora20.zod.ts` — zod validators για SORA 2.0 (iGRC, M1/M2/M3, clamp, min=1).
+3) `web/src/lib/schemas/sora25.zod.ts` — zod validators για SORA 2.5 (M1A/B/C, M2, small-UAS rule).
+4) `web/src/lib/aec.labels.ts` — **φόρτωση labels AEC 1–12** από `KnowledgeBase/AnnexC*.md|txt` (fallback σε “AEC-1…AEC-12”).
+5) `web/src/lib/mappings/sail.matrix.ts` — SAIL = f(FinalGRC, ResidualARC) (I–VI).
+6) `web/src/lib/mappings/tmpr.targets.ts` — TMPR στόχοι ανά Residual ARC (None/Low/Medium/High).
+7) `web/src/lib/calculators/grc20.ts` — υλοποίηση Table 2/3 + M1→M2→M3 + **column-min clamp** + **Final GRC ≥1**.
+8) `web/src/lib/calculators/grc25.ts` — υλοποίηση Table 2 + M1(A/B/C) + M2. **Χωρίς ERP** (πάει σε OSOs).
+9) `web/src/lib/calculators/arc.ts` — AEC→Initial ARC (Annex C), Strategic→Residual ARC (temporal/spatial/containment, U-space, traffic source).
+10) `web/src/lib/calculators/sail.ts` — SAIL από Final GRC × Residual ARC.
+11) `web/src/lib/osos/requirements.ts` — λίστα OSOs ανά SAIL, με robustness L/M/H, και διαχωρισμό evidence (operator vs manufacturer) όπως στο 2.5.
+12) Tests: `web/tests/sora20.spec.ts`, `web/tests/sora25.spec.ts`, `web/tests/arc.spec.ts`, `web/tests/sail.spec.ts` με **golden cases**.
+
+---
+### Dropdowns & Πεδία (ολόκληρη λίστα)
+**Κοινά (και για 2.0 & 2.5):**
+- `version`: SORA_2_0_AMC | SORA_2_5_JARUS | PDRA_S01 | PDRA_S02 | STS_01 | STS_02
+- `operationType`: VLOS | BVLOS | EVLOS
+- `airspaceClass`: A | B | C | D | E | F | G
+- `specialZones[]`: CTR, TMA, ATZ, RMZ, TMZ, Prohibited(P), Restricted(R), Danger(D), TSA, TRA, CBA, UAS Geographical Zone
+- `typicality`: Typical | Atypical_Segregated
+- `aec`: AEC_1 … AEC_12 (**label από Annex C Table C.1**)
+- `uSpace`: Yes | No
+- `trafficDensitySource`: Empirical | Modelled | ANSP
+- `airspaceContainment`: None | Horizontal | Vertical | Horizontal_and_Vertical
+- `maxHeightAGL_m`: αριθμητικό (1–600)
+- UA (από Drone Library): classMarking (C0–C6/PB), mtomKg, maxDimensionM, typicalSpeedMs, tethered?, equipage (parachute/flightTermination/frangibility)
+
+**SORA 2.5 (GRC):**
+- `intrinsicGRC` (Table 2) — derive από UA specs + Population Density.
+- `populationDensity`: CGA | Rural | Suburban | Urban
+- `m1a_sheltering`: None | Low
+- `m1b_operationalRestrictions`: None | Low
+- `m1c_groundObservation`: None | Low
+- `m2_impactDynamics`: None | Low | Medium | High
+- `smallUARuleApplies`: auto = (mtomKg ≤ 0.25 && typicalSpeedMs ≤ 25)
+
+**SORA 2.0 (GRC):**
+- `intrinsicGRC` (Table 2) — derive από UA specs + scenario (VLOS/BVLOS, gathering of people, κ.λπ.).
+- `m1`: None | Low | Medium | High (**σειρά πρώτα**)
+- `m2`: None | Low | High
+- `m3`: None | Adequate | Validated
+  *Κανόνες*: apply M1→M2→M3, **column-min clamp**, **Final GRC ≥ 1**.
+
+**ARC & TMPR (κοινά):**
+- `initialARC`: auto από `aec` (Annex C table).
+- `strategicMitigations`: Temporal | Spatial/Containment | U-space Yes/No | TrafficDensitySource (τεκμηρίωση)
+- `residualARC`: auto μετά τις Strategic
+- `tmpr`: None | Low | Medium | High (στόχος από Annex D ανά residual ARC)
+
+**SAIL & OSOs (κοινά):**
+- `sail`: auto = f(finalGRC, residualARC) (I–VI)
+- `oso[]`: λίστα OSOs με robustness: Low/Medium/High (per SAIL). Στο 2.5, ορισμένα evidence από manufacturer.
+
+---
+### Υλοποίηση (βήμα-βήμα)
+**Βήμα 0 — Εξαγωγή labels AEC 1–12**
+- Διάβασε `KnowledgeBase/AnnexC*.md|txt|pdf.txt` και φτιάξε `web/src/lib/aec.labels.ts` με αντικείμενο:
+  ```ts
+  export const AEC_LABELS: Record<string,string> = { AEC_1: "…", … AEC_12: "…" };
+  ```
+  Αν αποτύχει, χρησιμοποίησε fallback: "AEC-1"… "AEC-12".
+
+**Βήμα 1 — Enums & types**
+- Γράψε/ενημέρωσε `web/src/lib/skyworks.enums.ts` με **όλες** τις σταθερές/τύπους (δες παρόν αρχείο ως παράδειγμα).
+
+**Βήμα 2 — Zod schemas**
+- `sora20.zod.ts`: κανόνες Table 2/3 + clamp + min=1. Ανά πεδίο γράψε `ref:` σχόλιο με πίνακα/σελίδα από KB.
+- `sora25.zod.ts`: Table 2 + M1A/B/C + M2 + small-UAS auto κανόνας (mtom+speed).
+
+**Βήμα 3 — Calculators**
+- `grc20.ts`: Υλοποίησε credits M1/M2/M3 όπως στο Table 3. Εφάρμοσε σειριακά M1→M2→M3, clamp στη στήλη, αποτέλεσμα ≥1.
+- `grc25.ts`: Υλοποίησε Table 2 + M1A/B/C + M2. Χωρίς ERP (είναι OSO).
+- `arc.ts`: AEC→Initial ARC (ακριβής πίνακας από Annex C) + στρατηγικές μειώσεις (temporal, spatial/containment, U-space, traffic source).
+- `sail.ts`: Πίνακας SAIL (I–VI) από Final GRC × Residual ARC.
+
+**Βήμα 4 — Tests (golden)**
+- Φτιάξε 6 ελάχιστα σενάρια:
+  1) 2.5, CGA + μικρό UA (≤0.25kg & ≤25m/s) → iGRC=1, χωρίς mitigations → Final GRC=1.
+  2) 2.0, VLOS sparsely, medium UA, M1 High, M2 Low, M3 Validated → έλεγχος clamp & ≥1.
+  3) AEC 9 (Urban <500 ft G) → Initial ARC=ARC-c. Με temporal+containment → Residual ARC βελτίωση.
+  4) Residual ARC=ARC-c → TMPR=Medium (Annex D).
+  5) Final GRC 1 × ARC-b → SAIL I.
+  6) Out-of-scope (π.χ. GRC>7) → validation error banner.
+
+**Βήμα 5 — UI wiring**
+- Για κάθε οθόνη (01–12) συμπλήρωσε τα dropdowns/validators από τα enums/schemas. Πρόσθεσε “Live Breakdown” και “Validation Console”.
+
+---
+### Σχόλια συμμόρφωσης (να προστεθούν ως inline comments)
+- ΜΗΝ περιλαμβάνεις “Mode‑S veil” (FAA). Ευρώπη: RMZ/TMZ + CTR/TMA/ATZ + R/D/P + UAS Zones.
+- Το ERP **δεν** ανήκει σε GRC 2.5 — είναι OSO (2.5 Main Body + EASA workshop).
+- SAIL **μόνο** από Final GRC × Residual ARC — όχι «χειροκίνητα».
+- Για 2.0: **column-min clamp** όταν εφαρμόζεις M1 (και κατ’ επέκταση συνολικά). Final GRC ποτέ < 1.
+
+---
+### Παραπομπές (σε σχόλια κώδικα με σελίδες/πίνακες, από τα αρχεία του repo)
+- SORA v2.5 Main Body (JAR_doc_25) — Table 5, Step #4/#5. 
+- SORA v2.5 Annex B (JAR_doc_27) — M1(A/B/C), M2 assurance/robustness.
+- Annex C v1.0 — Table C.1 (AEC→ARC), strategic mitigations.
+- EASA Workshop 2023 — αφαίρεση M3 από GRC (2.5), rename OSO step.
+- AMC1 Article 11 (SORA 2.0) — Table 2/3, clamp/min=1.
+- Annex D (TMPR) — στόχοι risk ratio ανά ARC.

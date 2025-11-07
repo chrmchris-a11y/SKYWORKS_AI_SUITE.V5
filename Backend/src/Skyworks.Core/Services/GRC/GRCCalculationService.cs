@@ -128,14 +128,15 @@ public class GRCCalculationService : IGRCCalculationService
             (GroundRiskMitigation_V2_0.M1_StrategicMitigations, RobustnessLevel.Medium) => -2,
             (GroundRiskMitigation_V2_0.M1_StrategicMitigations, RobustnessLevel.High) => -4,
 
-            // M2: Impact reduction (parachute, etc.)
-            (GroundRiskMitigation_V2_0.M2_ImpactReduction, RobustnessLevel.Medium) => -1,
+            // M2: Impact reduction - Official AMC1 Article 11: Low and High levels only
+            (GroundRiskMitigation_V2_0.M2_ImpactReduction, RobustnessLevel.Low) => -1,
             (GroundRiskMitigation_V2_0.M2_ImpactReduction, RobustnessLevel.High) => -2,
 
-            // M3: Emergency Response Plan
-            (GroundRiskMitigation_V2_0.M3_EmergencyResponsePlan, RobustnessLevel.Low) => +1, // Penalty
-            (GroundRiskMitigation_V2_0.M3_EmergencyResponsePlan, RobustnessLevel.Medium) => 0,
-            (GroundRiskMitigation_V2_0.M3_EmergencyResponsePlan, RobustnessLevel.High) => -1,
+            // M3: Emergency Response Plan - Official terminology: None/Adequate/Validated
+            // Note: Backend uses Low/Medium/High internally, but maps to None/Adequate/Validated
+            (GroundRiskMitigation_V2_0.M3_EmergencyResponsePlan, RobustnessLevel.Low) => +1,    // None (penalty)
+            (GroundRiskMitigation_V2_0.M3_EmergencyResponsePlan, RobustnessLevel.Medium) => 0,  // Adequate
+            (GroundRiskMitigation_V2_0.M3_EmergencyResponsePlan, RobustnessLevel.High) => -1,   // Validated
 
             _ => 0
         };
@@ -282,18 +283,18 @@ public class GRCCalculationService : IGRCCalculationService
     {
         return (type, robustness) switch
         {
-            // M1(A) Sheltering
+            // M1(A) Sheltering - Official Annex B Tables 2-3: ONLY Low integrity level
             (GroundRiskMitigation.M1A_Sheltering, RobustnessLevel.Low) => -1,
-            (GroundRiskMitigation.M1A_Sheltering, RobustnessLevel.Medium) => -2,
 
-            // M1(B) Operational restrictions
+            // M1(B) Operational restrictions - Official Annex B Tables 4-5: ONLY Medium/High integrity
             (GroundRiskMitigation.M1B_OperationalRestrictions, RobustnessLevel.Medium) => -1,
             (GroundRiskMitigation.M1B_OperationalRestrictions, RobustnessLevel.High) => -2,
 
-            // M1(C) Ground observation
+            // M1(C) Ground observation - Official Annex B Tables 6-7: ONLY Low integrity level
             (GroundRiskMitigation.M1C_GroundObservation, RobustnessLevel.Low) => -1,
 
-            // M2 Impact dynamics (parachute, etc.)
+            // M2 Impact dynamics - Official Annex B Table 8+: Low/Medium/High integrity
+            (GroundRiskMitigation.M2_ImpactDynamics, RobustnessLevel.Low) => -1,
             (GroundRiskMitigation.M2_ImpactDynamics, RobustnessLevel.Medium) => -1,
             (GroundRiskMitigation.M2_ImpactDynamics, RobustnessLevel.High) => -2,
 
