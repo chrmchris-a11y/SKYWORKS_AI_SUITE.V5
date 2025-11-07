@@ -10,7 +10,7 @@
 export const SORA_25_SCHEMAS = {
   m1a: {
     allowed: ["None", "Low"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["None", "Low"].includes(val)) {
         throw new Error(`Invalid M1A value: ${val}. Allowed: None, Low`);
       }
@@ -19,7 +19,7 @@ export const SORA_25_SCHEMAS = {
   },
   m1b: {
     allowed: ["None", "Medium", "High"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["None", "Medium", "High"].includes(val)) {
         throw new Error(`Invalid M1B value: ${val}. Allowed: None, Medium, High`);
       }
@@ -28,7 +28,7 @@ export const SORA_25_SCHEMAS = {
   },
   m1c: {
     allowed: ["None", "Low"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["None", "Low"].includes(val)) {
         throw new Error(`Invalid M1C value: ${val}. Allowed: None, Low`);
       }
@@ -37,7 +37,7 @@ export const SORA_25_SCHEMAS = {
   },
   m2: {
     allowed: ["None", "Low", "Medium", "High"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["None", "Low", "Medium", "High"].includes(val)) {
         throw new Error(`Invalid M2 value: ${val}. Allowed: None, Low, Medium, High`);
       }
@@ -49,7 +49,7 @@ export const SORA_25_SCHEMAS = {
 export const SORA_20_SCHEMAS = {
   m1: {
     allowed: ["None", "Low", "Medium", "High"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["None", "Low", "Medium", "High"].includes(val)) {
         throw new Error(`Invalid M1 value: ${val}. Allowed: None, Low, Medium, High`);
       }
@@ -58,7 +58,7 @@ export const SORA_20_SCHEMAS = {
   },
   m2: {
     allowed: ["None", "Low", "High"], // NO MEDIUM!
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["None", "Low", "High"].includes(val)) {
         throw new Error(`Invalid M2 value: ${val}. Allowed: None, Low, High (NO MEDIUM in SORA 2.0)`);
       }
@@ -67,7 +67,7 @@ export const SORA_20_SCHEMAS = {
   },
   m3: {
     allowed: ["None", "Adequate", "Validated"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["None", "Adequate", "Validated"].includes(val)) {
         throw new Error(`Invalid M3 value: ${val}. Allowed: None, Adequate, Validated`);
       }
@@ -79,7 +79,7 @@ export const SORA_20_SCHEMAS = {
 export const COMMON_SCHEMAS = {
   airspaceClass: {
     allowed: ["A", "B", "C", "D", "E", "F", "G"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["A", "B", "C", "D", "E", "F", "G"].includes(val)) {
         throw new Error(`Invalid Airspace Class: ${val}`);
       }
@@ -88,7 +88,7 @@ export const COMMON_SCHEMAS = {
   },
   specialZones: {
     allowed: ["CTR", "TMA", "ATZ", "RMZ", "TMZ", "Prohibited", "Restricted", "Danger", "TSA", "TRA", "CBA", "UAS_Geo_Zone"],
-    validate: (vals) => {
+    validate: (vals: string[]) => {
       const allowed = ["CTR", "TMA", "ATZ", "RMZ", "TMZ", "Prohibited", "Restricted", "Danger", "TSA", "TRA", "CBA", "UAS_Geo_Zone"];
       for (const v of vals) {
         if (!allowed.includes(v)) {
@@ -100,7 +100,7 @@ export const COMMON_SCHEMAS = {
   },
   typicality: {
     allowed: ["Typical", "Atypical"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["Typical", "Atypical"].includes(val)) {
         throw new Error(`Invalid Typicality: ${val}`);
       }
@@ -109,7 +109,7 @@ export const COMMON_SCHEMAS = {
   },
   trafficDensitySource: {
     allowed: ["Empirical", "Modelled", "ANSP"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["Empirical", "Modelled", "ANSP"].includes(val)) {
         throw new Error(`Invalid Traffic Density Source: ${val}`);
       }
@@ -118,7 +118,7 @@ export const COMMON_SCHEMAS = {
   },
   airspaceContainment: {
     allowed: ["None", "Horizontal", "Vertical", "Horizontal_and_Vertical"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["None", "Horizontal", "Vertical", "Horizontal_and_Vertical"].includes(val)) {
         throw new Error(`Invalid Airspace Containment: ${val}`);
       }
@@ -127,7 +127,7 @@ export const COMMON_SCHEMAS = {
   },
   aec: {
     allowed: ["AEC_1", "AEC_2", "AEC_3", "AEC_4", "AEC_5", "AEC_6", "AEC_7", "AEC_8", "AEC_9", "AEC_10", "AEC_11", "AEC_12"],
-    validate: (val) => {
+    validate: (val: string) => {
       if (!["AEC_1", "AEC_2", "AEC_3", "AEC_4", "AEC_5", "AEC_6", "AEC_7", "AEC_8", "AEC_9", "AEC_10", "AEC_11", "AEC_12"].includes(val)) {
         throw new Error(`Invalid AEC: ${val}`);
       }
@@ -139,8 +139,8 @@ export const COMMON_SCHEMAS = {
 /**
  * Validate full SORA request payload
  */
-export function validateSoraRequest(payload) {
-  const errors = [];
+export function validateSoraRequest(payload: any) {
+  const errors: string[] = [];
 
   try {
     // Common fields
@@ -162,7 +162,7 @@ export function validateSoraRequest(payload) {
       SORA_20_SCHEMAS.m2.validate(payload.grc.m2);
       SORA_20_SCHEMAS.m3.validate(payload.grc.m3);
     }
-  } catch (err) {
+  } catch (err: any) {
     errors.push(err.message);
   }
 
