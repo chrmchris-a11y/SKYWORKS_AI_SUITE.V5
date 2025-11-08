@@ -1,11 +1,30 @@
 # SKYWORKS AI SUITE V5 - Feature Development TODO
 
-**Last Updated**: November 8, 2025  
-**Current Status**: Phase 6 skeleton merged, implementing complete features
+**Last Updated**: November 8, 2025 (LATEST SESSION - EASA/JARUS Compliance Verified)  
+**Current Status**: SORA 2.0/2.5 specs validated, implementation 70% ready
 
 ---
 
-## 🎯 COMPLETED ✅
+## ✅ COMPLETED - CURRENT SESSION
+
+- [x] **Official EASA/JARUS Document Review** (3500+ lines read)
+  - Read SORA 2.5 Main Body (JAR_doc_25, 1898 lines)
+  - Read SORA 2.5 Annex B (JAR_doc_27, 478 lines)  
+  - Read SORA 2.0 Main Body (JAR_doc_06, 1071 lines)
+  - Verified EXACT mitigation values from Table 11 (Annex B page 15)
+  - Identified critical constraints (M1A+M1B, column-min clamp differences)
+
+- [x] **Created SORA_COMPLIANCE_REFERENCE.md** (400+ lines)
+  - Complete implementation guide with exact TypeScript examples
+  - All dropdown values with official source citations
+  - Validation rules with document references
+  - SORA 2.0 vs 2.5 comparison table
+
+- [x] **Updated sora-calculator.js header** with verified compliance rules
+
+---
+
+## 🎯 COMPLETED PREVIOUSLY ✅
 
 - [x] PR #1: Mission Planner UI + Phase 6 Airspace Maps (skeleton)
   - 12-page Mission Planner UI structure
@@ -14,12 +33,40 @@
   - E2E tests (Playwright) configured
   - 9 commits merged to main
 
+- [x] **SORA Calculator Core** (sora-calculator.js - 850+ lines)
+- [x] **50-Drone Database** (drones.json with all C-classes)
+- [x] **Backend API Endpoint** (SoraController.cs)
+- [x] **74 Test Scenarios** (SoraCalculatorTests.js)
+
 ---
 
-## 🔴 HIGH PRIORITY (Next Sprint)
+## 🔴 CRITICAL PRIORITY (Implement Now)
 
-### 1. SORA 2.0 vs 2.5 Dynamic Toggle
-**Status**: ❌ Not Started  
+### 1. Fix Existing sora-calculator.js with Official Values
+**Status**: ⚠️ IN PROGRESS (header updated, functions need verification)  
+**Files**:
+- `WebPlatform/wwwroot/app/Pages/ui/assets/sora-calculator.js`
+
+**Action Items**:
+- [x] Update header with verified compliance rules
+- [ ] Add M1(A) + M1(B) validation (Annex B page 8 constraint)
+- [ ] Verify calculateFinalGRC_SORA25() has NO column-min clamp
+- [ ] Verify calculateFinalGRC_SORA20() HAS column-min clamp
+- [ ] Fix calculateAEC() decision tree (uncontrolled + populated → AEC 9)
+- [ ] Add inline comments with exact document references
+
+**Critical Fixes Needed**:
+```javascript
+// Add M1(A) + M1(B) validation (Source: Annex B page 8)
+if (m1a === "Medium" && m1b !== "None") {
+  throw new Error("M1(A) Medium cannot combine with M1(B). Source: JAR_doc_27 Annex B Section B.2");
+}
+```
+
+---
+
+### 2. SORA 2.0 vs 2.5 Dynamic Toggle
+**Status**: ❌ Not Started (specs ready, needs implementation)  
 **Files**:
 - `WebPlatform/wwwroot/app/Pages/ui/mission-01-basic.html`
 - `WebPlatform/wwwroot/app/Pages/ui/assets/mission.js`

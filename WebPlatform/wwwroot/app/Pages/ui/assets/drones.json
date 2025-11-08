@@ -1,0 +1,506 @@
+{
+  "$schema": "./types.ts#DroneDatabase",
+  "lastUpdated": "2025-11-08",
+  "drones": [
+    {
+      "id": "dji-mini-4-pro",
+      "manufacturer": "DJI",
+      "model": "Mini 4 Pro",
+      "mtom_kg": 0.249,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 500,
+      "class": "C0",
+      "features": ["4K Camera", "Obstacle Avoidance", "ActiveTrack"]
+    },
+    {
+      "id": "dji-mini-3-pro",
+      "manufacturer": "DJI",
+      "model": "Mini 3 Pro",
+      "mtom_kg": 0.249,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 500,
+      "class": "C0",
+      "features": ["4K Camera", "Tri-Directional Obstacle Sensing"]
+    },
+    {
+      "id": "dji-mini-2-se",
+      "manufacturer": "DJI",
+      "model": "Mini 2 SE",
+      "mtom_kg": 0.249,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 500,
+      "class": "C0",
+      "features": ["2.7K Camera", "QuickShots"]
+    },
+    {
+      "id": "dji-mini-se",
+      "manufacturer": "DJI",
+      "model": "Mini SE",
+      "mtom_kg": 0.249,
+      "maxSpeed_ms": 13,
+      "maxHeight_m": 500,
+      "class": "C0",
+      "features": ["2.7K Camera", "GPS"]
+    },
+    {
+      "id": "dji-mavic-3-pro",
+      "manufacturer": "DJI",
+      "model": "Mavic 3 Pro",
+      "mtom_kg": 0.958,
+      "maxSpeed_ms": 21,
+      "maxHeight_m": 6000,
+      "class": "C1",
+      "features": ["Hasselblad Camera", "Tri-Camera System", "Omnidirectional Obstacle Sensing"]
+    },
+    {
+      "id": "dji-mavic-3-enterprise",
+      "manufacturer": "DJI",
+      "model": "Mavic 3 Enterprise",
+      "mtom_kg": 1.05,
+      "maxSpeed_ms": 21,
+      "maxHeight_m": 6000,
+      "class": "C1",
+      "features": ["RTK Module", "Thermal Camera", "Spotlight", "Speaker"]
+    },
+    {
+      "id": "dji-mavic-3-classic",
+      "manufacturer": "DJI",
+      "model": "Mavic 3 Classic",
+      "mtom_kg": 0.895,
+      "maxSpeed_ms": 21,
+      "maxHeight_m": 6000,
+      "class": "C1",
+      "features": ["Hasselblad Camera", "46min Flight Time"]
+    },
+    {
+      "id": "dji-mavic-3-thermal",
+      "manufacturer": "DJI",
+      "model": "Mavic 3 Thermal",
+      "mtom_kg": 1.05,
+      "maxSpeed_ms": 21,
+      "maxHeight_m": 6000,
+      "class": "C1",
+      "features": ["Thermal Camera 640×512", "RTK", "Wide-Angle Camera"]
+    },
+    {
+      "id": "dji-mavic-3-cine",
+      "manufacturer": "DJI",
+      "model": "Mavic 3 Cine",
+      "mtom_kg": 0.958,
+      "maxSpeed_ms": 21,
+      "maxHeight_m": 6000,
+      "class": "C1",
+      "features": ["Apple ProRes", "1TB SSD", "Tri-Camera"]
+    },
+    {
+      "id": "dji-air-3",
+      "manufacturer": "DJI",
+      "model": "Air 3",
+      "mtom_kg": 0.720,
+      "maxSpeed_ms": 21,
+      "maxHeight_m": 6000,
+      "class": "C1",
+      "features": ["Dual Primary Cameras", "Omnidirectional Obstacle Sensing", "46min Flight"]
+    },
+    {
+      "id": "dji-air-2s",
+      "manufacturer": "DJI",
+      "model": "Air 2S",
+      "mtom_kg": 0.595,
+      "maxSpeed_ms": 19,
+      "maxHeight_m": 5000,
+      "class": "C1",
+      "features": ["1-inch CMOS", "5.4K Video", "MasterShots"]
+    },
+    {
+      "id": "dji-air-2",
+      "manufacturer": "DJI",
+      "model": "Air 2",
+      "mtom_kg": 0.570,
+      "maxSpeed_ms": 19,
+      "maxHeight_m": 5000,
+      "class": "C1",
+      "features": ["48MP Camera", "8K Hyperlapse", "34min Flight"]
+    },
+    {
+      "id": "dji-phantom-4-pro-v2",
+      "manufacturer": "DJI",
+      "model": "Phantom 4 Pro V2.0",
+      "mtom_kg": 1.375,
+      "maxSpeed_ms": 20,
+      "maxHeight_m": 6000,
+      "class": "C2",
+      "features": ["1-inch 20MP CMOS", "Mechanical Shutter", "5-Direction Obstacle Sensing"]
+    },
+    {
+      "id": "dji-phantom-4-rtk",
+      "manufacturer": "DJI",
+      "model": "Phantom 4 RTK",
+      "mtom_kg": 1.391,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 6000,
+      "class": "C2",
+      "features": ["RTK Module", "1-inch CMOS", "Centimeter-Level Positioning", "TimeSync"]
+    },
+    {
+      "id": "dji-inspire-3",
+      "manufacturer": "DJI",
+      "model": "Inspire 3",
+      "mtom_kg": 6.3,
+      "maxSpeed_ms": 26,
+      "maxHeight_m": 5000,
+      "class": "C3",
+      "features": ["Zenmuse X9-8K Camera", "Centimeter-Level RTK", "Waypoint Pro", "O3 Pro"]
+    },
+    {
+      "id": "dji-inspire-2",
+      "manufacturer": "DJI",
+      "model": "Inspire 2",
+      "mtom_kg": 4.25,
+      "maxSpeed_ms": 26,
+      "maxHeight_m": 5000,
+      "class": "C3",
+      "features": ["Dual Operator", "Zenmuse Cameras", "Spotlight Pro", "TapFly"]
+    },
+    {
+      "id": "dji-matrice-30t",
+      "manufacturer": "DJI",
+      "model": "Matrice 30T",
+      "mtom_kg": 3.77,
+      "maxSpeed_ms": 23,
+      "maxHeight_m": 7000,
+      "class": "C3",
+      "features": ["Thermal Camera", "Wide-Angle Camera", "Zoom Camera", "Laser Rangefinder", "IP55 Rating"]
+    },
+    {
+      "id": "dji-matrice-30",
+      "manufacturer": "DJI",
+      "model": "Matrice 30",
+      "mtom_kg": 3.77,
+      "maxSpeed_ms": 23,
+      "maxHeight_m": 7000,
+      "class": "C3",
+      "features": ["Wide-Angle Camera", "Zoom Camera", "Laser Rangefinder", "IP55 Rating"]
+    },
+    {
+      "id": "dji-matrice-300-rtk",
+      "manufacturer": "DJI",
+      "model": "Matrice 300 RTK",
+      "mtom_kg": 6.3,
+      "maxSpeed_ms": 23,
+      "maxHeight_m": 7000,
+      "class": "C3",
+      "features": ["RTK+PPK", "6 Directional Sensing", "55min Flight", "IP45 Rating", "Dual Operator"]
+    },
+    {
+      "id": "dji-matrice-350-rtk",
+      "manufacturer": "DJI",
+      "model": "Matrice 350 RTK",
+      "mtom_kg": 6.47,
+      "maxSpeed_ms": 23,
+      "maxHeight_m": 7000,
+      "class": "C3",
+      "features": ["RTK+PPK", "O3 Enterprise", "IP55 Rating", "Dual Control", "Night Vision FPV"]
+    },
+    {
+      "id": "autel-evo-ii-pro",
+      "manufacturer": "Autel Robotics",
+      "model": "EVO II Pro",
+      "mtom_kg": 1.127,
+      "maxSpeed_ms": 20,
+      "maxHeight_m": 7000,
+      "class": "C2",
+      "features": ["1-inch CMOS 6K", "Omnidirectional Obstacle Avoidance", "40min Flight"]
+    },
+    {
+      "id": "autel-evo-ii-dual",
+      "manufacturer": "Autel Robotics",
+      "model": "EVO II Dual",
+      "mtom_kg": 1.127,
+      "maxSpeed_ms": 20,
+      "maxHeight_m": 7000,
+      "class": "C2",
+      "features": ["Thermal Camera 640×512", "8K Visual Camera", "Radiometric"]
+    },
+    {
+      "id": "autel-evo-nano-plus",
+      "manufacturer": "Autel Robotics",
+      "model": "EVO Nano+",
+      "mtom_kg": 0.249,
+      "maxSpeed_ms": 15,
+      "maxHeight_m": 3950,
+      "class": "C0",
+      "features": ["1/1.28-inch CMOS", "50MP", "Tri-Directional Obstacle Avoidance"]
+    },
+    {
+      "id": "autel-evo-lite-plus",
+      "manufacturer": "Autel Robotics",
+      "model": "EVO Lite+",
+      "mtom_kg": 0.835,
+      "maxSpeed_ms": 17,
+      "maxHeight_m": 7000,
+      "class": "C1",
+      "features": ["1-inch CMOS", "20MP", "Moonlight Algorithm", "40min Flight"]
+    },
+    {
+      "id": "parrot-anafi-usa",
+      "manufacturer": "Parrot",
+      "model": "ANAFI USA",
+      "mtom_kg": 0.500,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 4500,
+      "class": "C1",
+      "features": ["Thermal Camera FLIR", "32x Zoom", "Secure Design", "IP53"]
+    },
+    {
+      "id": "parrot-anafi-ai",
+      "manufacturer": "Parrot",
+      "model": "ANAFI Ai",
+      "mtom_kg": 0.900,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 4000,
+      "class": "C1",
+      "features": ["4G Connectivity", "Photogrammetry", "Stereo Cameras", "RTK"]
+    },
+    {
+      "id": "parrot-anafi-work",
+      "manufacturer": "Parrot",
+      "model": "ANAFI Work",
+      "mtom_kg": 0.320,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 4500,
+      "class": "C1",
+      "features": ["21MP Camera", "2.8x Lossless Zoom", "IP53", "Photogrammetry"]
+    },
+    {
+      "id": "skydio-x10",
+      "manufacturer": "Skydio",
+      "model": "X10",
+      "mtom_kg": 2.7,
+      "maxSpeed_ms": 20,
+      "maxHeight_m": 6000,
+      "class": "C3",
+      "features": ["AI-Powered Autonomy", "Thermal Camera", "48MP Wide", "RTK", "IP55"]
+    },
+    {
+      "id": "skydio-2-plus",
+      "manufacturer": "Skydio",
+      "model": "2+",
+      "mtom_kg": 1.1,
+      "maxSpeed_ms": 15,
+      "maxHeight_m": 5000,
+      "class": "C2",
+      "features": ["Autonomous Flight", "360° Obstacle Avoidance", "4K60 HDR"]
+    },
+    {
+      "id": "freefly-alta-x",
+      "manufacturer": "Freefly Systems",
+      "model": "Alta X",
+      "mtom_kg": 16.0,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 4000,
+      "class": "C4",
+      "features": ["Heavy Lift", "15.9 kg Payload", "Synapse", "Redundant Systems"]
+    },
+    {
+      "id": "freefly-alta-8",
+      "manufacturer": "Freefly Systems",
+      "model": "Alta 8",
+      "mtom_kg": 9.5,
+      "maxSpeed_ms": 14,
+      "maxHeight_m": 4000,
+      "class": "C4",
+      "features": ["9.1 kg Payload", "Coaxial Design", "Synapse"]
+    },
+    {
+      "id": "yuneec-h520e",
+      "manufacturer": "Yuneec",
+      "model": "H520E",
+      "mtom_kg": 1.95,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 3000,
+      "class": "C2",
+      "features": ["Thermal Camera E90", "RTK", "Hexacopter", "IP43"]
+    },
+    {
+      "id": "sensfly-ebee-x",
+      "manufacturer": "senseFly",
+      "model": "eBee X",
+      "mtom_kg": 1.6,
+      "maxSpeed_ms": 25,
+      "maxHeight_m": 5000,
+      "class": "C2",
+      "features": ["Fixed-Wing", "90min Flight", "RTK/PPK", "Mapping"]
+    },
+    {
+      "id": "wingtra-one-gen-ii",
+      "manufacturer": "WingtraOne",
+      "model": "GEN II",
+      "mtom_kg": 6.5,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 3500,
+      "class": "C3",
+      "features": ["VTOL", "42MP Camera", "RTK/PPK", "Surveying"]
+    },
+    {
+      "id": "microdrones-md4-3000",
+      "manufacturer": "Microdrones",
+      "model": "md4-3000",
+      "mtom_kg": 6.8,
+      "maxSpeed_ms": 18,
+      "maxHeight_m": 3500,
+      "class": "C3",
+      "features": ["Quadcopter", "Multiple Payloads", "RTK", "Long Endurance"]
+    },
+    {
+      "id": "azur-drones-skeyetech",
+      "manufacturer": "Azur Drones",
+      "model": "Skeyetech",
+      "mtom_kg": 15.0,
+      "maxSpeed_ms": 15,
+      "maxHeight_m": 3000,
+      "class": "C4",
+      "features": ["Autonomous", "Dock-in-Box", "Security", "AI Detection"]
+    },
+    {
+      "id": "dji-agras-t40",
+      "manufacturer": "DJI",
+      "model": "Agras T40",
+      "mtom_kg": 50.5,
+      "maxSpeed_ms": 10,
+      "maxHeight_m": 100,
+      "class": "C5",
+      "features": ["Agriculture", "40L Tank", "Spraying", "Spreading"]
+    },
+    {
+      "id": "dji-agras-t30",
+      "manufacturer": "DJI",
+      "model": "Agras T30",
+      "mtom_kg": 42.5,
+      "maxSpeed_ms": 9,
+      "maxHeight_m": 100,
+      "class": "C5",
+      "features": ["Agriculture", "30L Tank", "Spraying", "Omnidirectional Radar"]
+    },
+    {
+      "id": "dji-m30-combo",
+      "manufacturer": "DJI",
+      "model": "M30 Combo",
+      "mtom_kg": 3.77,
+      "maxSpeed_ms": 23,
+      "maxHeight_m": 7000,
+      "class": "C3",
+      "features": ["Multi-Sensor", "Laser Rangefinder", "IP55", "41min Flight"]
+    },
+    {
+      "id": "yuneec-typhoon-h3",
+      "manufacturer": "Yuneec",
+      "model": "Typhoon H3",
+      "mtom_kg": 1.97,
+      "maxSpeed_ms": 16,
+      "maxHeight_m": 3000,
+      "class": "C2",
+      "features": ["1-inch CMOS", "4K60", "Hexacopter", "Retractable Landing Gear"]
+    },
+    {
+      "id": "holy-stone-hs720e",
+      "manufacturer": "Holy Stone",
+      "model": "HS720E",
+      "mtom_kg": 0.495,
+      "maxSpeed_ms": 10,
+      "maxHeight_m": 500,
+      "class": "C1",
+      "features": ["4K EIS Camera", "GPS", "Brushless Motor", "Budget-Friendly"]
+    },
+    {
+      "id": "potensic-atom-se",
+      "manufacturer": "Potensic",
+      "model": "ATOM SE",
+      "mtom_kg": 0.249,
+      "maxSpeed_ms": 12,
+      "maxHeight_m": 500,
+      "class": "C0",
+      "features": ["4K Camera", "GPS", "Follow Me", "Waypoint"]
+    },
+    {
+      "id": "custom-diy-racing",
+      "manufacturer": "Custom/DIY",
+      "model": "Racing Quad (5-inch)",
+      "mtom_kg": 0.650,
+      "maxSpeed_ms": 30,
+      "maxHeight_m": 500,
+      "class": "C1",
+      "features": ["FPV", "High Speed", "Acro", "Custom Build"]
+    },
+    {
+      "id": "custom-diy-freestyle",
+      "manufacturer": "Custom/DIY",
+      "model": "Freestyle (7-inch)",
+      "mtom_kg": 0.900,
+      "maxSpeed_ms": 25,
+      "maxHeight_m": 500,
+      "class": "C1",
+      "features": ["FPV", "Long Range", "Freestyle", "Custom Build"]
+    },
+    {
+      "id": "custom-diy-cinematic",
+      "manufacturer": "Custom/DIY",
+      "model": "Cinematic (10-inch)",
+      "mtom_kg": 2.5,
+      "maxSpeed_ms": 18,
+      "maxHeight_m": 1000,
+      "class": "C3",
+      "features": ["Cinema Camera", "Stabilization", "Long Flight", "Custom Build"]
+    },
+    {
+      "id": "ryze-tello",
+      "manufacturer": "Ryze/DJI",
+      "model": "Tello",
+      "mtom_kg": 0.080,
+      "maxSpeed_ms": 8,
+      "maxHeight_m": 30,
+      "class": "C0",
+      "features": ["Educational", "720p Camera", "Programming", "Toy Drone"]
+    },
+    {
+      "id": "dji-fpv",
+      "manufacturer": "DJI",
+      "model": "FPV",
+      "mtom_kg": 0.795,
+      "maxSpeed_ms": 39,
+      "maxHeight_m": 500,
+      "class": "C1",
+      "features": ["First-Person View", "4K60", "Manual Mode", "Emergency Brake"]
+    },
+    {
+      "id": "dji-avata-2",
+      "manufacturer": "DJI",
+      "model": "Avata 2",
+      "mtom_kg": 0.495,
+      "maxSpeed_ms": 27,
+      "maxHeight_m": 500,
+      "class": "C1",
+      "features": ["Cinewhoop", "FPV", "4K60", "Propeller Guards", "Motion Controller"]
+    },
+    {
+      "id": "elistair-orion-2",
+      "manufacturer": "Elistair",
+      "model": "Orion 2",
+      "mtom_kg": 6.0,
+      "maxSpeed_ms": 10,
+      "maxHeight_m": 100,
+      "class": "C3",
+      "features": ["Tethered", "Unlimited Flight", "Surveillance", "5kg Payload"]
+    },
+    {
+      "id": "quantum-systems-tron-f90",
+      "manufacturer": "Quantum-Systems",
+      "model": "Tron F90+",
+      "mtom_kg": 3.6,
+      "maxSpeed_ms": 22,
+      "maxHeight_m": 5000,
+      "class": "C3",
+      "features": ["Fixed-Wing VTOL", "90min Flight", "Mapping", "RTK"]
+    }
+  ]
+}
