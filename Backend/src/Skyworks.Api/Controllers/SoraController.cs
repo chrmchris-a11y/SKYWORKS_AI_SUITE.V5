@@ -111,15 +111,16 @@ public class SoraController : ControllerBase
             {
                 version = "SORA 2.5",
                 populationDensityOptions = new[] { "Controlled", "<5", "<50", "<500", "<5000", "<50000", ">50000" },
-                m1aOptions = new[] { "None", "Low", "Medium" }, // NO High
-                m1bOptions = new[] { "None", "Medium", "High" }, // NO Low
-                m1cOptions = new[] { "None", "Low" }, // NO Medium, NO High
-                m2Options = new[] { "None", "Medium", "High" }, // NO Low
+                // EASA JARUS SORA 2.5 Annex B - Strategic Mitigations
+                m1aOptions = new[] { "None", "Low" }, // Annex B p.8 - ONLY Low available
+                m1bOptions = new[] { "None", "Medium", "High" }, // Annex B p.14 - Medium, High
+                m1cOptions = new[] { "None", "Low" }, // Annex B p.19 - ONLY Low available
+                m2Options = new[] { "None", "Low", "Medium", "High" }, // Annex B p.25 - All levels
                 constraints = new[]
                 {
-                    "M1(A) Medium CANNOT combine with M1(B) any level",
-                    "Small-UA Rule: IF MTOM ≤ 0.25kg AND speed ≤ 25m/s THEN iGRC = 1",
-                    "Final GRC cannot go below column minimum from Table 2"
+                    "M1(A) Low CANNOT combine with M1(B) any level (Annex B p.8)",
+                    "Small-UA Rule: IF MTOM ≤ 0.25kg AND speed ≤ 25m/s THEN iGRC = 1 (Main Body §4.3)",
+                    "Final GRC cannot go below column minimum from Table 2 (Main Body Table 2)"
                 },
                 reference = "JAR-DEL-SRM-SORA-MB-2.5, Edition 2.5, 13.05.2024"
             });
@@ -134,15 +135,16 @@ public class SoraController : ControllerBase
                     "VLOS_Controlled", "VLOS_Sparsely", "VLOS_Populated", "VLOS_Gathering",
                     "BVLOS_Controlled", "BVLOS_Sparsely", "BVLOS_Populated", "BVLOS_Gathering"
                 },
-                m1Options = new[] { "None", "Low", "Medium", "High" },
-                m2Options = new[] { "None", "Medium", "High" },
-                m3Options = new[] { "None", "Adequate", "Validated" }, // REMOVED in SORA 2.5
+                // AMC1 Article 11 (SORA 2.0) - Tactical Mitigations
+                m1Options = new[] { "None", "Low", "Medium", "High" }, // AMC1 Table 3
+                m2Options = new[] { "None", "Low", "High" }, // AMC1 Table 4 - NO Medium
+                m3Options = new[] { "None", "Adequate", "Validated" }, // AMC1 §3.5 - ERP levels
                 constraints = new[]
                 {
-                    "EVLOS is treated as BVLOS for GRC determination",
-                    "M1 uses column-minimum clamp method",
-                    "M3 None has penalty (+1 to final GRC)",
-                    "Final GRC cannot go below column minimum from Table 2"
+                    "EVLOS is treated as BVLOS for GRC determination (AMC1 §2.2)",
+                    "M1 uses column-minimum clamp method (AMC1 Table 3 footnotes)",
+                    "M3 None has penalty (+1 to final GRC) (AMC1 §3.5)",
+                    "Final GRC cannot go below column minimum from AMC1 Table 2"
                 },
                 reference = "JAR-DEL-WG6-D.04, Edition 2.0, 30.01.2019"
             });
@@ -181,21 +183,20 @@ public class SoraController : ControllerBase
         // Version-specific validation
         if (request.SoraVersion == "2.5")
         {
-            // SORA 2.5: Check M1(A) Medium + M1(B) constraint
-            if (request.M1a == "Medium" && !string.IsNullOrWhiteSpace(request.M1b) && request.M1b != "None")
+            // SORA 2.5: Check M1(A) Low + M1(B) constraint (Annex B p.8)
+            if (request.M1a == "Low" && !string.IsNullOrWhiteSpace(request.M1b) && request.M1b != "None")
             {
-                errors.Add("M1(A) Medium cannot be combined with M1(B) (Annex B page 8)");
+                errors.Add("M1(A) Low cannot be combined with M1(B) (SORA 2.5 Annex B page 8)");
             }
 
-            // Check invalid options
-            if (request.M1a == "High")
-                errors.Add("M1(A) High does not exist in SORA 2.5. Valid: Low, Medium");
+            // Check invalid options (EASA-compliant)
+            if (request.M1a == "Medium" || request.M1a == "High")
+                errors.Add("M1(A) Medium/High do not exist in SORA 2.5. Valid: None, Low only");
             if (request.M1b == "Low")
-                errors.Add("M1(B) Low does not exist in SORA 2.5. Valid: Medium, High");
+                errors.Add("M1(B) Low does not exist in SORA 2.5. Valid: None, Medium, High");
             if (request.M1c == "Medium" || request.M1c == "High")
-                errors.Add("M1(C) Medium/High do not exist in SORA 2.5. Valid: Low only");
-            if (request.M2 == "Low")
-                errors.Add("M2 Low does not exist in SORA 2.5. Valid: Medium, High");
+                errors.Add("M1(C) Medium/High do not exist in SORA 2.5. Valid: None, Low only");
+            // M2 accepts all levels in SORA 2.5 (None, Low, Medium, High)
 
             if (string.IsNullOrWhiteSpace(request.PopulationDensity))
                 errors.Add("populationDensity is required for SORA 2.5");
@@ -204,6 +205,10 @@ public class SoraController : ControllerBase
         {
             if (string.IsNullOrWhiteSpace(request.OperationScenario))
                 errors.Add("operationScenario is required for SORA 2.0");
+
+            // Check invalid options (AMC1 Article 11)
+            if (request.M2_20 == "Medium")
+                errors.Add("M2 Medium does not exist in SORA 2.0. Valid: None, Low, High (AMC1 Table 4)");
 
             // M3 only exists in SORA 2.0
             if (string.IsNullOrWhiteSpace(request.M3))

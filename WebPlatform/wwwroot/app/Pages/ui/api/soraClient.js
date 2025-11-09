@@ -88,6 +88,11 @@ export class SoraApiClient {
    */
   constructor(baseUrl = "/api/v1/sora") {
     this.baseUrl = baseUrl;
+    // In-memory cache for specifications (prevents redundant API calls)
+    this._specificationsCache = {
+      "2.0": null,
+      "2.5": null
+    };
   }
   
   /**
@@ -177,6 +182,9 @@ export class SoraApiClient {
   /**
    * Get SORA field specifications (dropdown options, validation rules)
    * 
+   * Uses in-memory cache to prevent redundant API calls.
+   * Cache is per-version and persists for the session.
+   * 
    * @param {string} version - SORA version ("2.0" or "2.5")
    * @returns {Promise<SoraSpecificationsResponse>} Available options and constraints
    * 
@@ -184,10 +192,17 @@ export class SoraApiClient {
    * const client = new SoraApiClient();
    * const specs = await client.getSpecifications("2.5");
    * 
-   * console.log("M1A options:", specs.m1aOptions); // ["None", "Low", "Medium"]
+   * console.log("M1A options:", specs.m1aOptions); // ["None", "Low"]
    * console.log("Constraints:", specs.constraints);
    */
   async getSpecifications(version = "2.5") {
+    // Check cache first
+    if (this._specificationsCache[version]) {
+      console.log(`[SORA API] Using cached specifications for ${version}`);
+      return this._specificationsCache[version];
+    }
+
+    console.log(`[SORA API] Fetching specifications for ${version}...`);
     const response = await fetch(`${this.baseUrl}/specifications?version=${version}`, {
       method: "GET",
       headers: {
@@ -202,7 +217,12 @@ export class SoraApiClient {
       );
     }
     
-    return response.json();
+    const data = await response.json();
+    
+    // Cache the result
+    this._specificationsCache[version] = data;
+    
+    return data;
   }
 }
 
