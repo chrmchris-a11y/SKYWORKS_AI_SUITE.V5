@@ -253,8 +253,8 @@ public class SoraController : ControllerBase
             throw new FileNotFoundException($"SORA calculator not found at {calculatorPath}");
         }
 
-        // Create Node.js wrapper script
-        var wrapperScript = GenerateNodeWrapperScript(request);
+        // Create Node.js wrapper script (pass calculator path)
+        var wrapperScript = GenerateNodeWrapperScript(request, calculatorPath);
         var tempScriptPath = Path.Combine(Path.GetTempPath(), $"sora-calc-{Guid.NewGuid()}.js");
         await System.IO.File.WriteAllTextAsync(tempScriptPath, wrapperScript);
 
@@ -343,17 +343,20 @@ public class SoraController : ControllerBase
         return null;
     }
 
-    private string GenerateNodeWrapperScript(SoraCalculationRequest request)
+    private string GenerateNodeWrapperScript(SoraCalculationRequest request, string calculatorPath)
     {
-        // Generate Node.js script that calls sora-calculator.js
+        // Generate Node.js script that calls sora-calculator.js with absolute path
         var json = System.Text.Json.JsonSerializer.Serialize(request, new System.Text.Json.JsonSerializerOptions
         {
             PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
             WriteIndented = false
         });
 
+        // Escape backslashes for Windows paths
+        var escapedPath = calculatorPath.Replace("\\", "\\\\");
+
         return $@"
-const calc = require('./sora-calculator.js');
+const calc = require('{escapedPath}');
 
 const request = {json};
 
