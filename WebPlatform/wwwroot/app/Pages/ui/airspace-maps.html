@@ -85,6 +85,16 @@
     <aside class="right-panel">
       <div class="card">
         <h3>SORA Compliance (Live)</h3>
+        
+        <!-- SORA Version Toggle -->
+        <div class="form-group">
+          <label class="form-label">SORA Version:</label>
+          <select id="soraVersion" class="form-input">
+            <option value="2.5" selected>SORA 2.5 (2024 Edition)</option>
+            <option value="2.0">SORA 2.0 (JAR-DEL-WG6-D.04)</option>
+          </select>
+        </div>
+
         <div class="kpi-grid">
           <div class="kpi-card">
             <div class="kpi-label">iGRC</div>
@@ -104,6 +114,86 @@
           </div>
         </div>
         <div class="sail-badge" id="sailBadge">SAIL: –</div>
+
+        <!-- SORA 2.5 Mitigations (Ground Risk) -->
+        <div id="mitigations_25" class="mitigations-section">
+          <h4>SORA 2.5 Mitigations</h4>
+          
+          <div class="form-group">
+            <label class="form-label">M1(A) Sheltering:</label>
+            <select id="m1a_sheltering" class="form-input">
+              <option value="None" selected>None</option>
+              <option value="Low">Low (M1A in place)</option>
+            </select>
+            <p class="help-text">Annex B Table 11: M1(A) reduces iGRC by 1 if Low</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">M1(B) Operational Restrictions:</label>
+            <select id="m1b_restrictions" class="form-input">
+              <option value="None" selected>None</option>
+              <option value="Medium">Medium (M1B Medium)</option>
+              <option value="High">High (M1B High)</option>
+            </select>
+            <p class="help-text">Annex B Table 11: Medium=-1, High=-2</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">M1(C) Ground Observation:</label>
+            <select id="m1c_observation" class="form-input">
+              <option value="None" selected>None</option>
+              <option value="Low">Low (M1C in place)</option>
+            </select>
+            <p class="help-text">Annex B Table 11: M1(C) reduces iGRC by 1 if Low</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">M2 Impact Dynamics:</label>
+            <select id="m2_impact" class="form-input">
+              <option value="None" selected>None</option>
+              <option value="Low">Low (M2 Low)</option>
+              <option value="Medium">Medium (M2 Medium)</option>
+              <option value="High">High (M2 High)</option>
+            </select>
+            <p class="help-text">Annex B Table 11: Low=-1, Medium=-2, High=-3</p>
+          </div>
+        </div>
+
+        <!-- SORA 2.0 Mitigations (Ground Risk) -->
+        <div id="mitigations_20" class="mitigations-section" style="display:none;">
+          <h4>SORA 2.0 Mitigations</h4>
+          
+          <div class="form-group">
+            <label class="form-label">M1 Strategic:</label>
+            <select id="m1_strategic" class="form-input">
+              <option value="None" selected>None</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+            <p class="help-text">Table 3: Low=-1, Medium=-2, High=-3</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">M2 Effects of Ground Impact:</label>
+            <select id="m2_effects" class="form-input">
+              <option value="None" selected>None</option>
+              <option value="Low">Low</option>
+              <option value="High">High</option>
+            </select>
+            <p class="help-text">Table 3: Low=-1, High=-2 (NO Medium option)</p>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">M3 Emergency Response Plan:</label>
+            <select id="m3_erp" class="form-input">
+              <option value="None" selected>None</option>
+              <option value="Adequate">Adequate</option>
+              <option value="Validated">Validated</option>
+            </select>
+            <p class="help-text">Table 3: Adequate=-1, Validated=-2</p>
+          </div>
+        </div>
       </div>
 
       <div class="card">

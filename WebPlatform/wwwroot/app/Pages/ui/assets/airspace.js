@@ -462,9 +462,10 @@ function updateSORABadges() {
   // Extract mission parameters from geometry
   const params = extractSORAParams();
 
-  // Calculate SORA 2.5 (default for Phase 6)
-  // User can toggle to SORA 2.0 via future UI switch
-  const soraVersion = '2.5'; // TODO: Add version selector in UI
+  // Read SORA version from UI selector
+  const versionSelect = document.getElementById('soraVersion');
+  const soraVersion = versionSelect ? versionSelect.value : '2.5';
+  
   const results = soraVersion === '2.5' 
     ? calculateSORA25(params) 
     : calculateSORA20(params);
@@ -501,12 +502,11 @@ function extractSORAParams() {
     populatedArea: true, // Default urban
     atypicalAirspace: false,
     
-    // Mitigations (SORA 2.5 format: lowercase m1a/m1b/m1c)
+    // Mitigations: will be populated from UI controls below
     m1a: 'None', m1b: 'None', m1c: 'None', m2: 'None',
+    m1: 'None', m2_sora20: 'None', m3: 'None',
     tmpr_low: false, tmpr_medium: false, tmpr_high: false,
     tactical_low: false, tactical_medium: false, tactical_high: false,
-    
-    // Strategic mitigations
     strategic_low: false, strategic_medium: false, strategic_high: false
   };
 
@@ -568,6 +568,33 @@ function extractSORAParams() {
     3: '<5000'       // High density (urban)
   };
   params.populationDensity = densityMap[params.populationDensity] || '<500';
+
+  // 8. READ UI MITIGATION CONTROLS
+  // Check which SORA version is selected
+  const versionSelect = document.getElementById('soraVersion');
+  const soraVersion = versionSelect ? versionSelect.value : '2.5';
+
+  if (soraVersion === '2.5') {
+    // SORA 2.5 Mitigations (M1A, M1B, M1C, M2)
+    const m1a = document.getElementById('m1a_sheltering');
+    const m1b = document.getElementById('m1b_restrictions');
+    const m1c = document.getElementById('m1c_observation');
+    const m2 = document.getElementById('m2_impact');
+
+    params.m1a = m1a ? m1a.value : 'None';
+    params.m1b = m1b ? m1b.value : 'None';
+    params.m1c = m1c ? m1c.value : 'None';
+    params.m2 = m2 ? m2.value : 'None';
+  } else {
+    // SORA 2.0 Mitigations (M1 Strategic, M2 Effects, M3 ERP)
+    const m1 = document.getElementById('m1_strategic');
+    const m2_sora20 = document.getElementById('m2_effects');
+    const m3 = document.getElementById('m3_erp');
+
+    params.m1 = m1 ? m1.value : 'None';
+    params.m2_sora20 = m2_sora20 ? m2_sora20.value : 'None';
+    params.m3 = m3 ? m3.value : 'None';
+  }
 
   return params;
 }
@@ -778,6 +805,51 @@ function attachEventListeners() {
   document.getElementById('exportCSV').addEventListener('click', exportCSV);
   document.getElementById('exportPNG').addEventListener('click', exportPNG);
   document.getElementById('exportMissionPack').addEventListener('click', exportMissionPack);
+
+  // SORA Version Toggle
+  const versionSelect = document.getElementById('soraVersion');
+  if (versionSelect) {
+    versionSelect.addEventListener('change', (e) => {
+      const version = e.target.value;
+      // Show/hide version-specific mitigation sections
+      const mitigations_25 = document.getElementById('mitigations_25');
+      const mitigations_20 = document.getElementById('mitigations_20');
+      
+      if (version === '2.5') {
+        mitigations_25.style.display = 'block';
+        mitigations_20.style.display = 'none';
+      } else {
+        mitigations_25.style.display = 'none';
+        mitigations_20.style.display = 'block';
+      }
+      
+      // Re-calculate SORA badges with new version
+      updateSORABadges();
+      logToConsole(`Switched to SORA ${version}`, 'success');
+    });
+  }
+
+  // SORA 2.5 Mitigation Controls
+  ['m1a_sheltering', 'm1b_restrictions', 'm1c_observation', 'm2_impact'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('change', () => {
+        updateSORABadges();
+        logToConsole(`Updated ${id}: ${element.value}`, 'info');
+      });
+    }
+  });
+
+  // SORA 2.0 Mitigation Controls
+  ['m1_strategic', 'm2_effects', 'm3_erp'].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.addEventListener('change', () => {
+        updateSORABadges();
+        logToConsole(`Updated ${id}: ${element.value}`, 'info');
+      });
+    }
+  });
 }
 
 // ================================================================
