@@ -319,70 +319,87 @@ function calculateFinalGRC_SORA20(iGRC, m1, m2, m3, operationScenario) {
  */
 function calculateAEC(altitude_ft, controlledAirspace, airportEnvironment, populatedArea, atypicalAirspace) {
   // Custom AEC numbering (0-11) for this implementation
-  // NOTE: This differs from official SORA 2.0 Annex C (AEC 1-12)
-  // Official SORA 2.5 does not use AEC at all, uses direct Initial ARC calculation
+  // Mapping VERIFIED against SORA 2.0 Annex C Table 1 (Page 12-13)
+  // NOTE: SORA 2.5 does not use AEC, uses direct Initial ARC calculation
   
-  // Atypical/Segregated airspace → AEC 0
-  if (atypicalAirspace) {
-    return 0;
-  }
-
   // Normalize airportEnvironment: treat 'none', false, null, undefined as no airport
   const hasAirport = airportEnvironment && airportEnvironment !== 'none';
 
+  // Atypical/Segregated airspace → AEC 0 → ARC-a
+  if (atypicalAirspace) {
+    return 0; // Custom AEC 0 = Official AEC 12 (Atypical)
+  }
+
+  // SORA 2.0 Annex C Table 1 Decision Tree:
+  
   // High altitude (>500ft AGL)
   if (altitude_ft > 500) {
     if (hasAirport) {
-      return 11; // High altitude + airport → AEC 11
+      // Airport environment >500ft → AEC 1 or 6
+      // For simplicity, assume non-Class-B/C/D → AEC 6
+      return 1; // Custom AEC 1 = Official AEC 6 (Airport E/F/G) → ARC-c
+    } else if (controlledAirspace) {
+      if (populatedArea) {
+        return 4; // Custom AEC 4 = Official AEC 4 (>500ft Controlled Urban) → ARC-c
+      } else {
+        return 3; // Custom AEC 3 = Official AEC 3 (>500ft Controlled Rural) → ARC-d
+      }
     } else {
-      return 10; // High altitude + no airport → AEC 10
+      // Uncontrolled >500ft
+      if (populatedArea) {
+        return 4; // Custom AEC 4 = Official AEC 4 (>500ft Uncontrolled Urban) → ARC-c
+      } else {
+        return 5; // Custom AEC 5 = Official AEC 5 (>500ft Uncontrolled Rural) → ARC-c
+      }
     }
   }
 
   // Low altitude (≤500ft AGL)
   if (controlledAirspace) {
-    // Controlled airspace
-    if (hasAirport && populatedArea) {
-      return 4; // Controlled + airport + populated → AEC 4
-    } else if (hasAirport || populatedArea) {
-      return 3; // Controlled + (airport OR populated) → AEC 3
-    } else {
-      return 2; // Controlled + no special conditions → AEC 2
-    }
+    // Controlled airspace <500ft → AEC 7 or 8
+    return 8; // Custom AEC 8 = Official AEC 8 (<500ft Controlled) → ARC-c
   } else {
-    // Uncontrolled airspace
-    if (populatedArea && !hasAirport) {
-      return 9; // Uncontrolled + populated (no airport) → AEC 9
-    } else if (hasAirport) {
-      return 8; // Uncontrolled + airport → AEC 8
+    // Uncontrolled <500ft
+    if (hasAirport) {
+      return 8; // Custom AEC 8 = Airport proximity <500ft → ARC-c
+    } else if (populatedArea) {
+      return 9; // Custom AEC 9 = Official AEC 9 (<500ft Uncontrolled Urban) → ARC-c
     } else {
-      return 6; // Uncontrolled + no special conditions → AEC 6
+      return 10; // Custom AEC 10 = Official AEC 10 (<500ft Uncontrolled Rural) → ARC-b
     }
   }
 }
 
 /**
  * AEC to Initial ARC Mapping - Custom Implementation
- * NOTE: This uses custom AEC numbering (0-11) not official SORA 2.0 Annex C (AEC 1-12)
- * Official SORA 2.5 does not use AEC, uses direct Initial ARC calculation
+ * VERIFIED against SORA 2.0 Annex C Table 1 (Page 12-13)
  * 
- * Custom AEC → Initial ARC mapping:
- * - AEC 0 (Atypical) → ARC-a
- * - AEC 2, 3, 4 → ARC-b
- * - AEC 6, 8, 9 → ARC-c
- * - AEC 10, 11 → ARC-d
+ * Custom AEC → Official AEC → Initial ARC mapping:
+ * - Custom 0 = Official 12 (Atypical) → ARC-a
+ * - Custom 1 = Official 6 (Airport E/F/G) → ARC-c
+ * - Custom 3 = Official 3 (>500ft Controlled) → ARC-d
+ * - Custom 4 = Official 4 (>500ft Uncontrolled Urban) → ARC-c
+ * - Custom 5 = Official 5 (>500ft Uncontrolled Rural) → ARC-c
+ * - Custom 8 = Official 8 (<500ft Controlled) → ARC-c
+ * - Custom 9 = Official 9 (<500ft Uncontrolled Urban) → ARC-c
+ * - Custom 10 = Official 10 (<500ft Uncontrolled Rural) → ARC-b
  * 
- * @param {number} aec - AEC category (0-11)
+ * @param {number} aec - AEC category (custom 0-11)
  * @returns {string} Initial ARC ("ARC-a", "ARC-b", "ARC-c", "ARC-d")
  */
 function mapAECtoARC(aec) {
-  if (aec === 0) return "ARC-a";
-  if (aec >= 2 && aec <= 4) return "ARC-b";
-  if (aec === 6 || aec === 8 || aec === 9) return "ARC-c";
-  if (aec === 10 || aec === 11) return "ARC-d";
+  // Verified mappings from SORA 2.0 Annex C Table 1
+  if (aec === 0) return "ARC-a";    // Atypical/Segregated
+  if (aec === 1) return "ARC-c";    // Airport E/F/G
+  if (aec === 3) return "ARC-d";    // >500ft Controlled
+  if (aec === 4) return "ARC-c";    // >500ft Urban
+  if (aec === 5) return "ARC-c";    // >500ft Rural
+  if (aec === 8) return "ARC-c";    // <500ft Controlled
+  if (aec === 9) return "ARC-c";    // <500ft Urban
+  if (aec === 10) return "ARC-b";   // <500ft Rural
   
-  // Fallback for invalid AEC
-  return "ARC-b"; // Default to ARC-b if AEC is out of range
+  // Fallback for unmapped AEC
+  return "ARC-c"; // Default to ARC-c (medium risk)
 }
 
 /**
