@@ -253,27 +253,37 @@ function calculateFinalGRC_SORA20(iGRC, m1, m2, m3, operationScenario) {
   else if (m3 === "Adequate") m3_adjustment = 0;
   else if (m3 === "Validated") m3_adjustment = -1; // Reduction
 
-  // Apply mitigations
-  let finalGRC = iGRC - m1_reduction - m2_reduction + m3_adjustment;
-
   // Determine column minimum based on operation scenario
-  // Reference: SORA 2.0 Main Body, Table 2, page 13
+  // Reference: SORA 2.0 Main Body, Table 2, page 20
   const columnMinimums_SORA20 = {
     "VLOS_Controlled": 1,
     "VLOS_Sparsely": 2,
     "VLOS_Populated": 4,
-    "VLOS_Gathering": 6,
+    "VLOS_Gathering": 7,
     "BVLOS_Controlled": 2,
     "BVLOS_Sparsely": 3,
     "BVLOS_Populated": 5,
-    "BVLOS_Gathering": 7
+    "BVLOS_Gathering": 8
   };
   const columnMin = columnMinimums_SORA20[operationScenario] || 1;
 
-  // Enforce column-minimum clamp
-  if (finalGRC < columnMin) {
-    warnings.push(`⚠️ Final GRC (${finalGRC}) is below column minimum (${columnMin}) for scenario '${operationScenario}'. Clamping to ${columnMin}.`);
-    finalGRC = columnMin;
+  // Apply M1 mitigation first, then enforce column-minimum clamp
+  // Source: SORA 2.0 Main Body, Section 2.3.2(d), Page 21:
+  // "When applying mitigation M1, the GRC cannot be reduced to a value lower than 
+  //  the lowest value in the applicable column in Table 2."
+  let grcAfterM1 = iGRC - m1_reduction;
+  if (grcAfterM1 < columnMin) {
+    warnings.push(`⚠️ GRC after M1 (${grcAfterM1}) is below column minimum (${columnMin}) for scenario '${operationScenario}'. Clamping to ${columnMin}.`);
+    grcAfterM1 = columnMin;
+  }
+
+  // Then apply M2 and M3 (no column minimum clamp for these)
+  let finalGRC = grcAfterM1 - m2_reduction + m3_adjustment;
+
+  // Final floor: GRC cannot be negative
+  if (finalGRC < 0) {
+    warnings.push(`⚠️ Final GRC (${finalGRC}) is negative. Setting to 0.`);
+    finalGRC = 0;
   }
 
   return { finalGRC, warnings, columnMin };
@@ -308,47 +318,52 @@ function calculateFinalGRC_SORA20(iGRC, m1, m2, m3, operationScenario) {
  * @returns {number} AEC category (0-11)
  */
 function calculateAEC(altitude_ft, controlledAirspace, airportEnvironment, populatedArea, atypicalAirspace) {
-  // Atypical airspace (reserved, segregated) → AEC 0
+  // Custom AEC numbering (0-11) for this implementation
+  // NOTE: This differs from official SORA 2.0 Annex C (AEC 1-12)
+  // Official SORA 2.5 does not use AEC at all, uses direct Initial ARC calculation
+  
+  // Atypical/Segregated airspace → AEC 0
   if (atypicalAirspace) {
     return 0;
   }
 
-  // High altitude (>500ft / 152m)
+  // High altitude (>500ft AGL)
   if (altitude_ft > 500) {
-    if (controlledAirspace) {
-      return 11; // High altitude + controlled → AEC 11
-    } else if (populatedArea) {
-      return 6; // High altitude + uncontrolled + populated → AEC 6
+    if (airportEnvironment) {
+      return 11; // High altitude + airport → AEC 11
     } else {
-      return 2; // High altitude + uncontrolled + sparsely → AEC 2
+      return 10; // High altitude + no airport → AEC 10
     }
   }
 
-  // Low altitude (≤500ft)
+  // Low altitude (≤500ft AGL)
   if (controlledAirspace) {
-    // Controlled airspace: AEC 9 or 10
-    if (airportEnvironment) {
-      return 10; // Controlled + airport → AEC 10
+    // Controlled airspace
+    if (airportEnvironment && populatedArea) {
+      return 4; // Controlled + airport + populated → AEC 4
+    } else if (airportEnvironment || populatedArea) {
+      return 3; // Controlled + (airport OR populated) → AEC 3
     } else {
-      return 9; // Controlled + non-airport → AEC 9
+      return 2; // Controlled + no special conditions → AEC 2
     }
   } else {
-    // Uncontrolled airspace: AEC 3, 4, or 8
-    if (airportEnvironment) {
+    // Uncontrolled airspace
+    if (populatedArea && !airportEnvironment) {
+      return 9; // Uncontrolled + populated (no airport) → AEC 9
+    } else if (airportEnvironment) {
       return 8; // Uncontrolled + airport → AEC 8
-    } else if (populatedArea) {
-      return 4; // Uncontrolled + populated (no airport) → AEC 4
     } else {
-      return 3; // Uncontrolled + sparsely (no airport) → AEC 3
+      return 6; // Uncontrolled + no special conditions → AEC 6
     }
   }
 }
 
 /**
- * AEC to Initial ARC Mapping - SORA 2.5
- * Reference: SORA 2.5 Main Body, Table 6, page 46
+ * AEC to Initial ARC Mapping - Custom Implementation
+ * NOTE: This uses custom AEC numbering (0-11) not official SORA 2.0 Annex C (AEC 1-12)
+ * Official SORA 2.5 does not use AEC, uses direct Initial ARC calculation
  * 
- * AEC → Initial ARC:
+ * Custom AEC → Initial ARC mapping:
  * - AEC 0 (Atypical) → ARC-a
  * - AEC 2, 3, 4 → ARC-b
  * - AEC 6, 8, 9 → ARC-c

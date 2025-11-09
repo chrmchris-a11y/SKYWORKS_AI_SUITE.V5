@@ -146,11 +146,12 @@ test('Final GRC: iGRC=5, M2 High → 5-2 = 3', () => {
   assert.strictEqual(result.finalGRC, 3, `Expected 3, got ${result.finalGRC}`);
 });
 
-test('Final GRC: iGRC=8, All mitigations High → 8-2-2-1-2 = 1 (max reduction)', () => {
+test('Final GRC: iGRC=8, All mitigations High → 8-2-2-1-2 = 2 (no column clamp in SORA 2.5)', () => {
   const result = calc.calculateFinalGRC_SORA25(8, "Low", "High", "Low", "High", "<500");
   // M1(A) Low = -1, M1(B) High = -2, M1(C) Low = -1, M2 High = -2
-  // 8 - 1 - 2 - 1 - 2 = 2, but cannot go below column min (4 for <500)
-  assert.strictEqual(result.finalGRC, 4, `Expected 4 (clamped to column min), got ${result.finalGRC}`);
+  // 8 - 1 - 2 - 1 - 2 = 2
+  // SORA 2.5 does NOT have column minimum clamp per official EASA/JARUS docs
+  assert.strictEqual(result.finalGRC, 2, `Expected 2, got ${result.finalGRC}`);
 });
 
 // =============================================================================
@@ -196,31 +197,36 @@ test('Validation: M2 Low → WARNING (does not exist in SORA 2.5)', () => {
 // SORA 2.5: Column Minimum Enforcement Tests
 // =============================================================================
 
-console.log('\n--- SORA 2.5: Column Minimum Enforcement Tests ---');
+console.log('\n--- SORA 2.5: Column Minimum - NOT IN OFFICIAL SPEC ---');
+// NOTE: SORA 2.5 does NOT have column minimum clamp per official EASA/JARUS docs
+// Source: SORA 2.5 Main Body, Section 4.3.4(f), Page 39
+// The only floor is GRC >= 1 (for controlled ground area)
+// These tests are DISABLED as they conflict with official specification
 
-test('Column Min: Controlled (min=1), iGRC=2, M1(A) Medium → 2-2=0, clamped to 1', () => {
+// DISABLED: test('Column Min: Controlled (min=1), iGRC=2, M1(A) Medium → 2-2=0, clamped to 1', () => {
+//   const result = calc.calculateFinalGRC_SORA25(2, "Medium", "None", "None", "None", "Controlled");
+//   assert.strictEqual(result.finalGRC, 1, `Expected 1 (clamped), got ${result.finalGRC}`);
+// });
+
+// DISABLED: test('Column Min: <5 (min=2), iGRC=3, M1(A) Medium → 3-2=1, clamped to 2', () => {
+//   const result = calc.calculateFinalGRC_SORA25(3, "Medium", "None", "None", "None", "<5");
+//   assert.strictEqual(result.finalGRC, 2, `Expected 2 (clamped), got ${result.finalGRC}`);
+// });
+
+// DISABLED: test('Column Min: <500 (min=4), iGRC=5, M1(A) Low + M2 High → 5-1-2=2, clamped to 4', () => {
+//   const result = calc.calculateFinalGRC_SORA25(5, "Low", "None", "None", "High", "<500");
+//   assert.strictEqual(result.finalGRC, 4, `Expected 4 (clamped), got ${result.finalGRC}`);
+// });
+
+// DISABLED: test('Column Min: >50000 (min=7), iGRC=8, All mitigations → cannot go below 7', () => {
+//   const result = calc.calculateFinalGRC_SORA25(8, "Low", "High", "Low", "High", ">50000");
+//   assert.strictEqual(result.finalGRC, 7, `Expected 7 (clamped), got ${result.finalGRC}`);
+// });
+
+test('SORA 2.5: Final GRC floor = 1 (Controlled ground area minimum)', () => {
   const result = calc.calculateFinalGRC_SORA25(2, "Medium", "None", "None", "None", "Controlled");
-  assert.strictEqual(result.finalGRC, 1, `Expected 1 (clamped), got ${result.finalGRC}`);
-  assert.strictEqual(result.columnMin, 1, `Expected column min 1`);
-});
-
-test('Column Min: <5 (min=2), iGRC=3, M1(A) Medium → 3-2=1, clamped to 2', () => {
-  const result = calc.calculateFinalGRC_SORA25(3, "Medium", "None", "None", "None", "<5");
-  assert.strictEqual(result.finalGRC, 2, `Expected 2 (clamped), got ${result.finalGRC}`);
-  assert.strictEqual(result.columnMin, 2, `Expected column min 2`);
-});
-
-test('Column Min: <500 (min=4), iGRC=5, M1(A) Low + M2 High → 5-1-2=2, clamped to 4', () => {
-  const result = calc.calculateFinalGRC_SORA25(5, "Low", "None", "None", "High", "<500");
-  assert.strictEqual(result.finalGRC, 4, `Expected 4 (clamped), got ${result.finalGRC}`);
-  assert.strictEqual(result.columnMin, 4, `Expected column min 4`);
-});
-
-test('Column Min: >50000 (min=7), iGRC=8, All mitigations → cannot go below 7', () => {
-  const result = calc.calculateFinalGRC_SORA25(8, "Low", "High", "Low", "High", ">50000");
-  // 8 - 1 - 2 - 1 - 2 = 2, but min is 7
-  assert.strictEqual(result.finalGRC, 7, `Expected 7 (clamped), got ${result.finalGRC}`);
-  assert.strictEqual(result.columnMin, 7, `Expected column min 7`);
+  // 2 - 2 = 0, but floor is 1 per SORA 2.5 Main Body Table 2
+  assert.strictEqual(result.finalGRC, 1, `Expected 1 (floor), got ${result.finalGRC}`);
 });
 
 // =============================================================================
@@ -418,14 +424,18 @@ test('SORA 2.0 Final GRC: iGRC=5, M1 Low → 5-1 = 4', () => {
   assert.strictEqual(result.finalGRC, 4, `Expected 4, got ${result.finalGRC}`);
 });
 
-test('SORA 2.0 Final GRC: iGRC=5, M1 Medium → 5-2 = 3', () => {
+test('SORA 2.0 Final GRC: iGRC=5, M1 Medium → 5-2 = 3, clamped to 4', () => {
   const result = calc.calculateFinalGRC_SORA20(5, "Medium", "None", "Adequate", "VLOS_Populated");
-  assert.strictEqual(result.finalGRC, 3, `Expected 3, got ${result.finalGRC}`);
+  // Column minimum for VLOS_Populated = 4 (lowest value in that column from Table 2)
+  // Source: SORA 2.0 Main Body, Section 2.3.2(d), Page 21
+  assert.strictEqual(result.finalGRC, 4, `Expected 4 (clamped to column min), got ${result.finalGRC}`);
 });
 
-test('SORA 2.0 Final GRC: iGRC=5, M1 High → 5-4 = 1', () => {
+test('SORA 2.0 Final GRC: iGRC=5, M1 High → 5-4 = 1, clamped to 4', () => {
   const result = calc.calculateFinalGRC_SORA20(5, "High", "None", "Adequate", "VLOS_Populated");
-  assert.strictEqual(result.finalGRC, 1, `Expected 1, got ${result.finalGRC}`);
+  // Column minimum for VLOS_Populated = 4 (lowest value in that column from Table 2)
+  // Source: SORA 2.0 Main Body, Section 2.3.2(d), Page 21
+  assert.strictEqual(result.finalGRC, 4, `Expected 4 (clamped to column min), got ${result.finalGRC}`);
 });
 
 test('SORA 2.0 Final GRC: iGRC=5, M2 Medium → 5-1 = 4', () => {
@@ -433,8 +443,10 @@ test('SORA 2.0 Final GRC: iGRC=5, M2 Medium → 5-1 = 4', () => {
   assert.strictEqual(result.finalGRC, 4, `Expected 4, got ${result.finalGRC}`);
 });
 
-test('SORA 2.0 Final GRC: iGRC=5, M2 High → 5-2 = 3', () => {
+test('SORA 2.0 Final GRC: iGRC=5, M2 High → 5-2 = 3 (no column clamp for M2)', () => {
   const result = calc.calculateFinalGRC_SORA20(5, "None", "High", "Adequate", "VLOS_Populated");
+  // Column minimum applies ONLY to M1 per SORA 2.0 Section 2.3.2(d)
+  // M2 can reduce below column min
   assert.strictEqual(result.finalGRC, 3, `Expected 3, got ${result.finalGRC}`);
 });
 
@@ -485,15 +497,16 @@ test('E2E SORA 2.5: DJI Mini 4 Pro (Small-UA), <500 density, VLOS, populated →
   
   // Small-UA Rule applies → iGRC = 1
   assert.strictEqual(result.initialGRC, 1, `Expected iGRC=1`);
-  // M1(A) Low + M2 Medium → 1-1-1 = -1, clamped to 4 (column min for <500)
-  assert.strictEqual(result.finalGRC, 4, `Expected fGRC=4`);
+  // M1(A) Low + M2 Medium → 1-1-1 = -1, floor to 1
+  // SORA 2.5 does NOT have column minimum clamp per official EASA/JARUS docs
+  assert.strictEqual(result.finalGRC, 1, `Expected fGRC=1 (floor)`);
   // Populated, low altitude, uncontrolled → AEC 9 → ARC-c
   assert.strictEqual(result.aec, 9, `Expected AEC 9`);
   assert.strictEqual(result.initialARC, "ARC-c", `Expected iARC=ARC-c`);
   // VLOS → ARC-c - 1 = ARC-b
   assert.strictEqual(result.residualARC, "ARC-b", `Expected rARC=ARC-b`);
-  // GRC=4, ARC-b → SAIL III
-  assert.strictEqual(result.sail, "III", `Expected SAIL III, got ${result.sail}`);
+  // GRC=1, ARC-b → SAIL I
+  assert.strictEqual(result.sail, "I", `Expected SAIL I, got ${result.sail}`);
 });
 
 test('E2E SORA 2.5: DJI Mavic 3 (0.895kg), Controlled density, VLOS, controlled airspace → SAIL I', () => {
@@ -547,15 +560,16 @@ test('E2E SORA 2.5: DJI Matrice 300 RTK (6.3kg), >50000 density, BVLOS, airport 
   
   // 0.7m @ 23m/s, >50000 → 1m @ 25m/s category → iGRC = 7
   assert.strictEqual(result.initialGRC, 7, `Expected iGRC=7`);
-  // M1(A) Low + M1(B) High + M1(C) Low + M2 High → 7-1-2-1-2 = 1, clamped to 7 (column min)
-  assert.strictEqual(result.finalGRC, 7, `Expected fGRC=7`);
+  // M1(A) Low + M1(B) High + M1(C) Low + M2 High → 7-1-2-1-2 = 1
+  // SORA 2.5 does NOT have column minimum clamp per official EASA/JARUS docs
+  assert.strictEqual(result.finalGRC, 1, `Expected fGRC=1`);
   // High altitude + airport → AEC 11 → ARC-d
   assert.strictEqual(result.aec, 11, `Expected AEC 11`);
   assert.strictEqual(result.initialARC, "ARC-d", `Expected iARC=ARC-d`);
   // BVLOS → no reduction → ARC-d
   assert.strictEqual(result.residualARC, "ARC-d", `Expected rARC=ARC-d`);
-  // GRC=7, ARC-d → SAIL VI
-  assert.strictEqual(result.sail, "VI", `Expected SAIL VI, got ${result.sail}`);
+  // GRC=1, ARC-d → SAIL II
+  assert.strictEqual(result.sail, "II", `Expected SAIL II, got ${result.sail}`);
 });
 
 // =============================================================================
@@ -606,12 +620,14 @@ test('E2E SORA 2.0: BVLOS_Populated, >8m, M1 High, M2 High, M3 None → check pe
   
   // BVLOS_Populated, >8m → iGRC = 8
   assert.strictEqual(result.initialGRC, 8, `Expected iGRC=8`);
-  // M1 High (-4) + M2 High (-2) + M3 None (+1) → 8-4-2+1 = 3, clamped to 5 (column min)
-  assert.strictEqual(result.finalGRC, 5, `Expected fGRC=5 (clamped)`);
+  // M1 High (-4) → 8-4 = 4, clamped to 5 (column min for BVLOS_Populated)
+  // Then M2 High (-2) + M3 None (+1) → 5-2+1 = 4
+  // Source: SORA 2.0 Main Body, Section 2.3.2(d)-(f), Page 21
+  assert.strictEqual(result.finalGRC, 4, `Expected fGRC=4`);
   // Populated, low altitude, uncontrolled → AEC 9 → ARC-c → no VLOS reduction
   assert.strictEqual(result.residualARC, "ARC-c", `Expected rARC=ARC-c`);
-  // GRC=5, ARC-c → SAIL IV
-  assert.strictEqual(result.sail, "IV", `Expected SAIL IV, got ${result.sail}`);
+  // GRC=4, ARC-c → SAIL III
+  assert.strictEqual(result.sail, "III", `Expected SAIL III, got ${result.sail}`);
 });
 
 // =============================================================================
