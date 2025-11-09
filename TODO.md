@@ -1,11 +1,31 @@
 # SKYWORKS AI SUITE V5 - Feature Development TODO
 
-**Last Updated**: November 8, 2025 (LATEST SESSION - EASA/JARUS Compliance Verified)  
-**Current Status**: SORA 2.0/2.5 specs validated, implementation 70% ready
+**Last Updated**: November 9, 2025 (LATEST SESSION - TypeScript Calculators Implementation)  
+**Current Status**: SORA 2.0/2.5 specs validated, TypeScript implementation in progress (Tasks #8-9 DONE)
 
 ---
 
-## ✅ COMPLETED - CURRENT SESSION
+## ✅ COMPLETED - CURRENT SESSION (November 9, 2025)
+
+- [x] **Task #8: SAIL Matrix + TMPR Targets Mapping** (Commit eb282cc)
+  - Created `Frontend/src/lib/mappings/sail.matrix.ts` (270+ lines)
+  - Created `Frontend/src/lib/mappings/tmpr.targets.ts` (350+ lines)
+  - Source: JAR_doc_25 Table 6 (TMPR, page 45) & Table 7 (SAIL, page 47)
+  - Complete GRC×ARC → SAIL I-VI lookup with validation
+  - TMPR applicability logic (VLOS exempt, BVLOS required)
+  - All functions include official source citations
+
+- [x] **Task #9: SORA 2.5 GRC Calculator** (Commit 077405a)
+  - Created `Frontend/src/lib/calculators/grc25.ts` (520+ lines)
+  - Source: JAR_doc_25 Table 2 (iGRC matrix, page 34) & Table 5 (Mitigations, page 38)
+  - Complete iGRC matrix (6 densities × 5 UA categories)
+  - Sequential mitigations: M1(A)→M1(B)→M1(C)→M2
+  - Small-UA Rule: ≤250g AND ≤25m/s → iGRC=1
+  - Column-minimum floor + Absolute floor (≥1)
+  - M1(A) Medium + M1(B) validation (JAR_doc_27 footnote)
+  - Detailed calculation breakdown with source citations
+
+## ✅ COMPLETED - PREVIOUS SESSION (November 8, 2025)
 
 - [x] **Official EASA/JARUS Document Review** (3500+ lines read)
   - Read SORA 2.5 Main Body (JAR_doc_25, 1898 lines)
@@ -19,6 +39,12 @@
   - All dropdown values with official source citations
   - Validation rules with document references
   - SORA 2.0 vs 2.5 comparison table
+
+- [x] **Created TypeScript Enums & Types** (skyworks.enums.ts - 400+ lines)
+  - All SORA 2.5 mitigation levels (M1A/B/C, M2)
+  - All SORA 2.0 mitigation levels (M1/M2/M3)
+  - Airspace classes, special zones (RMZ/TMZ/CTR/TMA)
+  - NO magic values - all from official tables
 
 - [x] **Updated sora-calculator.js header** with verified compliance rules
 
