@@ -24,6 +24,16 @@ public class Mission
     public MissionType Type { get; set; }
     
     /// <summary>
+    /// High-level mission category (BuildingsAndFacades, EnergyAndUtilities, etc.)
+    /// </summary>
+    public MissionCategory Category { get; set; }
+    
+    /// <summary>
+    /// Specific mission template code (~48 predefined types)
+    /// </summary>
+    public MissionTemplateCode TemplateCode { get; set; }
+    
+    /// <summary>
     /// Client name (operator or end customer)
     /// </summary>
     public string? ClientName { get; set; }
