@@ -440,7 +440,138 @@ function updateGeometryStats() {
   } else {
     document.getElementById('stat_cga_area').textContent = '0 m²';
   }
+
+  // Update SORA badges (real-time compliance)
+  updateSORABadges();
 }
+
+// ================================================================
+// SORA BADGE INTEGRATION (Phase 6 - Step 51.2)
+// ================================================================
+function updateSORABadges() {
+  // If no waypoints, clear badges
+  if (missionData.waypoints.length === 0) {
+    document.getElementById('kpi_igrc').textContent = '–';
+    document.getElementById('kpi_fgrc').textContent = '–';
+    document.getElementById('kpi_iarc').textContent = '–';
+    document.getElementById('kpi_rarc').textContent = '–';
+    document.getElementById('sailBadge').textContent = 'SAIL: –';
+    return;
+  }
+
+  // Extract mission parameters from geometry
+  const params = extractSORAParams();
+
+  // Calculate SORA 2.5 (default for Phase 6)
+  // User can toggle to SORA 2.0 via future UI switch
+  const soraVersion = '2.5'; // TODO: Add version selector in UI
+  const results = soraVersion === '2.5' 
+    ? calculateSORA25(params) 
+    : calculateSORA20(params);
+
+  // Update badges
+  document.getElementById('kpi_igrc').textContent = results.initialGRC;
+  document.getElementById('kpi_fgrc').textContent = results.finalGRC;
+  document.getElementById('kpi_iarc').textContent = results.initialARC;
+  document.getElementById('kpi_rarc').textContent = results.residualARC;
+  document.getElementById('sailBadge').textContent = `SAIL: ${results.SAIL || '–'}`;
+  document.getElementById('sailBadge').className = `sail-badge sail-${results.SAIL?.toLowerCase() || 'none'}`;
+
+  // Log to validation console
+  logToConsole(`SORA ${soraVersion}: GRC=${results.finalGRC}, ARC=${results.residualARC}, SAIL=${results.SAIL}`, 'success');
+}
+
+function extractSORAParams() {
+  // Default parameters (will be refined by map layer analysis)
+  const params = {
+    // Aircraft characteristics (defaults for demo - should be from mission plan)
+    mtom_kg: 25, // 25kg drone (typical enterprise UAV)
+    maxSpeed_ms: 20, // 20 m/s (72 km/h)
+    characteristicDimension_m: 1.5, // 1.5m wingspan/diagonal
+    isVLOS: true, // Default VLOS
+    
+    // Ground Risk
+    populationDensity: 2, // Medium (default for urban < 500ft) - will be converted to string
+    controlledGroundArea: false, // Will be set if CGA polygon exists
+    
+    // Air Risk
+    altitude_ft: 0,
+    controlledAirspace: false,
+    airportEnvironment: 'none',
+    populatedArea: true, // Default urban
+    atypicalAirspace: false,
+    
+    // Mitigations (SORA 2.5 format: lowercase m1a/m1b/m1c)
+    m1a: 'None', m1b: 'None', m1c: 'None', m2: 'None',
+    tmpr_low: false, tmpr_medium: false, tmpr_high: false,
+    tactical_low: false, tactical_medium: false, tactical_high: false,
+    
+    // Strategic mitigations
+    strategic_low: false, strategic_medium: false, strategic_high: false
+  };
+
+  // 1. ALTITUDE: Use max altitude from waypoints (convert m AGL → ft AGL)
+  if (missionData.waypoints.length > 0) {
+    const maxAlt_m = Math.max(...missionData.waypoints.map(wp => wp.alt_m || 0));
+    params.altitude_ft = Math.round(maxAlt_m * 3.28084); // meters → feet
+  }
+
+  // 2. POPULATION DENSITY: Infer from population heatmap layer
+  // (Do this BEFORE CGA check, so CGA can override)
+  if (layerVisibility.population) {
+    // Production: sample population density from heatmap at waypoint coordinates
+    params.populatedArea = true;
+    params.populationDensity = 3; // High (urban default when layer enabled)
+    logToConsole('Population layer active → populationDensity=3 (High)', 'info');
+  } else {
+    params.populatedArea = false;
+    params.populationDensity = 1; // Rural
+  }
+
+  // 3. CONTROLLED AIRSPACE: Check if RMZ/TMZ/CTR layers active
+  // (Production: detect intersections with actual airspace polygons)
+  if (layerVisibility.rmz || layerVisibility.tmz) {
+    params.controlledAirspace = 'RMZ_TMZ';
+    logToConsole('RMZ/TMZ layer active → controlled airspace detected', 'info');
+  } else if (layerVisibility.ctr) {
+    params.controlledAirspace = 'CTR';
+    logToConsole('CTR layer active → controlled airspace detected', 'info');
+  }
+
+  // 4. AIRPORT ENVIRONMENT: Check if near airport zones
+  if (layerVisibility.atz) {
+    // Production: check proximity to ATZ polygons
+    params.airportEnvironment = 'Class_E_F_G';
+    logToConsole('ATZ layer active → airport environment detected', 'warning');
+  }
+
+  // 5. ATYPICAL AIRSPACE: Check if in segregated/restricted zones
+  if (layerVisibility.tsa || layerVisibility.tra) {
+    params.atypicalAirspace = true;
+    logToConsole('TSA/TRA layer active → atypical airspace', 'info');
+  }
+
+  // 6. CONTROLLED GROUND AREA: If CGA polygon exists (HIGHEST PRIORITY)
+  // This OVERRIDES population layer density
+  if (missionData.cga) {
+    params.controlledGroundArea = true;
+    params.populationDensity = 0; // Controlled (lowest)
+    logToConsole('CGA detected → controlledGroundArea=true, density=0 (Controlled, overrides population layer)', 'info');
+  }
+
+  // 7. CONVERT NUMERIC DENSITY → SORA 2.5 STRING FORMAT
+  // Map: numeric density (0-3) → SORA 2.5 Table 2 population density categories
+  const densityMap = {
+    0: 'Controlled', // CGA detected
+    1: '<5',         // Rural / sparse
+    2: '<500',       // Medium density
+    3: '<5000'       // High density (urban)
+  };
+  params.populationDensity = densityMap[params.populationDensity] || '<500';
+
+  return params;
+}
+
 
 // ================================================================
 // 5. 2D/3D TOGGLE

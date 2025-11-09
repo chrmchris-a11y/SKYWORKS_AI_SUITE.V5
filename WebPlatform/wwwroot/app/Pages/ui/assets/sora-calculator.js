@@ -327,9 +327,12 @@ function calculateAEC(altitude_ft, controlledAirspace, airportEnvironment, popul
     return 0;
   }
 
+  // Normalize airportEnvironment: treat 'none', false, null, undefined as no airport
+  const hasAirport = airportEnvironment && airportEnvironment !== 'none';
+
   // High altitude (>500ft AGL)
   if (altitude_ft > 500) {
-    if (airportEnvironment) {
+    if (hasAirport) {
       return 11; // High altitude + airport → AEC 11
     } else {
       return 10; // High altitude + no airport → AEC 10
@@ -339,18 +342,18 @@ function calculateAEC(altitude_ft, controlledAirspace, airportEnvironment, popul
   // Low altitude (≤500ft AGL)
   if (controlledAirspace) {
     // Controlled airspace
-    if (airportEnvironment && populatedArea) {
+    if (hasAirport && populatedArea) {
       return 4; // Controlled + airport + populated → AEC 4
-    } else if (airportEnvironment || populatedArea) {
+    } else if (hasAirport || populatedArea) {
       return 3; // Controlled + (airport OR populated) → AEC 3
     } else {
       return 2; // Controlled + no special conditions → AEC 2
     }
   } else {
     // Uncontrolled airspace
-    if (populatedArea && !airportEnvironment) {
+    if (populatedArea && !hasAirport) {
       return 9; // Uncontrolled + populated (no airport) → AEC 9
-    } else if (airportEnvironment) {
+    } else if (hasAirport) {
       return 8; // Uncontrolled + airport → AEC 8
     } else {
       return 6; // Uncontrolled + no special conditions → AEC 6
