@@ -1,0 +1,39 @@
+{
+    // Existing setting
+    "CodeGPT.apiKey": "Github",
+
+    // 🎯 Auto-open PROJECT_STATUS.md on workspace launch
+    "workbench.startupEditor": "newUntitledFile",
+    "workbench.editorAssociations": {
+        "*.md": "default"
+    },
+
+    // Hide noisy folders in Explorer (visual only)
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/.coverage": true,
+        "**/htmlcov": true,
+        "**/.ipynb_checkpoints": true,
+        "Backend_Python/venv": true,
+        "Backend_Python/.venv": true,
+        "skyworks-sora-mcp-server/build": true,
+        "Frontend/src": true
+    },
+
+    // Speed up search by skipping generated content
+    "search.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        "**/htmlcov": true,
+        "skyworks-sora-mcp-server/build": true,
+        "Frontend/src": true
+    },
+
+    // Silence YAML validation warnings globally (we can re‑enable when schema is ready)
+    "yaml.validate": false
+}

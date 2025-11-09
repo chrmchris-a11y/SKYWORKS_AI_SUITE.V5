@@ -1,0 +1,98 @@
+{
+  "folders": [
+    {
+      "path": "."
+    }
+  ],
+  "settings": {
+    "github.copilot.chat.welcomeMessage": "never",
+    "github.copilot.enable": {
+      "*": true
+    }
+  },
+  "extensions": {
+    "recommendations": [
+      "github.copilot",
+      "github.copilot-chat"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": []
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "💬 Chat με Copilot",
+        "type": "shell",
+        "command": "pwsh",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}/Tools/Backup/Open-Chat.ps1"
+        ],
+        "presentation": {
+          "reveal": "never"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "💾 Backup Project",
+        "type": "shell",
+        "command": "pwsh",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}/Tools/Backup/Start-Backup.ps1",
+          "-OpenAfter"
+        ],
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        },
+        "problemMatcher": []
+      }
+      ,
+      {
+        "label": "🚀 Quick Launcher",
+        "type": "shell",
+        "command": "pwsh",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}/Tools/Backup/Launcher.ps1"
+        ],
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      }
+      ,
+      {
+        "label": "📎 Install Desktop Shortcuts",
+        "type": "shell",
+        "command": "pwsh",
+        "args": [
+          "-NoProfile",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "${workspaceFolder}/Tools/Backup/Install-DesktopShortcuts.ps1"
+        ],
+        "presentation": {
+          "reveal": "always",
+          "panel": "shared"
+        },
+        "problemMatcher": []
+      }
+    ]
+  }
+}
