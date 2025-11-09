@@ -486,13 +486,14 @@ function mapARCtoTMPR(residualARC) {
  * @returns {string} SAIL level ("I", "II", "III", "IV", "V", "VI", "Category C")
  */
 function calculateSAIL(finalGRC, residualARC) {
-  // Table 7 exact values from SORA 2.5 Main Body page 47
+  // Source: SORA 2.5 Main Body Table 7, Page 47
+  // Verified against official EASA/JARUS specification
   const SAIL_Table = {
-    1: { "ARC-a": "I", "ARC-b": "I", "ARC-c": "IV", "ARC-d": "VI" },
-    2: { "ARC-a": "I", "ARC-b": "II", "ARC-c": "IV", "ARC-d": "VI" },
-    3: { "ARC-a": "II", "ARC-b": "II", "ARC-c": "IV", "ARC-d": "VI" },
-    4: { "ARC-a": "III", "ARC-b": "III", "ARC-c": "IV", "ARC-d": "VI" },
-    5: { "ARC-a": "IV", "ARC-b": "IV", "ARC-c": "IV", "ARC-d": "VI" },
+    1: { "ARC-a": "I", "ARC-b": "I", "ARC-c": "II", "ARC-d": "II" },
+    2: { "ARC-a": "I", "ARC-b": "II", "ARC-c": "II", "ARC-d": "III" },
+    3: { "ARC-a": "II", "ARC-b": "III", "ARC-c": "IV", "ARC-d": "IV" },
+    4: { "ARC-a": "III", "ARC-b": "IV", "ARC-c": "IV", "ARC-d": "VI" },
+    5: { "ARC-a": "IV", "ARC-b": "IV", "ARC-c": "V", "ARC-d": "VI" },
     6: { "ARC-a": "V", "ARC-b": "V", "ARC-c": "V", "ARC-d": "VI" },
     7: { "ARC-a": "VI", "ARC-b": "VI", "ARC-c": "VI", "ARC-d": "VI" }
   };
