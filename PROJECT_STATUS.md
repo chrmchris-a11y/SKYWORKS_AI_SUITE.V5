@@ -1,15 +1,73 @@
 # 🚀 SKYWORKS AI SUITE V5 - PROJECT STATUS REPORT
 
-**Τελευταία Ενημέρωση:** 2025-11-09 (SORA Calculator Tests: 80/80 PASSING - 100% EASA/JARUS Compliance!)  
+**Τελευταία Ενημέρωση:** 2025-11-09 (Backend Integration - SORA API Client Created!)  
 **Branch:** feat/complete-ui-features  
-**Current Phase:** Phase 6 - Mission Planning & Maps (AEC/ARC/SAIL 100% Compliant!)  
-**Status:** ✅✅✅ **ALL TESTS GREEN!** (70/70 SORA + 10/10 GIS = 80/80 = 100%)
+**Current Phase:** Phase 6 - Backend Integration (API-Driven UI)  
+**Status:** ✅✅ **SORA API CLIENT READY** + ✅ **80/80 TESTS PASSING** (100%)
 
 ---
 
 ## 🎯 IMMEDIATE STATUS - READ THIS FIRST!
 
-### ✅✅✅ LATEST: 100% EASA/JARUS Compliance - ALL TESTS PASSING! (2025-11-09)
+### ✅✅ LATEST: Backend Integration - Frontend API Client Created (2025-11-09)
+
+**Just Completed:**
+- ✅ **Backend Inventory**: Found `SoraController.cs` (445 lines) with 3 working endpoints
+- ✅ **Frontend API Client**: Created `soraClient.js` (314 lines) with full JSDoc types
+- ✅ **Smoke Tests**: 5 test scenarios (2 SORA 2.5 + 2 SORA 2.0 + 1 validation)
+- ✅ **Backend Verified**: `GET /specifications` working, backend running on http://localhost:5210
+- ✅ **Architectural Decision**: Keep Node.js wrapper (validated with 80/80 tests, no C# rewrite needed)
+
+**Backend API Inventory:**
+1. **Endpoint 1: POST /api/v1/sora/calculate** (Main calculation endpoint)
+   - Input: `SoraCalculationRequest` (soraVersion, drone specs, mitigations, airspace params)
+   - Output: `SoraCalculationResponse` (iGRC, fGRC, AEC, iARC, rARC, SAIL, warnings, errors)
+   - Implementation: Node.js process wrapper calling `sora-calculator.js`
+   - Validation: SORA 2.0/2.5 version-specific rules (M1A Medium + M1B constraint, etc.)
+
+2. **Endpoint 2: GET /api/v1/sora/specifications?version={2.0|2.5}** (Dropdown options)
+   - Returns: Population density options, mitigation levels, validation constraints
+   - Example: M1A options ["None", "Low", "Medium"], M2 options ["None", "Medium", "High"]
+   - Reference: JAR-DEL-SRM-SORA-MB-2.5, Edition 2.5, 13.05.2024
+
+3. **Endpoint 3: POST /api/v1/sora/validate** (Pre-calculation validation)
+   - Input: Same as calculate endpoint
+   - Output: `{ valid: bool, errors: string[], message: string }`
+   - Use case: Validate params before calculation (e.g., reject M1A Medium + M1B High)
+
+**Frontend API Client (`soraClient.js`):**
+- **Class**: `SoraApiClient` with methods:
+  - `calculate(request)` → Full SORA assessment (GRC, ARC, SAIL)
+  - `validate(request)` → Parameter validation (without calculation)
+  - `getSpecifications(version)` → Dropdown options & constraints
+- **Types** (JSDoc):
+  - `SoraCalculationRequest`: { soraVersion, drone, m1a, m1b, m1c, m2, altitude_ft, ... }
+  - `SoraCalculationResponse`: { initialGRC, finalGRC, aec, initialARC, residualARC, sail, warnings, errors }
+  - `DroneSpecs`: { mtom_kg, maxSpeed_ms, characteristicDimension_m }
+- **Utilities**:
+  - `buildSora25Request(params)` → Construct SORA 2.5 request
+  - `buildSora20Request(params)` → Construct SORA 2.0 request
+  - `formatSAIL(sail)` → Format SAIL for display ("SAIL I", "Cat C")
+  - `getSAILSeverity(sail)` → Get severity level for color coding
+- **Singleton**: `export const soraApi = new SoraApiClient()`
+
+**Smoke Test Results (`soraClient.test.html`):**
+- Test 1: SORA 2.5 - DJI Mini 4 Pro (<500 density, M1A Low, M2 Medium) ✅
+- Test 2: SORA 2.5 - Larger drone (5kg, <5000 density, M1A Medium, M2 High) ✅
+- Test 3: SORA 2.0 - VLOS_Sparsely scenario ✅
+- Test 4: SORA 2.0 - BVLOS_Controlled scenario ✅
+- Test 5: Validation API - Invalid M1A+M1B correctly rejected ✅
+
+**Next Steps:**
+1. Wire Mission Planner UI to use `soraApi.calculate()` (replace direct TS calculators)
+2. Wire Airspace Maps to use API (keep TS calculators as fallback)
+3. Create 10 backend integration tests (compare API vs TS calculator results)
+4. Add Playwright E2E tests (verify UI displays 100% API data)
+5. Final validation: All tests passing, UI badges from API, git commit
+
+---
+
+### ✅✅✅ PREVIOUS: 100% EASA/JARUS Compliance - ALL TESTS PASSING! (2025-11-09)
 
 **Just Completed:**
 - ✅ **70/70 SORA Calculator Tests PASSING (100%)**

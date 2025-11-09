@@ -1,11 +1,70 @@
 # SKYWORKS AI SUITE V5 - Feature Development TODO
 
-**Last Updated**: November 9, 2025 (SORA Tests: 80/80 PASSING - 100% EASA/JARUS Compliance!)  
-**Current Status**: ✅ **ALL CORE TESTS GREEN** (70 SORA Calculator + 10 GIS Integration)
+**Last Updated**: November 9, 2025 (Backend Integration - API Client Created!)  
+**Current Status**: ✅ **SORA API Client Ready** + ✅ **80/80 Tests PASSING**
 
 ---
 
-## ✅ COMPLETED - LATEST SESSION (November 9, 2025)
+## ✅ COMPLETED - LATEST SESSION (November 9, 2025 - Backend Integration)
+
+### 🎯 **Backend Integration - Frontend API Client Created**
+
+- [x] **Backend Inventory & Contract** ✅
+  - Found `Backend/src/Skyworks.Api/Controllers/SoraController.cs` (445 lines)
+  - Endpoints: `POST /api/v1/sora/calculate`, `GET /specifications`, `POST /validate`
+  - DTOs: `SoraCalculationRequest`, `SoraCalculationResponse`, `DroneSpecs`
+  - Implementation: Node.js process wrapper calling `sora-calculator.js` (validated with 80/80 tests)
+  - Decision: **Keep Node.js approach** (battle-tested, working, no need to rewrite in C#)
+
+- [x] **Frontend API Client Created** ✅
+  - Created `WebPlatform/wwwroot/app/Pages/ui/api/soraClient.js` (314 lines)
+  - Class: `SoraApiClient` with methods:
+    - `calculate(request)` → POST /api/v1/sora/calculate (full SORA assessment)
+    - `validate(request)` → POST /api/v1/sora/validate (param validation)
+    - `getSpecifications(version)` → GET /api/v1/sora/specifications (dropdown options)
+  - JSDoc Types: `SoraCalculationRequest`, `SoraCalculationResponse`, `DroneSpecs`, etc.
+  - Utility Functions: `buildSora25Request()`, `buildSora20Request()`, `formatSAIL()`, `getSAILSeverity()`
+  - Singleton: `export const soraApi = new SoraApiClient()`
+
+- [x] **Smoke Test Created** ✅
+  - Created `soraClient.test.html` (5 test scenarios)
+  - Tests: 2 SORA 2.5 calculations + 2 SORA 2.0 calculations + 1 validation test
+  - Auto-runs on page load, displays SAIL/GRC/ARC badges
+  - Backend verified running: `GET /specifications` working ✅
+
+### 🚧 IN-PROGRESS - NEXT STEPS
+
+- [ ] **Wire Mission Planner to use API** (Task #4)
+  - Replace direct `calculateSORA25()`/`calculateSORA20()` calls with `soraApi.calculate()`
+  - Update badges to display API response (iGRC, fGRC, iARC, rARC, SAIL)
+  - Show API errors[]/warnings[] in UI
+  - Files: `mission.html`, `mission.js` (or similar)
+
+- [ ] **Wire Airspace Maps to use API** (Task #5)
+  - Use `soraApi.calculate()` as primary source
+  - Keep TS calculators as fallback for offline mode
+  - Update real-time risk badges with API data
+
+- [ ] **Create 10 Backend Integration Tests** (Task #6)
+  - File: `Backend/tests/Skyworks.Api.Tests/SoraApiIntegrationTests.cs`
+  - 5 SORA 2.0 scenarios + 5 SORA 2.5 scenarios
+  - Each test: HTTP POST → Compare API result vs TS calculator → Assert exact match
+  - Goal: Verify backend returns identical results to validated TS calculators
+
+- [ ] **Add Playwright E2E Tests** (Task #7)
+  - File: `e2e/ui/sora-api-integration.spec.ts`
+  - 4-6 scenarios: Mission Planner badges, validation errors, version switching, real-time updates
+  - Goal: Verify UI displays 100% data from API (no direct TS calculator calls)
+
+- [ ] **Final Validation & Commit** (Task #8)
+  - Run: `npm test`, `dotnet test`, `npx playwright test`
+  - Verify: UI badges show API data ✅, 100% test coverage ✅
+  - Document: Files changed, integration tests count, API client usage
+  - Git commit: Detailed message with changes summary
+
+---
+
+## ✅ COMPLETED - PREVIOUS SESSION (November 9, 2025)
 
 ### 🎯 **SORA Tests: 80/80 PASSING (100% EASA/JARUS Compliance!)**
 
