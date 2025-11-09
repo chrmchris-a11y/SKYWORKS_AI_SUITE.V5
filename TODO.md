@@ -35,6 +35,16 @@
   - Final GRC >7 validation (operation not supported)
   - Example calculation reference (Page 21-22)
 
+- [x] **Task #11: ARC Calculator (Initial & Residual)** (Commit 13f250e)
+  - Created `Frontend/src/lib/calculators/arc.ts` (540+ lines)
+  - Source: JAR_doc_25 Step #4 (Page 40-42), Step #5 (Page 43-44), Annex C Tables 1-2
+  - Complete AEC → Initial ARC mapping (12 categories)
+  - Step #4: AEC determination from airspace/environment/altitude
+  - Step #5: Residual ARC with strategic mitigations
+  - VLOS Low Exposure Rule: -1 ARC class (SORA 2.5 specific)
+  - Strategic mitigation density reduction (Annex C Table 2)
+  - Mode-S Veil BANNED validation (use RMZ/TMZ)
+
 ## ✅ COMPLETED - PREVIOUS SESSION (November 8, 2025)
 
 - [x] **Official EASA/JARUS Document Review** (3500+ lines read)
