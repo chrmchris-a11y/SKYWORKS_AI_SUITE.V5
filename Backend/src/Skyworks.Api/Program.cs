@@ -82,3 +82,6 @@ v1.MapGet("/agent/ping", async (IAgentComm agentComm) =>
   .WithDescription("Pings the agent communication system to verify connectivity (stub).");
 
 app.Run();
+
+// Make Program class accessible to integration tests
+public partial class Program { }

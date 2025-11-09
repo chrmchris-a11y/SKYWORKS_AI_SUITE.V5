@@ -89,6 +89,125 @@ const SORA_20_SCHEMAS = {
 
 let currentSoraVersion = "2.5";
 let lastResponse = null;
+let specificationsCache = {
+  "2.5": null,
+  "2.0": null
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// SPECIFICATIONS API (populate dropdowns from backend)
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * Load SORA specifications from API and populate dropdowns
+ * Uses in-memory cache to avoid redundant API calls
+ * 
+ * @param {string} version - "2.5" or "2.0"
+ */
+async function loadSpecifications(version = "2.5") {
+  try {
+    // Check cache first
+    if (specificationsCache[version]) {
+      logToConsole(`✅ Using cached specifications for SORA ${version}`, 'info');
+      populateDropdowns(specificationsCache[version], version);
+      return;
+    }
+    
+    logToConsole(`Loading SORA ${version} specifications from API...`, 'info');
+    
+    // Call API
+    const specs = await soraApi.getSpecifications(version);
+    
+    // Cache result
+    specificationsCache[version] = specs;
+    
+    // Populate dropdowns
+    populateDropdowns(specs, version);
+    
+    logToConsole(`✅ Loaded SORA ${version} specifications: ${specs.constraints.length} constraints`, 'success');
+    
+    // Log constraints for validation
+    if (specs.constraints && specs.constraints.length > 0) {
+      specs.constraints.forEach(c => logToConsole(`  • ${c}`, 'info'));
+    }
+    
+  } catch (error) {
+    logToConsole(`❌ Failed to load specifications: ${error.message}`, 'error');
+    logToConsole(`Using hardcoded dropdown values as fallback`, 'warning');
+  }
+}
+
+/**
+ * Populate dropdown options from specifications
+ * 
+ * @param {Object} specs - Specifications response from API
+ * @param {string} version - "2.5" or "2.0"
+ */
+function populateDropdowns(specs, version) {
+  if (version === "2.5") {
+    // SORA 2.5 dropdowns
+    if (specs.m1aOptions) {
+      populateSelect('m1a', specs.m1aOptions);
+    }
+    if (specs.m1bOptions) {
+      populateSelect('m1b', specs.m1bOptions);
+    }
+    if (specs.m1cOptions) {
+      populateSelect('m1c', specs.m1cOptions);
+    }
+    if (specs.m2Options) {
+      populateSelect('m2-25', specs.m2Options);
+    }
+    if (specs.populationDensityOptions) {
+      // Population density is not a direct dropdown in mission.html
+      // but could be added in future (for now inferred from operation type)
+      logToConsole(`  Population density options: ${specs.populationDensityOptions.join(', ')}`, 'info');
+    }
+  } else if (version === "2.0") {
+    // SORA 2.0 dropdowns
+    if (specs.m1Options) {
+      populateSelect('m1-20', specs.m1Options);
+    }
+    if (specs.m2Options) {
+      populateSelect('m2-20', specs.m2Options);
+    }
+    if (specs.m3Options) {
+      populateSelect('m3-20', specs.m3Options);
+    }
+    if (specs.operationScenarioOptions) {
+      // Operation scenario is not a direct dropdown in mission.html
+      // but could be added in future (for now inferred from operation type)
+      logToConsole(`  Operation scenarios: ${specs.operationScenarioOptions.join(', ')}`, 'info');
+    }
+  }
+}
+
+/**
+ * Populate a single select element with options
+ * 
+ * @param {string} selectId - ID of select element
+ * @param {string[]} options - Array of option values
+ */
+function populateSelect(selectId, options) {
+  const select = document.getElementById(selectId);
+  if (!select) {
+    logToConsole(`⚠️ Select element #${selectId} not found`, 'warning');
+    return;
+  }
+  
+  // Clear existing options
+  select.innerHTML = '';
+  
+  // Add new options
+  options.forEach(opt => {
+    const option = document.createElement('option');
+    option.value = opt;
+    option.textContent = opt;
+    select.appendChild(option);
+  });
+  
+  logToConsole(`  Populated #${selectId} with ${options.length} options`, 'info');
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // SORA VERSION TOGGLE (DEPRECATED - Use toggleFramework instead)
@@ -545,7 +664,7 @@ function handleJobTypeChange(event) {
 // FRAMEWORK TOGGLE (SORA 2.0 / 2.5 / PDRA / STS)
 // ═══════════════════════════════════════════════════════════════════
 
-function toggleFramework(framework) {
+async function toggleFramework(framework) {
   // Update currentSoraVersion based on framework
   if (framework === 'sora25') {
     currentSoraVersion = "2.5";
@@ -567,10 +686,18 @@ function toggleFramework(framework) {
     sora25Fields?.classList.remove('hidden');
     sora20Fields?.classList.add('hidden');
     logToConsole('✅ Switched to SORA 2.5 (Annex B)', 'success');
+    
+    // Load SORA 2.5 specifications and populate dropdowns
+    await loadSpecifications("2.5");
+    
   } else if (framework === 'sora20') {
     sora25Fields?.classList.add('hidden');
     sora20Fields?.classList.remove('hidden');
     logToConsole('✅ Switched to SORA 2.0 (AMC1 Art.11)', 'success');
+    
+    // Load SORA 2.0 specifications and populate dropdowns
+    await loadSpecifications("2.0");
+    
   } else if (framework === 'pdra') {
     sora25Fields?.classList.add('hidden');
     sora20Fields?.classList.add('hidden');
