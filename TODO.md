@@ -25,6 +25,16 @@
   - M1(A) Medium + M1(B) validation (JAR_doc_27 footnote)
   - Detailed calculation breakdown with source citations
 
+- [x] **Task #10: SORA 2.0 GRC Calculator** (Commit 37b9bc0)
+  - Created `Frontend/src/lib/calculators/grc20.ts` (490+ lines)
+  - Source: JAR_doc_06 Table 2 (iGRC scenarios, page 20) & Table 3 (Mitigations, page 21)
+  - Complete iGRC matrix (8 scenarios × 4 UA categories)
+  - Sequential mitigations: M1→M2→M3
+  - M1 column-minimum clamp ENABLED (CRITICAL difference from 2.5)
+  - M3 ERP with penalty: None=+1, Adequate=0, Validated=-1
+  - Final GRC >7 validation (operation not supported)
+  - Example calculation reference (Page 21-22)
+
 ## ✅ COMPLETED - PREVIOUS SESSION (November 8, 2025)
 
 - [x] **Official EASA/JARUS Document Review** (3500+ lines read)
