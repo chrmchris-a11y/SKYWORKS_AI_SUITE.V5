@@ -1,15 +1,59 @@
 # 🚀 SKYWORKS AI SUITE V5 - PROJECT STATUS REPORT
 
-**Τελευταία Ενημέρωση:** 2025-11-09 (Phase 6 Step 51.2 Complete!)  
+**Τελευταία Ενημέρωση:** 2025-11-09 (Phase 6 UI Controls Complete!)  
 **Branch:** feat/complete-ui-features  
-**Current Phase:** Phase 6 - Mission Planning & Maps (Step 51.2 ✅ Complete)  
-**Status:** ✅ **GIS Integration 100% COMPLETE** (10/10 tests GREEN, ready for UI Controls!)
+**Current Phase:** Phase 6 - Mission Planning & Maps (UI Controls ✅)  
+**Status:** ✅ **SORA 2.5 & 2.0 UI Mitigations LIVE** (10/10 GIS tests GREEN + version toggle working!)
 
 ---
 
 ## 🎯 IMMEDIATE STATUS - READ THIS FIRST!
 
-### ✅✅ LATEST: Step 51.2 Complete - 10/10 GIS Tests GREEN! (2025-11-09)
+### ✅✅✅ LATEST: UI Controls for SORA 2.5 & 2.0 Mitigations! (2025-11-09)
+
+**Just Completed:**
+- ✅ **SORA Version Toggle** - Dropdown selector (2.5 / 2.0) with dynamic UI updates
+- ✅ **SORA 2.5 Mitigation Controls** - M1(A), M1(B), M1(C), M2 dropdowns (Annex B Table 11)
+- ✅ **SORA 2.0 Mitigation Controls** - M1, M2, M3 dropdowns (Main Body Table 3)
+- ✅ **Real-time SORA calculations** - Badges update on version/mitigation change
+- ✅ **Version-specific UI** - Show only active version's mitigation controls
+
+**New UI Features:**
+- 🔄 **SORA Version Selector**: Dropdown with "SORA 2.5 (2024 Edition)" / "SORA 2.0 (JAR-DEL-WG6-D.04)"
+- 🎯 **SORA 2.5 Mitigations** (Annex B Table 11):
+  - M1(A) Sheltering: [None, Low] - reduces iGRC by 1
+  - M1(B) Operational Restrictions: [None, Medium, High] - reduces iGRC by 1-2
+  - M1(C) Ground Observation: [None, Low] - reduces iGRC by 1
+  - M2 Impact Dynamics: [None, Low, Medium, High] - reduces iGRC by 1-3
+- 🎯 **SORA 2.0 Mitigations** (Table 3):
+  - M1 Strategic: [None, Low, Medium, High] - reduces GRC by 1-3
+  - M2 Effects of Ground Impact: [None, Low, High] - NO Medium option!
+  - M3 Emergency Response Plan: [None, Adequate, Validated] - reduces GRC by 1-2
+
+**Implementation:**
+- `airspace-maps.html`:
+  - Added `#soraVersion` dropdown
+  - Added `#mitigations_25` section (M1A/M1B/M1C/M2) with help text
+  - Added `#mitigations_20` section (M1/M2/M3) with help text
+  - Sections toggle visibility based on version selection
+  
+- `airspace.js` (218 lines modified):
+  - `updateSORABadges()` - reads version from UI, calls correct calculator
+  - `extractSORAParams()` - reads mitigation values from dropdowns
+  - `attachEventListeners()` - version toggle + mitigation change handlers
+  - Real-time re-calculation on ANY control change
+
+**Commit:** `1c78bf7` - "feat(phase6): add SORA 2.5 & 2.0 UI mitigation controls + version toggle"
+
+**Next Steps:**
+- 🎯 **Create 20+ SORA 2.5 integration tests** - Cover all Table 2 scenarios (density × aircraft size)
+- 🎯 **Create 20+ SORA 2.0 integration tests** - Cover all Table 2 scenarios (AEC × aircraft class)
+- 🎯 **Add mitigation validation tests** - Verify UI → calculator parameter mapping
+- 🎯 **Test version toggle behavior** - Ensure proper section show/hide + recalculation
+
+---
+
+### ✅✅ EARLIER: Step 51.2 Complete - 10/10 GIS Tests GREEN! (2025-11-09)
 
 **Just Completed:**
 - ✅ **10/10 GIS Integration Tests PASSING (100%)** - All geometry → SORA calculations verified!
@@ -46,8 +90,6 @@ Total: 10 | Passed: 10 | Failed: 0
 - ✅ CGA controlled area correctly overrides population density → density='Controlled', iGRC=2
 
 **Commit:** `dbc14dd` - "feat(phase6): GIS tests 10/10 GREEN - AEC logic 100% EASA/JARUS compliant"
-
-**Next Steps:**
 - 🎯 **Add UI Controls for SORA 2.5 Mitigations** (M1A/M1B/M1C/M2)
 - 🎯 **Add UI Controls for SORA 2.0 Mitigations** (M1/M2/M3)
 - 🎯 **Implement SORA version toggle** - Show only version-specific fields
