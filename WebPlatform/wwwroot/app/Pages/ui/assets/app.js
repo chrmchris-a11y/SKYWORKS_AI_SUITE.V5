@@ -1,7 +1,14 @@
 /**
  * SKYWORKS Mission Planner - Core JavaScript
  * Handles form submission, validation, API calls, and UI updates
+ * 
+ * IMPORTANT: Uses soraApi from soraClient.js for all SORA calculations
+ * Backend: POST /api/v1/sora/calculate (SoraController.cs)
+ * Client: WebPlatform/wwwroot/app/Pages/ui/api/soraClient.js
  */
+
+// Import SORA API client
+import { soraApi, buildSora25Request, buildSora20Request } from './api/soraClient.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // VALIDATION SCHEMAS (inline from schemas.ts)
@@ -105,72 +112,154 @@ async function handleFormSubmit(event) {
   
   try {
     clearConsole();
-    logToConsole('Building payload...', 'success');
+    logToConsole('Building SORA request...', 'success');
     
-    // Build payload
-    const payload = buildPayload();
+    // Build SORA request using correct DTO structure (matches backend)
+    const request = buildSoraRequest();
     
-    // Validate payload
-    logToConsole('Validating payload...', 'success');
-    validatePayload(payload);
+    // Validate request
+    logToConsole('Validating request...', 'success');
+    validateSoraRequest(request);
     
     // Log request
     logToConsole('REQUEST:', 'success');
-    logToConsole(JSON.stringify(payload, null, 2), 'success');
+    logToConsole(JSON.stringify(request, null, 2), 'success');
     
-    // Call API
-    logToConsole('Calling POST /api/v1/sora/calculate...', 'success');
-    const response = await callSoraAPI(payload);
+    // Call SORA API via soraClient
+    logToConsole('Calling POST /api/v1/sora/calculate via soraApi...', 'success');
+    const response = await soraApi.calculate(request);
     
     // Log response
     logToConsole('RESPONSE:', 'success');
     logToConsole(JSON.stringify(response, null, 2), 'success');
     
-    // Update Live Breakdown
+    // Update UI badges from API response
     updateLiveBreakdown(response);
     
     lastResponse = response;
     
   } catch (error) {
     logToConsole(`ERROR: ${error.message}`, 'error');
+    
+    // Fallback to local calculators if API fails (network/5xx errors)
+    if (error.message.includes('fetch') || error.message.includes('API error')) {
+      logToConsole('⚠️ API failed - attempting local calculator fallback...', 'warning');
+      try {
+        const fallbackResult = await calculateLocalFallback(buildSoraRequest());
+        logToConsole('✅ Local calculator result (offline mode):', 'warning');
+        logToConsole(JSON.stringify(fallbackResult, null, 2), 'warning');
+        updateLiveBreakdown(fallbackResult);
+        lastResponse = fallbackResult;
+      } catch (fallbackError) {
+        logToConsole(`❌ Local fallback also failed: ${fallbackError.message}`, 'error');
+      }
+    }
   }
 }
 
-function buildPayload() {
-  const common = {
-    operationType: document.getElementById('operation-type').value,
-    airspaceClass: document.getElementById('airspace-class').value,
-    typicality: document.getElementById('typicality').value,
-    maxHeightAGL_m: parseInt(document.getElementById('max-height').value),
-    specialZones: getSelectedSpecialZones(),
-    aec: document.getElementById('aec').value,
-    uSpace: document.getElementById('uspace').value === "Yes",
-    trafficDensitySource: document.getElementById('traffic-density').value,
-    airspaceContainment: document.getElementById('airspace-containment').value
+/**
+ * Build SORA request matching backend DTO structure
+ * Backend expects: { soraVersion, drone: { mtom_kg, maxSpeed_ms, characteristicDimension_m }, m1a, m2, ... }
+ */
+function buildSoraRequest() {
+  // Extract drone specs from form (add drone fields to mission.html if missing)
+  const droneSpecs = {
+    mtom_kg: parseFloat(document.getElementById('drone-mtom')?.value || 0.249), // Default: DJI Mini 4 Pro
+    maxSpeed_ms: parseFloat(document.getElementById('drone-speed')?.value || 16),
+    characteristicDimension_m: parseFloat(document.getElementById('drone-dimension')?.value || 0.213)
   };
   
-  let grc;
+  // Common airspace parameters
+  const commonParams = {
+    altitude_ft: parseInt(document.getElementById('max-height')?.value || 400),
+    controlledAirspace: document.getElementById('airspace-class')?.value?.includes('C') || 
+                       document.getElementById('airspace-class')?.value?.includes('D') || false,
+    airportEnvironment: getSelectedSpecialZones().includes('Airport Environment'),
+    populatedArea: document.getElementById('operation-type')?.value?.includes('Populated') || 
+                   document.getElementById('operation-type')?.value?.includes('Urban') || false,
+    atypicalAirspace: document.getElementById('typicality')?.value === 'Atypical' || false,
+    isVLOS: document.getElementById('operation-type')?.value?.includes('VLOS') || true
+  };
+  
+  // Build SORA 2.5 or 2.0 request
   if (currentSoraVersion === "2.5") {
-    grc = {
-      m1a: document.getElementById('m1a').value,
-      m1b: document.getElementById('m1b').value,
-      m1c: document.getElementById('m1c').value,
-      m2: document.getElementById('m2-25').value,
-      smallUARuleApplies: document.getElementById('small-ua-rule').checked
-    };
+    return buildSora25Request({
+      drone: droneSpecs,
+      populationDensity: extractPopulationDensity(),
+      m1a: document.getElementById('m1a')?.value || 'None',
+      m1b: document.getElementById('m1b')?.value || 'None',
+      m1c: document.getElementById('m1c')?.value || 'None',
+      m2: document.getElementById('m2-25')?.value || 'None',
+      ...commonParams
+    });
   } else {
-    grc = {
-      m1: document.getElementById('m1-20').value,
-      m2: document.getElementById('m2-20').value,
-      m3: document.getElementById('m3-20').value
-    };
+    return buildSora20Request({
+      drone: droneSpecs,
+      operationScenario: extractOperationScenario(),
+      m1: document.getElementById('m1-20')?.value || 'None',
+      m2_20: document.getElementById('m2-20')?.value || 'None',
+      m3: document.getElementById('m3-20')?.value || 'None',
+      ...commonParams
+    });
+  }
+}
+
+/**
+ * Extract population density from form (SORA 2.5)
+ * Map "Urban", "Suburban", "Rural" to official categories
+ */
+function extractPopulationDensity() {
+  const operationType = document.getElementById('operation-type')?.value || '';
+  const typicality = document.getElementById('typicality')?.value || '';
+  
+  // If explicit population density field exists, use it
+  const densityField = document.getElementById('population-density');
+  if (densityField && densityField.value) {
+    return densityField.value;
   }
   
-  return {
-    soraVersion: currentSoraVersion,
-    common,
-    grc
-  };
+  // Otherwise infer from operation type
+  if (typicality === 'Controlled') return 'Controlled';
+  if (operationType.includes('Urban')) return '<5000';
+  if (operationType.includes('Suburban')) return '<500';
+  if (operationType.includes('Rural')) return '<50';
+  if (operationType.includes('Sparsely')) return '<5';
+  
+  return '<500'; // Default: Suburban/Sparsely populated
+}
+
+/**
+ * Extract operation scenario (SORA 2.0)
+ * Map form fields to official scenarios
+ */
+function extractOperationScenario() {
+  const operationType = document.getElementById('operation-type')?.value || '';
+  const typicality = document.getElementById('typicality')?.value || '';
+  const isVLOS = operationType.includes('VLOS') || !operationType.includes('BVLOS');
+  
+  // If explicit scenario field exists, use it
+  const scenarioField = document.getElementById('operation-scenario');
+  if (scenarioField && scenarioField.value) {
+    return scenarioField.value;
+  }
+  
+  // Otherwise construct from operation type
+  const prefix = isVLOS ? 'VLOS_' : 'BVLOS_';
+  
+  if (typicality === 'Controlled') return prefix + 'Controlled';
+  if (operationType.includes('Urban')) return prefix + 'Populated';
+  if (operationType.includes('Suburban')) return prefix + 'Populated';
+  if (operationType.includes('Gathering')) return prefix + 'Gathering';
+  if (operationType.includes('Rural') || operationType.includes('Sparsely')) return prefix + 'Sparsely';
+  
+  return prefix + 'Sparsely'; // Default
+}
+
+function buildPayload() {
+  // DEPRECATED - Use buildSoraRequest() instead
+  // Kept for backwards compatibility during migration
+  console.warn('buildPayload() is deprecated - use buildSoraRequest() instead');
+  return buildSoraRequest();
 }
 
 function getSelectedSpecialZones() {
@@ -178,19 +267,33 @@ function getSelectedSpecialZones() {
   return Array.from(checkboxes).map(cb => cb.value);
 }
 
-function validatePayload(payload) {
+function validateSoraRequest(request) {
   const errors = [];
   
   try {
-    if (payload.soraVersion === "2.5") {
-      SORA_25_SCHEMAS.m1a.validate(payload.grc.m1a);
-      SORA_25_SCHEMAS.m1b.validate(payload.grc.m1b);
-      SORA_25_SCHEMAS.m1c.validate(payload.grc.m1c);
-      SORA_25_SCHEMAS.m2.validate(payload.grc.m2);
+    // Validate drone specs
+    if (!request.drone || !request.drone.mtom_kg || !request.drone.maxSpeed_ms) {
+      errors.push('Drone specifications missing (mtom_kg, maxSpeed_ms, characteristicDimension_m)');
+    }
+    
+    // Validate SORA version-specific fields
+    if (request.soraVersion === "2.5") {
+      if (!request.populationDensity) {
+        errors.push('Population density required for SORA 2.5');
+      }
+      SORA_25_SCHEMAS.m1a.validate(request.m1a || 'None');
+      SORA_25_SCHEMAS.m1b.validate(request.m1b || 'None');
+      SORA_25_SCHEMAS.m1c.validate(request.m1c || 'None');
+      SORA_25_SCHEMAS.m2.validate(request.m2 || 'None');
+    } else if (request.soraVersion === "2.0") {
+      if (!request.operationScenario) {
+        errors.push('Operation scenario required for SORA 2.0');
+      }
+      SORA_20_SCHEMAS.m1.validate(request.m1 || 'None');
+      SORA_20_SCHEMAS.m2.validate(request.m2_20 || 'None');
+      SORA_20_SCHEMAS.m3.validate(request.m3 || 'None');
     } else {
-      SORA_20_SCHEMAS.m1.validate(payload.grc.m1);
-      SORA_20_SCHEMAS.m2.validate(payload.grc.m2);
-      SORA_20_SCHEMAS.m3.validate(payload.grc.m3);
+      errors.push(`Invalid SORA version: ${request.soraVersion}. Must be "2.0" or "2.5"`);
     }
   } catch (err) {
     errors.push(err.message);
@@ -201,7 +304,16 @@ function validatePayload(payload) {
   }
 }
 
+function validatePayload(payload) {
+  // DEPRECATED - Use validateSoraRequest() instead
+  console.warn('validatePayload() is deprecated - use validateSoraRequest() instead');
+  return validateSoraRequest(payload);
+}
+
 async function callSoraAPI(payload) {
+  // DEPRECATED - Use soraApi.calculate() instead
+  console.warn('callSoraAPI() is deprecated - use soraApi.calculate() from soraClient.js');
+  
   const response = await fetch('/api/v1/sora/calculate', {
     method: 'POST',
     headers: {
@@ -230,23 +342,91 @@ async function callSoraAPI(payload) {
   };
 }
 
+/**
+ * Local calculator fallback (offline mode)
+ * Uses validated TS calculators (sora-calculator.js) when API is unavailable
+ * 
+ * @param {Object} request - SoraCalculationRequest
+ * @returns {Promise<Object>} SORA calculation result
+ */
+async function calculateLocalFallback(request) {
+  // Import calculateSORA25/20 if not already available
+  if (typeof calculateSORA25 === 'undefined' || typeof calculateSORA20 === 'undefined') {
+    // Dynamic import (if module system available)
+    try {
+      const calc = await import('./sora-calculator.js');
+      window.calculateSORA25 = calc.calculateSORA25;
+      window.calculateSORA20 = calc.calculateSORA20;
+    } catch (err) {
+      throw new Error('Local calculator unavailable (sora-calculator.js not loaded)');
+    }
+  }
+  
+  // Call local calculator
+  let result;
+  if (request.soraVersion === "2.5") {
+    result = calculateSORA25(request);
+  } else if (request.soraVersion === "2.0") {
+    result = calculateSORA20(request);
+  } else {
+    throw new Error(`Invalid SORA version: ${request.soraVersion}`);
+  }
+  
+  // Normalize result to match API response format
+  return {
+    initialGRC: result.initialGRC || result.initial_grc || result.iGRC,
+    finalGRC: result.finalGRC || result.final_grc || result.fGRC,
+    initialARC: result.initialARC || result.initial_arc || result.iARC,
+    residualARC: result.residualARC || result.residual_arc || result.rARC,
+    aec: result.aec || result.AEC,
+    sail: result.sail || result.SAIL,
+    tmpr: result.tmpr || result.TMPR,
+    warnings: result.warnings || [],
+    errors: result.errors || [],
+    calculationSteps: result.steps || result.calculationSteps
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════
-// LIVE BREAKDOWN UPDATE
+// LIVE BREAKDOWN UPDATE (from API response)
 // ═══════════════════════════════════════════════════════════════════
 
 function updateLiveBreakdown(response) {
-  document.getElementById('kpi-igrc').textContent = response.initialGrc;
-  document.getElementById('kpi-fgrc').textContent = response.finalGrc;
-  document.getElementById('kpi-iarc').textContent = response.arc.initial;
-  document.getElementById('kpi-rarc').textContent = response.arc.residual;
-  document.getElementById('kpi-sail').textContent = response.sail;
+  // Normalize response (handles both API format and local calculator format)
+  const initialGRC = response.initialGRC ?? response.initialGrc ?? response.initial_grc ?? response.iGRC ?? 'N/A';
+  const finalGRC = response.finalGRC ?? response.finalGrc ?? response.final_grc ?? response.fGRC ?? 'N/A';
+  const initialARC = response.initialARC ?? response.arc?.initial ?? response.initial_arc ?? response.iARC ?? 'N/A';
+  const residualARC = response.residualARC ?? response.arc?.residual ?? response.residual_arc ?? response.rARC ?? 'N/A';
+  const sail = response.sail ?? response.SAIL ?? 'N/A';
+  
+  // Update KPI badges
+  document.getElementById('kpi-igrc').textContent = initialGRC;
+  document.getElementById('kpi-fgrc').textContent = finalGRC;
+  document.getElementById('kpi-iarc').textContent = initialARC;
+  document.getElementById('kpi-rarc').textContent = residualARC;
+  document.getElementById('kpi-sail').textContent = sail;
   
   // Update warnings/errors
-  if (response.warnings.length > 0) {
-    response.warnings.forEach(w => logToConsole(`⚠️ ${w}`, 'warning'));
+  const warnings = response.warnings ?? [];
+  const errors = response.errors ?? [];
+  
+  if (warnings.length > 0) {
+    warnings.forEach(w => logToConsole(`⚠️ ${w}`, 'warning'));
   }
-  if (response.errors.length > 0) {
-    response.errors.forEach(e => logToConsole(`❌ ${e}`, 'error'));
+  if (errors.length > 0) {
+    errors.forEach(e => logToConsole(`❌ ${e}`, 'error'));
+  }
+  
+  // If AEC is available, show it
+  if (response.aec || response.AEC) {
+    const aec = response.aec ?? response.AEC;
+    logToConsole(`ℹ️ AEC: ${aec}`, 'success');
+  }
+  
+  // If TMPR is available (SORA 2.5 BVLOS), show it
+  if (response.tmpr || response.TMPR) {
+    const tmpr = response.tmpr ?? response.TMPR;
+    logToConsole(`ℹ️ TMPR: ${tmpr}`, 'success');
   }
 }
 
@@ -365,10 +545,13 @@ function handleJobTypeChange(event) {
 // FRAMEWORK TOGGLE (SORA 2.0 / 2.5 / PDRA / STS)
 // ═══════════════════════════════════════════════════════════════════
 
-let currentFramework = "sora25";
-
 function toggleFramework(framework) {
-  currentFramework = framework;
+  // Update currentSoraVersion based on framework
+  if (framework === 'sora25') {
+    currentSoraVersion = "2.5";
+  } else if (framework === 'sora20') {
+    currentSoraVersion = "2.0";
+  }
   
   // Update toggle button states
   document.querySelectorAll('.toggle-btn').forEach(btn => {
@@ -391,14 +574,14 @@ function toggleFramework(framework) {
   } else if (framework === 'pdra') {
     sora25Fields?.classList.add('hidden');
     sora20Fields?.classList.add('hidden');
-    logToConsole('� Redirecting to PDRA & STS hub...', 'success');
+    logToConsole('🚀 Redirecting to PDRA & STS hub...', 'success');
     setTimeout(() => {
       window.location.href = 'pdrasts.html';
     }, 500);
   } else if (framework === 'sts') {
     sora25Fields?.classList.add('hidden');
     sora20Fields?.classList.add('hidden');
-    logToConsole('� Redirecting to PDRA & STS hub...', 'success');
+    logToConsole('🚀 Redirecting to PDRA & STS hub...', 'success');
     setTimeout(() => {
       window.location.href = 'pdrasts.html';
     }, 500);
@@ -421,8 +604,19 @@ function handlePdfExport() {
 
 function handleEmail() {
   const subject = encodeURIComponent('SKYWORKS SORA Mission Dossier');
-  const body = encodeURIComponent(`Mission Details:\n\nFramework: ${currentFramework.toUpperCase()}\nJob Type: ${document.getElementById('job-type').value}\nOperation: ${document.getElementById('operation-type').value}\n\nGenerated by SKYWORKS SORA Suite v0.7.0`);
+  const body = encodeURIComponent(`Mission Details:\n\nFramework: ${currentSoraVersion}\nJob Type: ${document.getElementById('job-type').value}\nOperation: ${document.getElementById('operation-type').value}\n\nGenerated by SKYWORKS SORA Suite v0.7.0`);
   
   window.location.href = `mailto:?subject=${subject}&body=${body}`;
   logToConsole('📧 Email client opened', 'success');
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// GLOBAL EXPORTS (for module compatibility)
+// ═══════════════════════════════════════════════════════════════════
+
+// Make functions available globally for HTML onclick handlers
+window.toggleFramework = toggleFramework;
+window.toggleSoraVersion = toggleSoraVersion;
+window.handlePrint = handlePrint;
+window.handlePdfExport = handlePdfExport;
+window.handleEmail = handleEmail;

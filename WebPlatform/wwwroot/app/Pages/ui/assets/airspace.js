@@ -8,7 +8,14 @@
 // SORA overlays (iGRC/GRC/ARC/SAIL badges)
 // ERP/TMPR (emergency sites, recovery routes)
 // Export (KML/GeoJSON/PNG/ZIP)
+//
+// IMPORTANT: Uses soraApi from soraClient.js for all SORA calculations
+// Backend: POST /api/v1/sora/calculate (SoraController.cs)
+// Client: WebPlatform/wwwroot/app/Pages/ui/api/soraClient.js
 // ================================================================
+
+// Import SORA API client
+import { soraApi, buildSora25Request, buildSora20Request } from './api/soraClient.js';
 
 // Global State
 let currentMode = '2D'; // '2D' or '3D'
@@ -447,8 +454,9 @@ function updateGeometryStats() {
 
 // ================================================================
 // SORA BADGE INTEGRATION (Phase 6 - Step 51.2)
+// Updated to use soraApi.calculate() from soraClient.js
 // ================================================================
-function updateSORABadges() {
+async function updateSORABadges() {
   // If no waypoints, clear badges
   if (missionData.waypoints.length === 0) {
     document.getElementById('kpi_igrc').textContent = '–';
@@ -459,27 +467,83 @@ function updateSORABadges() {
     return;
   }
 
-  // Extract mission parameters from geometry
-  const params = extractSORAParams();
+  try {
+    // Extract mission parameters from geometry
+    const params = extractSORAParams();
 
-  // Read SORA version from UI selector
-  const versionSelect = document.getElementById('soraVersion');
-  const soraVersion = versionSelect ? versionSelect.value : '2.5';
-  
-  const results = soraVersion === '2.5' 
-    ? calculateSORA25(params) 
-    : calculateSORA20(params);
+    // Read SORA version from UI selector
+    const versionSelect = document.getElementById('soraVersion');
+    const soraVersion = versionSelect ? versionSelect.value : '2.5';
+    
+    // Build SORA request using helper functions
+    const request = soraVersion === '2.5'
+      ? buildSora25Request(params)
+      : buildSora20Request(params);
+    
+    // Call SORA API
+    const results = await soraApi.calculate(request);
 
-  // Update badges
-  document.getElementById('kpi_igrc').textContent = results.initialGRC;
-  document.getElementById('kpi_fgrc').textContent = results.finalGRC;
-  document.getElementById('kpi_iarc').textContent = results.initialARC;
-  document.getElementById('kpi_rarc').textContent = results.residualARC;
-  document.getElementById('sailBadge').textContent = `SAIL: ${results.SAIL || '–'}`;
-  document.getElementById('sailBadge').className = `sail-badge sail-${results.SAIL?.toLowerCase() || 'none'}`;
+    // Update badges (normalize response format)
+    const initialGRC = results.initialGRC ?? results.initialGrc ?? results.initial_grc ?? 'N/A';
+    const finalGRC = results.finalGRC ?? results.finalGrc ?? results.final_grc ?? 'N/A';
+    const initialARC = results.initialARC ?? results.initialArc ?? results.initial_arc ?? 'N/A';
+    const residualARC = results.residualARC ?? results.residualArc ?? results.residual_arc ?? 'N/A';
+    const sail = results.sail ?? results.SAIL ?? 'N/A';
+    
+    document.getElementById('kpi_igrc').textContent = initialGRC;
+    document.getElementById('kpi_fgrc').textContent = finalGRC;
+    document.getElementById('kpi_iarc').textContent = initialARC;
+    document.getElementById('kpi_rarc').textContent = residualARC;
+    document.getElementById('sailBadge').textContent = `SAIL: ${sail}`;
+    document.getElementById('sailBadge').className = `sail-badge sail-${sail.toLowerCase() === 'category c' ? 'catc' : sail.toLowerCase()}`;
 
-  // Log to validation console
-  logToConsole(`SORA ${soraVersion}: GRC=${results.finalGRC}, ARC=${results.residualARC}, SAIL=${results.SAIL}`, 'success');
+    // Log to validation console
+    logToConsole(`✅ SORA ${soraVersion} (API): GRC=${finalGRC}, ARC=${residualARC}, SAIL=${sail}`, 'success');
+    
+    // Log warnings from API
+    if (results.warnings && results.warnings.length > 0) {
+      results.warnings.forEach(w => logToConsole(`⚠️ ${w}`, 'warning'));
+    }
+    
+  } catch (error) {
+    logToConsole(`❌ API error: ${error.message}`, 'error');
+    
+    // Fallback to local calculators (offline mode)
+    try {
+      logToConsole('⚠️ Falling back to local calculator (offline mode)...', 'warning');
+      const params = extractSORAParams();
+      const versionSelect = document.getElementById('soraVersion');
+      const soraVersion = versionSelect ? versionSelect.value : '2.5';
+      
+      // Dynamic import of local calculators
+      if (typeof calculateSORA25 === 'undefined' || typeof calculateSORA20 === 'undefined') {
+        const calc = await import('./sora-calculator.js');
+        window.calculateSORA25 = calc.calculateSORA25;
+        window.calculateSORA20 = calc.calculateSORA20;
+      }
+      
+      const results = soraVersion === '2.5' 
+        ? calculateSORA25(params) 
+        : calculateSORA20(params);
+
+      // Update badges with local results
+      document.getElementById('kpi_igrc').textContent = results.initialGRC || '–';
+      document.getElementById('kpi_fgrc').textContent = results.finalGRC || '–';
+      document.getElementById('kpi_iarc').textContent = results.initialARC || '–';
+      document.getElementById('kpi_rarc').textContent = results.residualARC || '–';
+      document.getElementById('sailBadge').textContent = `SAIL: ${results.SAIL || '–'} (OFFLINE)`;
+      document.getElementById('sailBadge').className = `sail-badge sail-${results.SAIL?.toLowerCase() || 'none'}`;
+
+      logToConsole(`✅ SORA ${soraVersion} (LOCAL): GRC=${results.finalGRC}, ARC=${results.residualARC}, SAIL=${results.SAIL}`, 'warning');
+    } catch (fallbackError) {
+      logToConsole(`❌ Local fallback also failed: ${fallbackError.message}`, 'error');
+      document.getElementById('kpi_igrc').textContent = 'ERROR';
+      document.getElementById('kpi_fgrc').textContent = 'ERROR';
+      document.getElementById('kpi_iarc').textContent = 'ERROR';
+      document.getElementById('kpi_rarc').textContent = 'ERROR';
+      document.getElementById('sailBadge').textContent = 'SAIL: ERROR';
+    }
+  }
 }
 
 function extractSORAParams() {
