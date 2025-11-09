@@ -234,83 +234,95 @@ test('SORA 2.5: Final GRC floor = 1 (Controlled ground area minimum)', () => {
 // Reference: SORA 2.5 Main Body, Figure 6, page 42
 // =============================================================================
 
-console.log('\n--- SORA 2.5: AEC Decision Tree Tests ---');
+console.log('\n--- SORA 2.0: AEC Decision Tree Tests (Annex C Table 1) ---');
 
-test('AEC 0: Atypical airspace → AEC 0', () => {
+// Source: JAR-DEL-WG6-D.04 Annex C Table 1, Page 12-13
+// Official AEC 1-12 mapping
+
+test('AEC 12: Atypical/Segregated airspace → AEC 12 → ARC-a', () => {
   const aec = calc.calculateAEC(400, false, false, false, true);
-  assert.strictEqual(aec, 0, `Expected AEC 0, got ${aec}`);
+  assert.strictEqual(aec, 12, `Expected AEC 12 (Atypical), got ${aec}`);
 });
 
-test('AEC 2: Low altitude, controlled, no airport, no populated → AEC 2', () => {
+test('AEC 8: <500ft Controlled airspace → AEC 8 → ARC-c', () => {
+  // Source: Annex C Table 1, Row 8: <500ft AGL in Controlled Airspace
   const aec = calc.calculateAEC(400, true, false, false, false);
-  assert.strictEqual(aec, 2, `Expected AEC 2, got ${aec}`);
+  assert.strictEqual(aec, 8, `Expected AEC 8 (<500ft Controlled), got ${aec}`);
 });
 
-test('AEC 3: Low altitude, controlled, airport OR populated → AEC 3', () => {
-  const aec1 = calc.calculateAEC(400, true, true, false, false);
-  assert.strictEqual(aec1, 3, `Expected AEC 3, got ${aec1}`);
+test('AEC 6: Airport E/F/G environment → AEC 6 → ARC-c', () => {
+  // Source: Annex C Table 1, Row 6: Airport/Heliport in Class E/F/G
+  // Valid for both <500ft and >500ft near airports
+  const aec1 = calc.calculateAEC(400, false, true, false, false);
+  assert.strictEqual(aec1, 6, `Expected AEC 6 (Airport E/F/G), got ${aec1}`);
   
-  const aec2 = calc.calculateAEC(400, true, false, true, false);
-  assert.strictEqual(aec2, 3, `Expected AEC 3, got ${aec2}`);
+  const aec2 = calc.calculateAEC(600, false, true, false, false);
+  assert.strictEqual(aec2, 6, `Expected AEC 6 (Airport E/F/G), got ${aec2}`);
 });
 
-test('AEC 4: Low altitude, controlled, airport AND populated → AEC 4', () => {
-  const aec = calc.calculateAEC(400, true, true, true, false);
-  assert.strictEqual(aec, 4, `Expected AEC 4, got ${aec}`);
-});
-
-test('AEC 6: Low altitude, uncontrolled, no airport, no populated → AEC 6', () => {
+test('AEC 10: <500ft Uncontrolled Rural → AEC 10 → ARC-b', () => {
+  // Source: Annex C Table 1, Row 10: <500ft AGL Uncontrolled, Rural
   const aec = calc.calculateAEC(400, false, false, false, false);
-  assert.strictEqual(aec, 6, `Expected AEC 6, got ${aec}`);
+  assert.strictEqual(aec, 10, `Expected AEC 10 (<500ft Uncontrolled Rural), got ${aec}`);
 });
 
-test('AEC 8: Low altitude, uncontrolled, airport → AEC 8 (jumps from 6)', () => {
-  const aec = calc.calculateAEC(400, false, true, false, false);
-  assert.strictEqual(aec, 8, `Expected AEC 8, got ${aec}`);
-});
-
-test('AEC 9: Low altitude, uncontrolled, populated (no airport) → AEC 9', () => {
+test('AEC 9: <500ft Uncontrolled Urban → AEC 9 → ARC-c', () => {
+  // Source: Annex C Table 1, Row 9: <500ft AGL Uncontrolled, Urban
   const aec = calc.calculateAEC(400, false, false, true, false);
-  assert.strictEqual(aec, 9, `Expected AEC 9, got ${aec}`);
+  assert.strictEqual(aec, 9, `Expected AEC 9 (<500ft Uncontrolled Urban), got ${aec}`);
 });
 
-test('AEC 10: High altitude (>500ft), no airport → AEC 10', () => {
+test('AEC 5: >500ft Uncontrolled Rural → AEC 5 → ARC-c', () => {
+  // Source: Annex C Table 1, Row 5: >500ft AGL Uncontrolled, Rural
   const aec = calc.calculateAEC(600, false, false, false, false);
-  assert.strictEqual(aec, 10, `Expected AEC 10, got ${aec}`);
+  assert.strictEqual(aec, 5, `Expected AEC 5 (>500ft Uncontrolled Rural), got ${aec}`);
 });
 
-test('AEC 11: High altitude (>500ft), airport → AEC 11', () => {
-  const aec = calc.calculateAEC(600, false, true, false, false);
-  assert.strictEqual(aec, 11, `Expected AEC 11, got ${aec}`);
+test('AEC 4: >500ft Uncontrolled Urban → AEC 4 → ARC-c', () => {
+  // Source: Annex C Table 1, Row 4: >500ft AGL Uncontrolled, Urban
+  const aec = calc.calculateAEC(600, false, false, true, false);
+  assert.strictEqual(aec, 4, `Expected AEC 4 (>500ft Uncontrolled Urban), got ${aec}`);
+});
+
+test('AEC 3: >500ft Controlled airspace → AEC 3 → ARC-d', () => {
+  // Source: Annex C Table 1, Row 3: >500ft AGL in Controlled Airspace
+  const aec = calc.calculateAEC(600, true, false, false, false);
+  assert.strictEqual(aec, 3, `Expected AEC 3 (>500ft Controlled), got ${aec}`);
 });
 
 // =============================================================================
-// SORA 2.5: AEC to ARC Mapping Tests
-// Reference: SORA 2.5 Main Body, Table 6, page 46
+// SORA 2.0: AEC to ARC Mapping Tests
+// Reference: JAR-DEL-WG6-D.04 Annex C Table 1, Page 12-13
 // =============================================================================
 
-console.log('\n--- SORA 2.5: AEC to ARC Mapping Tests ---');
+console.log('\n--- SORA 2.0: AEC to ARC Mapping Tests (Annex C Table 1) ---');
 
-test('AEC 0 → ARC-a', () => {
-  const arc = calc.mapAECtoARC(0);
-  assert.strictEqual(arc, "ARC-a", `Expected ARC-a, got ${arc}`);
+test('AEC 12 → ARC-a (Atypical/Segregated)', () => {
+  const arc = calc.mapAECtoARC(12);
+  assert.strictEqual(arc, "ARC-a", `Expected ARC-a for AEC 12, got ${arc}`);
 });
 
-test('AEC 2/3/4 → ARC-b', () => {
-  assert.strictEqual(calc.mapAECtoARC(2), "ARC-b");
-  assert.strictEqual(calc.mapAECtoARC(3), "ARC-b");
-  assert.strictEqual(calc.mapAECtoARC(4), "ARC-b");
+test('AEC 1/2/3 → ARC-d (High density airspace)', () => {
+  // Source: Annex C Table 1 - Density 5 categories
+  assert.strictEqual(calc.mapAECtoARC(1), "ARC-d", "AEC 1 (Airport B/C/D) → ARC-d");
+  assert.strictEqual(calc.mapAECtoARC(2), "ARC-d", "AEC 2 (>500ft Mode-S Veil/TMZ) → ARC-d");
+  assert.strictEqual(calc.mapAECtoARC(3), "ARC-d", "AEC 3 (>500ft Controlled) → ARC-d");
 });
 
-test('AEC 6/8/9 → ARC-c', () => {
-  assert.strictEqual(calc.mapAECtoARC(6), "ARC-c");
-  assert.strictEqual(calc.mapAECtoARC(8), "ARC-c");
-  assert.strictEqual(calc.mapAECtoARC(9), "ARC-c");
+test('AEC 4/5/6/7/8/9 → ARC-c (Medium density)', () => {
+  // Source: Annex C Table 1 - Density 2-3 categories
+  assert.strictEqual(calc.mapAECtoARC(4), "ARC-c", "AEC 4 (>500ft Uncontrolled Urban) → ARC-c");
+  assert.strictEqual(calc.mapAECtoARC(5), "ARC-c", "AEC 5 (>500ft Uncontrolled Rural) → ARC-c");
+  assert.strictEqual(calc.mapAECtoARC(6), "ARC-c", "AEC 6 (Airport E/F/G) → ARC-c");
+  assert.strictEqual(calc.mapAECtoARC(7), "ARC-c", "AEC 7 (<500ft Mode-S Veil/TMZ) → ARC-c");
+  assert.strictEqual(calc.mapAECtoARC(8), "ARC-c", "AEC 8 (<500ft Controlled) → ARC-c");
+  assert.strictEqual(calc.mapAECtoARC(9), "ARC-c", "AEC 9 (<500ft Uncontrolled Urban) → ARC-c");
 });
 
-test('AEC 10/11 → ARC-d', () => {
-  assert.strictEqual(calc.mapAECtoARC(10), "ARC-d");
-  assert.strictEqual(calc.mapAECtoARC(11), "ARC-d");
+test('AEC 10/11 → ARC-b (Low density)', () => {
+  // Source: Annex C Table 1 - Density 1 categories
+  assert.strictEqual(calc.mapAECtoARC(10), "ARC-b", "AEC 10 (<500ft Uncontrolled Rural) → ARC-b");
+  assert.strictEqual(calc.mapAECtoARC(11), "ARC-b", "AEC 11 (>FL600) → ARC-b");
 });
 
 // =============================================================================
@@ -531,12 +543,13 @@ test('E2E SORA 2.5: DJI Mavic 3 (0.895kg), Controlled density, VLOS, controlled 
   assert.strictEqual(result.initialGRC, 1, `Expected iGRC=1`);
   // No mitigations → fGRC = 1
   assert.strictEqual(result.finalGRC, 1, `Expected fGRC=1`);
-  // Controlled, low altitude → AEC 2 → ARC-b
-  assert.strictEqual(result.aec, 2, `Expected AEC 2`);
-  assert.strictEqual(result.initialARC, "ARC-b", `Expected iARC=ARC-b`);
-  // VLOS → ARC-b - 1 = ARC-a
-  assert.strictEqual(result.residualARC, "ARC-a", `Expected rARC=ARC-a`);
-  // GRC=1, ARC-a → SAIL I
+  // Controlled, low altitude (<500ft) → AEC 8 (Annex C Table 1, Row 8)
+  assert.strictEqual(result.aec, 8, `Expected AEC 8 (<500ft Controlled), got ${result.aec}`);
+  // AEC 8 → ARC-c (per Annex C Table 1)
+  assert.strictEqual(result.initialARC, "ARC-c", `Expected iARC=ARC-c`);
+  // VLOS → ARC-c - 1 = ARC-b
+  assert.strictEqual(result.residualARC, "ARC-b", `Expected rARC=ARC-b`);
+  // GRC=1, ARC-b → SAIL I
   assert.strictEqual(result.sail, "I", `Expected SAIL I, got ${result.sail}`);
 });
 
@@ -550,7 +563,7 @@ test('E2E SORA 2.5: DJI Matrice 300 RTK (6.3kg), >50000 density, BVLOS, airport 
     m1b: "High",
     m1c: "Low",
     m2: "High",
-    altitude_ft: 600, // High altitude
+    altitude_ft: 600, // High altitude (>500ft)
     controlledAirspace: false,
     airportEnvironment: true,
     populatedArea: true,
@@ -563,12 +576,13 @@ test('E2E SORA 2.5: DJI Matrice 300 RTK (6.3kg), >50000 density, BVLOS, airport 
   // M1(A) Low + M1(B) High + M1(C) Low + M2 High → 7-1-2-1-2 = 1
   // SORA 2.5 does NOT have column minimum clamp per official EASA/JARUS docs
   assert.strictEqual(result.finalGRC, 1, `Expected fGRC=1`);
-  // High altitude + airport → AEC 11 → ARC-d
-  assert.strictEqual(result.aec, 11, `Expected AEC 11`);
-  assert.strictEqual(result.initialARC, "ARC-d", `Expected iARC=ARC-d`);
-  // BVLOS → no reduction → ARC-d
-  assert.strictEqual(result.residualARC, "ARC-d", `Expected rARC=ARC-d`);
-  // GRC=1, ARC-d → SAIL II
+  // High altitude (>500ft) + airport → AEC 6 (Annex C Table 1, Row 6: Airport E/F/G)
+  assert.strictEqual(result.aec, 6, `Expected AEC 6 (Airport E/F/G), got ${result.aec}`);
+  // AEC 6 → ARC-c (per Annex C Table 1)
+  assert.strictEqual(result.initialARC, "ARC-c", `Expected iARC=ARC-c`);
+  // BVLOS → no VLOS reduction → residual ARC = initial ARC
+  assert.strictEqual(result.residualARC, "ARC-c", `Expected rARC=ARC-c (no VLOS reduction for BVLOS)`);
+  // GRC=1, ARC-c → SAIL II (per SORA 2.5 Table 7)
   assert.strictEqual(result.sail, "II", `Expected SAIL II, got ${result.sail}`);
 });
 
@@ -597,9 +611,10 @@ test('E2E SORA 2.0: VLOS_Controlled, 1-3m, M1 Low, M2 None, M3 Adequate → SAIL
   assert.strictEqual(result.initialGRC, 2, `Expected iGRC=2`);
   // M1 Low → 2-1 = 1
   assert.strictEqual(result.finalGRC, 1, `Expected fGRC=1`);
-  // Controlled, low altitude → AEC 2 → ARC-b → VLOS → ARC-a
-  assert.strictEqual(result.residualARC, "ARC-a", `Expected rARC=ARC-a`);
-  // GRC=1, ARC-a → SAIL I
+  // Controlled, low altitude (<500ft) → AEC 8 → ARC-c (Annex C Table 1, Row 8)
+  // VLOS → ARC-c - 1 = ARC-b
+  assert.strictEqual(result.residualARC, "ARC-b", `Expected rARC=ARC-b (AEC 8 → ARC-c, VLOS → ARC-b)`);
+  // GRC=1, ARC-b → SAIL I
   assert.strictEqual(result.sail, "I", `Expected SAIL I, got ${result.sail}`);
 });
 
@@ -624,10 +639,10 @@ test('E2E SORA 2.0: BVLOS_Populated, >8m, M1 High, M2 High, M3 None → check pe
   // Then M2 High (-2) + M3 None (+1) → 5-2+1 = 4
   // Source: SORA 2.0 Main Body, Section 2.3.2(d)-(f), Page 21
   assert.strictEqual(result.finalGRC, 4, `Expected fGRC=4`);
-  // Populated, low altitude, uncontrolled → AEC 9 → ARC-c → no VLOS reduction
+  // Populated, low altitude, uncontrolled → AEC 9 → ARC-c → no VLOS reduction (BVLOS)
   assert.strictEqual(result.residualARC, "ARC-c", `Expected rARC=ARC-c`);
-  // GRC=4, ARC-c → SAIL III
-  assert.strictEqual(result.sail, "III", `Expected SAIL III, got ${result.sail}`);
+  // GRC=4, ARC-c → SAIL IV (per SORA 2.0 Main Body Table 1 - SAIL Matrix)
+  assert.strictEqual(result.sail, "IV", `Expected SAIL IV, got ${result.sail}`);
 });
 
 // =============================================================================

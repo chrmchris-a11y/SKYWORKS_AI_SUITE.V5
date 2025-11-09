@@ -294,112 +294,136 @@ function calculateFinalGRC_SORA20(iGRC, m1, m2, m3, operationScenario) {
 // =============================================================================
 
 /**
- * AEC (Airspace Encounter Category) Determination - SORA 2.5
- * Reference: SORA 2.5 Main Body, Figure 6 (Decision Tree), page 42
+ * Calculate Aircraft Encounter Category (AEC) - SORA 2.0 only
+ * Source: JAR-DEL-WG6-D.04 Annex C Table 1, Page 12-13
  * 
- * Decision tree logic (corrected from SORA_FIELD_SPECIFICATIONS.md):
- * 1. Atypical airspace? → AEC 0
- * 2. Altitude > 500ft (152m)?
- *    - YES + Controlled → AEC 11
- *    - YES + Uncontrolled + Populated → AEC 6
- *    - YES + Uncontrolled + Sparsely → AEC 2
- * 3. Altitude ≤ 500ft:
- *    - Controlled + Airport → AEC 10
- *    - Controlled + Non-airport → AEC 9
- *    - Uncontrolled + Airport → AEC 8
- *    - Uncontrolled + Populated (no airport) → AEC 4
- *    - Uncontrolled + Sparsely (no airport) → AEC 3
+ * Returns OFFICIAL AEC 1-12 as defined in SORA 2.0 Annex C:
+ * - AEC 1: Airport/Heliport in Class B/C/D (density 5) → ARC-d
+ * - AEC 2: >500ft AGL in Mode-S Veil / TMZ (density 5) → ARC-d
+ * - AEC 3: >500ft AGL in Controlled Airspace (density 5) → ARC-d
+ * - AEC 4: >500ft AGL Uncontrolled, Urban (density 3) → ARC-c
+ * - AEC 5: >500ft AGL Uncontrolled, Rural (density 2) → ARC-c
+ * - AEC 6: Airport/Heliport in Class E/F/G (density 3) → ARC-c
+ * - AEC 7: <500ft AGL in Mode-S Veil / TMZ (density 3) → ARC-c
+ * - AEC 8: <500ft AGL in Controlled Airspace (density 3) → ARC-c
+ * - AEC 9: <500ft AGL Uncontrolled, Urban (density 2) → ARC-c
+ * - AEC 10: <500ft AGL Uncontrolled, Rural (density 1) → ARC-b
+ * - AEC 11: >FL600 (density 1) → ARC-b
+ * - AEC 12: Atypical/Segregated Airspace (density 1) → ARC-a
  * 
- * @param {number} altitude_ft - Altitude in feet
- * @param {boolean} controlledAirspace - Is operation in controlled airspace?
- * @param {boolean} airportEnvironment - Is operation near airport?
+ * @param {number} altitude_ft - Altitude in feet AGL
+ * @param {boolean|string} controlledAirspace - Controlled airspace flag or type (RMZ_TMZ, CTR, etc)
+ * @param {boolean|string} airportEnvironment - Airport environment flag or class (Class_E_F_G, Class_B_C_D, etc)
  * @param {boolean} populatedArea - Is operation over populated area (urban)?
  * @param {boolean} atypicalAirspace - Is airspace atypical (reserved, segregated)?
- * @returns {number} AEC category (0-11)
+ * @returns {number} AEC category (1-12, official Annex C numbering)
  */
 function calculateAEC(altitude_ft, controlledAirspace, airportEnvironment, populatedArea, atypicalAirspace) {
-  // Custom AEC numbering (0-11) for this implementation
-  // Mapping VERIFIED against SORA 2.0 Annex C Table 1 (Page 12-13)
+  // Source: JAR-DEL-WG6-D.04 Annex C Table 1 (SORA 2.0)
   // NOTE: SORA 2.5 does not use AEC, uses direct Initial ARC calculation
   
   // Normalize airportEnvironment: treat 'none', false, null, undefined as no airport
   const hasAirport = airportEnvironment && airportEnvironment !== 'none';
 
-  // Atypical/Segregated airspace → AEC 0 → ARC-a
+  // Special case: Atypical/Segregated airspace (AEC 12)
+  // Source: Annex C Table 1, Row 12
   if (atypicalAirspace) {
-    return 0; // Custom AEC 0 = Official AEC 12 (Atypical)
+    return 12; // AEC 12: Atypical/Segregated → ARC-a
   }
 
   // SORA 2.0 Annex C Table 1 Decision Tree:
   
-  // High altitude (>500ft AGL)
+  // High altitude operations (>500ft AGL, below FL600)
   if (altitude_ft > 500) {
+    // Check for airport environment first (takes priority)
     if (hasAirport) {
-      // Airport environment >500ft → AEC 1 or 6
-      // For simplicity, assume non-Class-B/C/D → AEC 6
-      return 1; // Custom AEC 1 = Official AEC 6 (Airport E/F/G) → ARC-c
-    } else if (controlledAirspace) {
-      if (populatedArea) {
-        return 4; // Custom AEC 4 = Official AEC 4 (>500ft Controlled Urban) → ARC-c
-      } else {
-        return 3; // Custom AEC 3 = Official AEC 3 (>500ft Controlled Rural) → ARC-d
+      // Airport environment >500ft → AEC 1 (Class B/C/D) or AEC 6 (Class E/F/G)
+      // Source: Annex C Table 1, Rows 1 & 6
+      // For this implementation, assume Class E/F/G (most common for UAS)
+      return 6; // AEC 6: Airport E/F/G → ARC-c
+    }
+    
+    // Controlled airspace (no airport)
+    if (controlledAirspace) {
+      // Check if Mode-S Veil / TMZ (RMZ_TMZ type)
+      if (controlledAirspace === 'RMZ_TMZ') {
+        return 2; // AEC 2: >500ft in Mode-S Veil / TMZ → ARC-d
       }
+      // General controlled airspace
+      return 3; // AEC 3: >500ft Controlled → ARC-d
+    }
+    
+    // Uncontrolled >500ft
+    if (populatedArea) {
+      return 4; // AEC 4: >500ft Uncontrolled Urban → ARC-c
     } else {
-      // Uncontrolled >500ft
-      if (populatedArea) {
-        return 4; // Custom AEC 4 = Official AEC 4 (>500ft Uncontrolled Urban) → ARC-c
-      } else {
-        return 5; // Custom AEC 5 = Official AEC 5 (>500ft Uncontrolled Rural) → ARC-c
-      }
+      return 5; // AEC 5: >500ft Uncontrolled Rural → ARC-c
     }
   }
 
-  // Low altitude (≤500ft AGL)
+  // Low altitude operations (≤500ft AGL) - VLL (Very Low Level)
+  // Controlled airspace <500ft
   if (controlledAirspace) {
-    // Controlled airspace <500ft → AEC 7 or 8
-    return 8; // Custom AEC 8 = Official AEC 8 (<500ft Controlled) → ARC-c
-  } else {
-    // Uncontrolled <500ft
-    if (hasAirport) {
-      return 8; // Custom AEC 8 = Airport proximity <500ft → ARC-c
-    } else if (populatedArea) {
-      return 9; // Custom AEC 9 = Official AEC 9 (<500ft Uncontrolled Urban) → ARC-c
-    } else {
-      return 10; // Custom AEC 10 = Official AEC 10 (<500ft Uncontrolled Rural) → ARC-b
+    // Check if Mode-S Veil / TMZ
+    if (controlledAirspace === 'RMZ_TMZ') {
+      return 7; // AEC 7: <500ft in Mode-S Veil / TMZ → ARC-c
     }
+    return 8; // AEC 8: <500ft Controlled → ARC-c
+  }
+  
+  // Uncontrolled <500ft
+  if (hasAirport) {
+    // Airport proximity <500ft (uncontrolled)
+    // This maps to AEC 6 (Airport E/F/G) but at low altitude
+    // For VLL near airports, use AEC 6
+    return 6; // AEC 6: Airport E/F/G (includes VLL) → ARC-c
+  } else if (populatedArea) {
+    return 9; // AEC 9: <500ft Uncontrolled Urban → ARC-c
+  } else {
+    return 10; // AEC 10: <500ft Uncontrolled Rural → ARC-b
   }
 }
 
 /**
- * AEC to Initial ARC Mapping - Custom Implementation
- * VERIFIED against SORA 2.0 Annex C Table 1 (Page 12-13)
+ * AEC to Initial ARC Mapping - SORA 2.0 Official Numbering
+ * Source: JAR-DEL-WG6-D.04 Annex C Table 1 (Page 12-13)
  * 
- * Custom AEC → Official AEC → Initial ARC mapping:
- * - Custom 0 = Official 12 (Atypical) → ARC-a
- * - Custom 1 = Official 6 (Airport E/F/G) → ARC-c
- * - Custom 3 = Official 3 (>500ft Controlled) → ARC-d
- * - Custom 4 = Official 4 (>500ft Uncontrolled Urban) → ARC-c
- * - Custom 5 = Official 5 (>500ft Uncontrolled Rural) → ARC-c
- * - Custom 8 = Official 8 (<500ft Controlled) → ARC-c
- * - Custom 9 = Official 9 (<500ft Uncontrolled Urban) → ARC-c
- * - Custom 10 = Official 10 (<500ft Uncontrolled Rural) → ARC-b
+ * AEC 1-12 → Initial ARC mapping per official specification:
+ * - AEC 1 (Airport B/C/D) → ARC-d
+ * - AEC 2 (>500ft Mode-S Veil/TMZ) → ARC-d
+ * - AEC 3 (>500ft Controlled) → ARC-d
+ * - AEC 4 (>500ft Uncontrolled Urban) → ARC-c
+ * - AEC 5 (>500ft Uncontrolled Rural) → ARC-c
+ * - AEC 6 (Airport E/F/G) → ARC-c
+ * - AEC 7 (<500ft Mode-S Veil/TMZ) → ARC-c
+ * - AEC 8 (<500ft Controlled) → ARC-c
+ * - AEC 9 (<500ft Uncontrolled Urban) → ARC-c
+ * - AEC 10 (<500ft Uncontrolled Rural) → ARC-b
+ * - AEC 11 (>FL600) → ARC-b
+ * - AEC 12 (Atypical/Segregated) → ARC-a
  * 
- * @param {number} aec - AEC category (custom 0-11)
+ * @param {number} aec - AEC category (1-12, official Annex C numbering)
  * @returns {string} Initial ARC ("ARC-a", "ARC-b", "ARC-c", "ARC-d")
  */
 function mapAECtoARC(aec) {
-  // Verified mappings from SORA 2.0 Annex C Table 1
-  if (aec === 0) return "ARC-a";    // Atypical/Segregated
-  if (aec === 1) return "ARC-c";    // Airport E/F/G
-  if (aec === 3) return "ARC-d";    // >500ft Controlled
-  if (aec === 4) return "ARC-c";    // >500ft Urban
-  if (aec === 5) return "ARC-c";    // >500ft Rural
-  if (aec === 8) return "ARC-c";    // <500ft Controlled
-  if (aec === 9) return "ARC-c";    // <500ft Urban
-  if (aec === 10) return "ARC-b";   // <500ft Rural
-  
-  // Fallback for unmapped AEC
-  return "ARC-c"; // Default to ARC-c (medium risk)
+  // Source: JAR-DEL-WG6-D.04 Annex C Table 1, Page 12-13
+  switch (aec) {
+    case 1:  return "ARC-d"; // Airport B/C/D
+    case 2:  return "ARC-d"; // >500ft Mode-S Veil/TMZ
+    case 3:  return "ARC-d"; // >500ft Controlled
+    case 4:  return "ARC-c"; // >500ft Uncontrolled Urban
+    case 5:  return "ARC-c"; // >500ft Uncontrolled Rural
+    case 6:  return "ARC-c"; // Airport E/F/G
+    case 7:  return "ARC-c"; // <500ft Mode-S Veil/TMZ
+    case 8:  return "ARC-c"; // <500ft Controlled
+    case 9:  return "ARC-c"; // <500ft Uncontrolled Urban
+    case 10: return "ARC-b"; // <500ft Uncontrolled Rural
+    case 11: return "ARC-b"; // >FL600
+    case 12: return "ARC-a"; // Atypical/Segregated
+    default:
+      console.warn(`Invalid AEC ${aec}, defaulting to ARC-c`);
+      return "ARC-c";
+  }
 }
 
 /**
