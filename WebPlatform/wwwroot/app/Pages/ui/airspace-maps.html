@@ -44,6 +44,14 @@
       <input type="file" id="importRouteFile" accept=".geojson,.kml,.csv" class="form-input">
       <p class="help-text">Drag-and-drop or select file. CSV columns: lat, lon, alt_m (WGS84/EPSG:4326)</p>
       
+      <div style="margin-top:16px;padding:12px;background:#f0f9ff;border:1px solid #0284c7;border-radius:8px;">
+        <label class="form-label" style="margin:0 0 8px 0;font-weight:600;color:#0369a1;">🌍 Import from Google Earth (KML)</label>
+        <input type="file" id="importGoogleEarthKML" accept=".kml" class="form-input" style="margin-bottom:8px;">
+        <p class="help-text" style="margin:0;font-size:11px;color:#0369a1;">
+          Export your route/polygon from Google Earth as KML, then import here. Supports LineString (route) and Polygon (CGA/geofence).
+        </p>
+      </div>
+      
       <button id="addWaypoint" class="btn-secondary full-width">➕ Add Waypoint</button>
       <button id="drawGeofence" class="btn-secondary full-width">🔵 Draw Geofence (Cylinder)</button>
       <button id="drawCGA" class="btn-secondary full-width">🟩 Draw CGA (Polygon)</button>

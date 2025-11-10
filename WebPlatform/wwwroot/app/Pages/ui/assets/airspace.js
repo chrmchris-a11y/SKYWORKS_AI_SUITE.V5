@@ -128,6 +128,133 @@ function updateOsoPanel(oso) {
   `;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// GOOGLE EARTH KML IMPORT
+// ═══════════════════════════════════════════════════════════════════
+
+async function handleGoogleEarthKMLImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  try {
+    const text = await file.text();
+    const geoJson = parseKmlToGeoJson(text, file.name);
+    
+    if (!geoJson) {
+      throw new Error('Failed to parse KML file');
+    }
+    
+    // Render on map
+    renderMissionGeometry(geoJson);
+    
+    // Update mission data
+    missionData.route = geoJson;
+    
+    logToConsole(`✅ Imported ${geoJson.features.length} features from Google Earth KML`, 'success');
+    alert(`✅ KML imported successfully!\n\nFeatures: ${geoJson.features.length}\n${geoJson.features.map(f => `• ${f.geometry.type}`).join('\n')}`);
+  } catch (error) {
+    logToConsole(`❌ KML import failed: ${error.message}`, 'error');
+    alert(`❌ Failed to import KML:\n\n${error.message}\n\nPlease ensure the file is a valid Google Earth KML with LineString (route) or Polygon (CGA/geofence) features.`);
+  }
+}
+
+/**
+ * Parse Google Earth KML to GeoJSON FeatureCollection
+ * Supports: LineString (route), Polygon (CGA/geofence)
+ */
+function parseKmlToGeoJson(kmlText, filename) {
+  const parser = new DOMParser();
+  const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
+  
+  // Check for parsing errors
+  const parserError = kmlDoc.querySelector('parsererror');
+  if (parserError) {
+    throw new Error('Invalid XML/KML format');
+  }
+  
+  const features = [];
+  
+  // Extract LineStrings (routes)
+  const lineStrings = kmlDoc.querySelectorAll('LineString');
+  lineStrings.forEach((ls, index) => {
+    const coordsText = ls.querySelector('coordinates')?.textContent.trim();
+    if (!coordsText) return;
+    
+    // KML format: "lon,lat,alt lon,lat,alt ..." (space or newline separated)
+    const coords = coordsText
+      .split(/\s+/)
+      .map(coord => {
+        const parts = coord.split(',');
+        if (parts.length < 2) return null;
+        return [parseFloat(parts[0]), parseFloat(parts[1])]; // [lon, lat]
+      })
+      .filter(c => c && !isNaN(c[0]) && !isNaN(c[1]));
+    
+    if (coords.length >= 2) {
+      features.push({
+        type: 'Feature',
+        properties: {
+          type: 'route',
+          name: `Route from ${filename}`,
+          source: 'google-earth-kml'
+        },
+        geometry: {
+          type: 'LineString',
+          coordinates: coords
+        }
+      });
+    }
+  });
+  
+  // Extract Polygons (CGA/geofence)
+  const polygons = kmlDoc.querySelectorAll('Polygon');
+  polygons.forEach((poly, index) => {
+    // Get outer boundary coordinates
+    const outerBoundary = poly.querySelector('outerBoundaryIs coordinates') || 
+                          poly.querySelector('coordinates');
+    if (!outerBoundary) return;
+    
+    const coordsText = outerBoundary.textContent.trim();
+    const coords = coordsText
+      .split(/\s+/)
+      .map(coord => {
+        const parts = coord.split(',');
+        if (parts.length < 2) return null;
+        return [parseFloat(parts[0]), parseFloat(parts[1])];
+      })
+      .filter(c => c && !isNaN(c[0]) && !isNaN(c[1]));
+    
+    if (coords.length >= 3) {
+      // Ensure polygon is closed (first == last)
+      if (coords[0][0] !== coords[coords.length-1][0] || coords[0][1] !== coords[coords.length-1][1]) {
+        coords.push([...coords[0]]);
+      }
+      
+      features.push({
+        type: 'Feature',
+        properties: {
+          type: 'cga', // Default to CGA, can be changed to 'geofence' based on KML name/description
+          name: `CGA from ${filename}`,
+          source: 'google-earth-kml'
+        },
+        geometry: {
+          type: 'Polygon',
+          coordinates: [coords] // Polygon coordinates are array of rings
+        }
+      });
+    }
+  });
+  
+  if (features.length === 0) {
+    throw new Error('No valid LineString or Polygon features found in KML.\n\nSupported:\n• LineString (for routes)\n• Polygon (for CGA/geofence)');
+  }
+  
+  return {
+    type: 'FeatureCollection',
+    features: features
+  };
+}
+
 function init2DMap() {
   // MapLibre GL JS (OSM raster tiles)
   map2D = new maplibregl.Map({
@@ -935,6 +1062,7 @@ function downloadFile(filename, content) {
 function attachEventListeners() {
   document.getElementById('toggle2D3D').addEventListener('click', toggle2D3D);
   document.getElementById('importRouteFile').addEventListener('change', handleRouteImport);
+  document.getElementById('importGoogleEarthKML')?.addEventListener('change', handleGoogleEarthKMLImport);
   document.getElementById('addWaypoint').addEventListener('click', handleAddWaypoint);
   document.getElementById('drawGeofence').addEventListener('click', handleDrawGeofence);
   document.getElementById('drawCGA').addEventListener('click', handleDrawCGA);

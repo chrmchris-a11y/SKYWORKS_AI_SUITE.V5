@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Drone Inspection Route - Infrastructure Survey</name>
+    <description>Example route exported from Google Earth for infrastructure inspection mission</description>
+    <Style id="routeStyle">
+      <LineStyle>
+        <color>ff0000ff</color>
+        <width>3</width>
+      </LineStyle>
+    </Style>
+    <Placemark>
+      <name>Infrastructure Survey Route</name>
+      <description>Waypoints for power line inspection mission</description>
+      <styleUrl>#routeStyle</styleUrl>
+      <LineString>
+        <altitudeMode>relativeToGround</altitudeMode>
+        <coordinates>
+          23.7275,37.9838,0
+          23.7285,37.9840,0
+          23.7295,37.9842,0
+          23.7305,37.9844,0
+          23.7315,37.9846,0
+          23.7325,37.9848,0
+          23.7335,37.9850,0
+          23.7345,37.9852,0
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

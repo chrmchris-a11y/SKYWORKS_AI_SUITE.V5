@@ -838,6 +838,8 @@ function updateSummary() {
   const lat = document.getElementById('wizard-lat').value;
   const lon = document.getElementById('wizard-lon').value;
   const height = document.getElementById('wizard-height').value;
+  const areaWidth = document.getElementById('wizard-area-width').value;
+  const areaLength = document.getElementById('wizard-area-length').value;
   const model = document.getElementById('wizard-drone-model').value;
   const mtom = document.getElementById('wizard-drone-mtom').value;
   const droneClass = document.getElementById('wizard-drone-class').value;
@@ -848,6 +850,7 @@ function updateSummary() {
       <li><strong>Category:</strong> ${template?.cat || 'N/A'}</li>
       <li><strong>Location:</strong> ${lat}, ${lon}</li>
       <li><strong>Max Height:</strong> ${height} m AGL</li>
+      <li><strong>Area:</strong> ${areaWidth} × ${areaLength} m</li>
       <li><strong>Drone:</strong> ${model} (${mtom} kg, ${droneClass})</li>
     </ul>
   `;
@@ -859,15 +862,54 @@ function parseGoogleMapsInput() {
   const input = document.getElementById('gmaps-paste-input').value.trim();
   if (!input) return;
   
-  const latLonRegex = /(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/;
-  const match = input.match(latLonRegex);
+  let lat = null, lon = null;
   
-  if (match) {
-    document.getElementById('wizard-lat').value = match[1];
-    document.getElementById('wizard-lon').value = match[2];
-    logToConsole(`✅ Parsed coordinates: ${match[1]}, ${match[2]}`, 'success');
+  // Try parsing simple "lat, lon" format
+  const latLonRegex = /^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/;
+  const simpleMatch = input.match(latLonRegex);
+  
+  if (simpleMatch) {
+    lat = simpleMatch[1];
+    lon = simpleMatch[2];
   } else {
-    alert('Could not parse coordinates. Please use format: "lat, lon"');
+    // Try parsing Google Maps URL format: https://www.google.com/maps/@37.9838,23.7275,15z
+    // or https://maps.google.com/?q=37.9838,23.7275
+    // or https://www.google.com/maps/place/.../@37.9838,23.7275,15z
+    const urlRegexAt = /@(-?\d+\.?\d+),(-?\d+\.?\d+)/;
+    const urlRegexQ = /[?&]q=(-?\d+\.?\d+),(-?\d+\.?\d+)/;
+    
+    const urlMatchAt = input.match(urlRegexAt);
+    const urlMatchQ = input.match(urlRegexQ);
+    
+    if (urlMatchAt) {
+      lat = urlMatchAt[1];
+      lon = urlMatchAt[2];
+    } else if (urlMatchQ) {
+      lat = urlMatchQ[1];
+      lon = urlMatchQ[2];
+    }
+  }
+  
+  if (lat && lon) {
+    // Validate ranges
+    const latNum = parseFloat(lat);
+    const lonNum = parseFloat(lon);
+    
+    if (latNum < -90 || latNum > 90) {
+      alert(`❌ Invalid latitude: ${lat}. Must be between -90 and 90.`);
+      return;
+    }
+    if (lonNum < -180 || lonNum > 180) {
+      alert(`❌ Invalid longitude: ${lon}. Must be between -180 and 180.`);
+      return;
+    }
+    
+    document.getElementById('wizard-lat').value = lat;
+    document.getElementById('wizard-lon').value = lon;
+    logToConsole(`✅ Parsed coordinates: ${lat}, ${lon}`, 'success');
+    alert(`✅ Coordinates extracted: ${lat}, ${lon}`);
+  } else {
+    alert(`❌ Could not parse coordinates.\n\nSupported formats:\n• "lat, lon" (e.g., "37.9838, 23.7275")\n• Google Maps URL (e.g., "https://www.google.com/maps/@37.9838,23.7275,15z")\n• Google Maps share link with ?q= parameter`);
   }
 }
 
@@ -884,6 +926,8 @@ async function createMission() {
       centerLat: parseFloat(document.getElementById('wizard-lat').value),
       centerLon: parseFloat(document.getElementById('wizard-lon').value),
       maxHeightAGL_m: parseFloat(document.getElementById('wizard-height').value),
+      areaWidth_m: parseFloat(document.getElementById('wizard-area-width').value),
+      areaLength_m: parseFloat(document.getElementById('wizard-area-length').value),
       droneModel: document.getElementById('wizard-drone-model').value,
       droneMtom_kg: parseFloat(document.getElementById('wizard-drone-mtom').value),
       droneClass: document.getElementById('wizard-drone-class').value
