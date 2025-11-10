@@ -251,68 +251,287 @@ function renderMissionGeometry(geoJson) {
 
 function updateSoraBadges(sora) {
   if (!sora) return;
-  document.getElementById('badge-igrc')?.textContent = sora.initialGrc || 'N/A';
-  document.getElementById('badge-fgrc')?.textContent = sora.finalGrc || 'N/A';
-  document.getElementById('badge-iarc')?.textContent = sora.initialArc || 'N/A';
-  document.getElementById('badge-rarc')?.textContent = sora.residualArc || 'N/A';
-  document.getElementById('badge-sail')?.textContent = sora.sail || 'N/A';
+  
+  const badges = [
+    {
+      id: 'badge-igrc',
+      value: sora.initialGrc || 'N/A',
+      tooltip: 'Initial GRC (Ground Risk Class) - Inherent ground risk before mitigations. Range: 1 (low) to 10 (high).'
+    },
+    {
+      id: 'badge-fgrc',
+      value: sora.finalGrc || 'N/A',
+      tooltip: 'Final GRC - Ground risk after applying M1 mitigations (sheltering, operational restrictions). Lower is safer.'
+    },
+    {
+      id: 'badge-iarc',
+      value: sora.initialArc || 'N/A',
+      tooltip: 'Initial ARC (Air Risk Class) - Inherent air collision risk. a-d: Low controlled airspace, c-d: Higher risk.'
+    },
+    {
+      id: 'badge-rarc',
+      value: sora.residualArc || 'N/A',
+      tooltip: 'Residual ARC - Air risk after applying M2/M3 mitigations (tactical, strategic). Target: as low as possible.'
+    },
+    {
+      id: 'badge-sail',
+      value: sora.sail || 'N/A',
+      tooltip: `SAIL ${sora.sail || 'N/A'} - Specific Assurance and Integrity Level. Higher SAIL = more OSO requirements. I-II: Low risk, III-IV: Medium, V-VI: High.`
+    }
+  ];
+  
+  badges.forEach(badge => {
+    const element = document.getElementById(badge.id);
+    if (element) {
+      element.textContent = badge.value;
+      element.title = badge.tooltip;
+      element.style.cursor = 'help';
+    }
+  });
 }
 
 function updateErpPanel(erp) {
   if (!erp) return;
   const panel = document.getElementById('erp-panel');
   if (!panel) return;
-  panel.innerHTML = `<h4>ERP Summary</h4><pre>${erp.erpText || 'No ERP data'}</pre>`;
   
-  // Render emergency landing sites on map
-  if (map2D && erp.erpJson) {
+  // Parse ErpJson for detailed 5-section breakdown
+  let erpHtml = '<h4>ERP - Emergency Response Plan</h4>';
+  
+  if (erp.erpJson) {
     try {
       const erpData = typeof erp.erpJson === 'string' ? JSON.parse(erp.erpJson) : erp.erpJson;
       
-      // Remove existing emergency markers
-      const existingEmergency = document.querySelectorAll('.mission-emergency-marker');
-      existingEmergency.forEach(m => m.remove());
-      
-      // Extract emergency landing sites
-      const emergencySites = erpData.EmergencyLanding?.Sites || erpData.emergencyLanding?.sites || [];
-      
-      emergencySites.forEach((site, index) => {
-        if (site.lat && site.lon) {
-          const markerEl = document.createElement('div');
-          markerEl.className = 'mission-emergency-marker';
-          markerEl.innerHTML = `<span>E${index + 1}</span>`;
-          
-          new maplibregl.Marker({ element: markerEl })
-            .setLngLat([site.lon, site.lat])
-            .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(
-              `<strong>Emergency Landing Site ${index + 1}</strong><br>` +
-              `Lat: ${site.lat.toFixed(5)}<br>` +
-              `Lon: ${site.lon.toFixed(5)}<br>` +
-              `${site.description || 'Safe landing area'}`
-            ))
-            .addTo(map2D);
-        }
-      });
-      
-      if (emergencySites.length > 0) {
-        logToConsole(`✅ Rendered ${emergencySites.length} emergency landing sites`, 'success');
+      // Section 1: Loss of C2
+      if (erpData.LossOfC2 || erpData.lossOfC2) {
+        const c2 = erpData.LossOfC2 || erpData.lossOfC2;
+        erpHtml += `
+          <div class="erp-section">
+            <h5>📡 Loss of C2 Link</h5>
+            <ul>
+              <li><strong>Action:</strong> ${c2.action || c2.Action || 'Return to home'}</li>
+              <li><strong>Timeout:</strong> ${c2.timeout || c2.Timeout || 'N/A'}s</li>
+              <li><strong>Failsafe:</strong> ${c2.failsafe || c2.Failsafe || 'Enabled'}</li>
+            </ul>
+          </div>`;
       }
+      
+      // Section 2: FlyAway
+      if (erpData.FlyAway || erpData.flyAway) {
+        const flyaway = erpData.FlyAway || erpData.flyAway;
+        erpHtml += `
+          <div class="erp-section">
+            <h5>🚁 FlyAway Mitigation</h5>
+            <ul>
+              <li><strong>Geofence:</strong> ${flyaway.geofence || flyaway.Geofence || 'Active'}</li>
+              <li><strong>Max Range:</strong> ${flyaway.maxRange || flyaway.MaxRange || 'N/A'}m</li>
+              <li><strong>Flight Termination:</strong> ${flyaway.termination || flyaway.Termination || 'Available'}</li>
+            </ul>
+          </div>`;
+      }
+      
+      // Section 3: Emergency Landing
+      if (erpData.EmergencyLanding || erpData.emergencyLanding) {
+        const emergency = erpData.EmergencyLanding || erpData.emergencyLanding;
+        const sites = emergency.Sites || emergency.sites || [];
+        erpHtml += `
+          <div class="erp-section">
+            <h5>🛬 Emergency Landing</h5>
+            <ul>
+              <li><strong>Sites:</strong> ${sites.length} designated area(s)</li>
+              <li><strong>Procedure:</strong> ${emergency.procedure || emergency.Procedure || 'Controlled descent'}</li>
+              <li><strong>AGL Min:</strong> ${emergency.minAgl || emergency.MinAgl || 'N/A'}m</li>
+            </ul>
+          </div>`;
+      }
+      
+      // Section 4: Ground Notification
+      if (erpData.GroundNotification || erpData.groundNotification) {
+        const ground = erpData.GroundNotification || erpData.groundNotification;
+        erpHtml += `
+          <div class="erp-section">
+            <h5>📢 Ground Notification</h5>
+            <ul>
+              <li><strong>Method:</strong> ${ground.method || ground.Method || 'Visual + audible warnings'}</li>
+              <li><strong>Radius:</strong> ${ground.radius || ground.Radius || 'N/A'}m</li>
+              <li><strong>Contacts:</strong> ${ground.contacts || ground.Contacts || 'Emergency services'}</li>
+            </ul>
+          </div>`;
+      }
+      
+      // Section 5: ATS Coordination
+      if (erpData.AtsCoordination || erpData.atsCoordination) {
+        const ats = erpData.AtsCoordination || erpData.atsCoordination;
+        erpHtml += `
+          <div class="erp-section">
+            <h5>🛩️ ATS Coordination</h5>
+            <ul>
+              <li><strong>Required:</strong> ${ats.required || ats.Required || 'No'}</li>
+              <li><strong>Authority:</strong> ${ats.authority || ats.Authority || 'N/A'}</li>
+              <li><strong>Frequency:</strong> ${ats.frequency || ats.Frequency || 'N/A'}</li>
+            </ul>
+          </div>`;
+      }
+      
+      // Render emergency landing sites on map
+      if (map2D) {
+        // Remove existing emergency markers
+        const existingEmergency = document.querySelectorAll('.mission-emergency-marker');
+        existingEmergency.forEach(m => m.remove());
+        
+        // Extract emergency landing sites
+        const emergencySites = erpData.EmergencyLanding?.Sites || erpData.emergencyLanding?.sites || [];
+        
+        emergencySites.forEach((site, index) => {
+          if (site.lat && site.lon) {
+            const markerEl = document.createElement('div');
+            markerEl.className = 'mission-emergency-marker';
+            markerEl.innerHTML = `<span>E${index + 1}</span>`;
+            
+            new maplibregl.Marker({ element: markerEl })
+              .setLngLat([site.lon, site.lat])
+              .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(
+                `<strong>Emergency Landing Site ${index + 1}</strong><br>` +
+                `Lat: ${site.lat.toFixed(5)}<br>` +
+                `Lon: ${site.lon.toFixed(5)}<br>` +
+                `${site.description || 'Safe landing area'}`
+              ))
+              .addTo(map2D);
+          }
+        });
+        
+        if (emergencySites.length > 0) {
+          logToConsole(`✅ Rendered ${emergencySites.length} emergency landing sites`, 'success');
+        }
+        
+        // Render ERP Safe Area (if available)
+        const safeArea = erpData.SafeArea || erpData.safeArea || erpData.EmergencyLanding?.SafeArea || erpData.FlyAway?.SafeArea;
+        if (safeArea && (safeArea.lat || safeArea.center)) {
+          // Remove existing safe area layer
+          if (map2D.getLayer('erp-safe-area-fill')) map2D.removeLayer('erp-safe-area-fill');
+          if (map2D.getLayer('erp-safe-area-outline')) map2D.removeLayer('erp-safe-area-outline');
+          if (map2D.getSource('erp-safe-area')) map2D.removeSource('erp-safe-area');
+          
+          const center = safeArea.center || { lat: safeArea.lat, lon: safeArea.lon };
+          const radius = safeArea.radius || safeArea.Radius || 100; // meters
+          
+          // Create circular polygon for safe area
+          const safeAreaPolygon = createCirclePolygon(center.lon, center.lat, radius);
+          
+          map2D.addSource('erp-safe-area', {
+            type: 'geojson',
+            data: {
+              type: 'FeatureCollection',
+              features: [{
+                type: 'Feature',
+                properties: { type: 'safe-area' },
+                geometry: {
+                  type: 'Polygon',
+                  coordinates: [safeAreaPolygon]
+                }
+              }]
+            }
+          });
+          
+          map2D.addLayer({
+            id: 'erp-safe-area-fill',
+            type: 'fill',
+            source: 'erp-safe-area',
+            paint: {
+              'fill-color': '#10b981', // Green
+              'fill-opacity': 0.2
+            }
+          });
+          
+          map2D.addLayer({
+            id: 'erp-safe-area-outline',
+            type: 'line',
+            source: 'erp-safe-area',
+            paint: {
+              'line-color': '#10b981',
+              'line-width': 2,
+              'line-dasharray': [3, 3]
+            }
+          });
+          
+          logToConsole(`✅ Rendered ERP Safe Area (radius: ${radius}m)`, 'success');
+        }
+      }
+      
     } catch (error) {
-      logToConsole(`⚠️ Failed to parse ERP emergency sites: ${error.message}`, 'warning');
+      erpHtml += `<p class="error-text">⚠️ Failed to parse ERP details: ${error.message}</p>`;
+      erpHtml += `<pre>${erp.erpText || 'No ERP data'}</pre>`;
+      logToConsole(`⚠️ Failed to parse ERP: ${error.message}`, 'warning');
     }
+  } else {
+    erpHtml += `<pre>${erp.erpText || 'No ERP data available'}</pre>`;
   }
+  
+  panel.innerHTML = erpHtml;
 }
 
 function updateOsoPanel(oso) {
   if (!oso) return;
   const panel = document.getElementById('oso-panel');
   if (!panel) return;
-  panel.innerHTML = `
+  
+  const required = oso.requiredCount || 0;
+  const covered = oso.coveredCount || 0;
+  const missing = oso.missingCount || 0;
+  
+  // Calculate coverage percentage
+  const coveragePercent = required > 0 ? ((covered / required) * 100).toFixed(1) : 0;
+  
+  // Color coding: >80% green, 50-80% yellow, <50% red
+  let coverageColor = '#ef4444'; // Red
+  if (coveragePercent >= 80) {
+    coverageColor = '#10b981'; // Green
+  } else if (coveragePercent >= 50) {
+    coverageColor = '#f59e0b'; // Yellow/Orange
+  }
+  
+  let osoHtml = `
     <h4>OSO Coverage</h4>
-    <p>Required: ${oso.requiredCount || 0}</p>
-    <p>Covered: ${oso.coveredCount || 0}</p>
-    <p>Missing: ${oso.missingCount || 0}</p>
+    <div style="margin:12px 0;padding:10px;background:#f9fafb;border-radius:6px;">
+      <p style="margin:0 0 8px 0;font-size:12px;"><strong>Required:</strong> ${required}</p>
+      <p style="margin:0 0 8px 0;font-size:12px;"><strong>Covered:</strong> ${covered}</p>
+      <p style="margin:0 0 12px 0;font-size:12px;"><strong>Missing:</strong> ${missing}</p>
+      <div style="padding:8px 12px;background:${coverageColor};color:white;border-radius:4px;text-align:center;font-weight:bold;">
+        Coverage: ${covered} / ${required} (${coveragePercent}%)
+      </div>
+    </div>
   `;
+  
+  // Display first 3-5 missing OSOs
+  if (oso.missingOsos && oso.missingOsos.length > 0) {
+    osoHtml += `
+      <div style="margin-top:12px;">
+        <h5 style="margin:0 0 8px 0;font-size:13px;font-weight:600;color:#ef4444;">⚠️ Missing OSOs</h5>
+        <ul style="margin:0;padding-left:20px;font-size:11px;line-height:1.6;">
+    `;
+    
+    const maxDisplay = Math.min(5, oso.missingOsos.length);
+    for (let i = 0; i < maxDisplay; i++) {
+      const osoItem = oso.missingOsos[i];
+      const osoCode = osoItem.code || osoItem.Code || `OSO#${i + 1}`;
+      const osoLabel = osoItem.label || osoItem.Label || osoItem.description || osoItem.Description || 'No description';
+      osoHtml += `<li><strong>${osoCode}:</strong> ${osoLabel}</li>`;
+    }
+    
+    if (oso.missingOsos.length > maxDisplay) {
+      osoHtml += `<li><em>... and ${oso.missingOsos.length - maxDisplay} more</em></li>`;
+    }
+    
+    osoHtml += `</ul></div>`;
+  } else if (missing === 0 && required > 0) {
+    osoHtml += `
+      <div style="margin-top:12px;padding:10px;background:#ecfdf5;border-left:3px solid #10b981;border-radius:4px;">
+        <p style="margin:0;font-size:12px;color:#047857;font-weight:600;">✅ All required OSOs are covered!</p>
+      </div>
+    `;
+  }
+  
+  panel.innerHTML = osoHtml;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -440,6 +659,25 @@ function parseKmlToGeoJson(kmlText, filename) {
     type: 'FeatureCollection',
     features: features
   };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HELPER: Create Circular Polygon
+// ═══════════════════════════════════════════════════════════════════
+
+function createCirclePolygon(lon, lat, radiusMeters, points = 64) {
+  const coords = [];
+  const distanceX = radiusMeters / (111320 * Math.cos(lat * Math.PI / 180));
+  const distanceY = radiusMeters / 110540;
+  
+  for (let i = 0; i <= points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const x = lon + (distanceX * Math.cos(theta));
+    const y = lat + (distanceY * Math.sin(theta));
+    coords.push([x, y]);
+  }
+  
+  return coords;
 }
 
 function init2DMap() {
