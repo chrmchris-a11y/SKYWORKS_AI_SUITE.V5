@@ -173,13 +173,59 @@ public class MissionsController : ControllerBase
             // Geometry
             if (mission.Geometry != null)
             {
+                // Extract CGA polygon from full GeoJSON FeatureCollection
+                string? cgaGeoJson = null;
+                
+                try
+                {
+                    if (!string.IsNullOrEmpty(mission.Geometry.GeoJson))
+                    {
+                        using var doc = JsonDocument.Parse(mission.Geometry.GeoJson);
+                        var root = doc.RootElement;
+                        
+                        // Look for "features" array in FeatureCollection
+                        if (root.TryGetProperty("features", out var features) && features.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var feature in features.EnumerateArray())
+                            {
+                                // Check if feature has properties.type === "cga" or properties.name contains "CGA"
+                                if (feature.TryGetProperty("properties", out var props))
+                                {
+                                    var isCga = false;
+                                    
+                                    if (props.TryGetProperty("type", out var typeElem) && 
+                                        typeElem.GetString()?.Equals("cga", StringComparison.OrdinalIgnoreCase) == true)
+                                    {
+                                        isCga = true;
+                                    }
+                                    else if (props.TryGetProperty("name", out var nameElem) && 
+                                             nameElem.GetString()?.Contains("CGA", StringComparison.OrdinalIgnoreCase) == true)
+                                    {
+                                        isCga = true;
+                                    }
+                                    
+                                    if (isCga && feature.TryGetProperty("geometry", out var geom))
+                                    {
+                                        cgaGeoJson = JsonSerializer.Serialize(geom);
+                                        break; // Found CGA, stop searching
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Failed to parse GeoJSON - leave cgaGeoJson as null
+                }
+                
                 response.Geometry = new MissionOverviewResponse.GeometryData
                 {
                     RouteGeoJson = mission.Geometry.GeoJson,
                     RouteLength_m = (double)mission.Geometry.RouteLength_m,
                     CgaArea_m2 = (double)mission.Geometry.CgaArea_m2,
                     MaxHeightAGL_m = (double)mission.Geometry.MaxHeightAGL_m,
-                    ControlledGroundAreaGeoJson = null // CGA is part of GeoJson FeatureCollection
+                    ControlledGroundAreaGeoJson = cgaGeoJson
                 };
             }
             

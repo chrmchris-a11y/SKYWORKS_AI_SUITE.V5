@@ -125,6 +125,56 @@ public class MissionsControllerTests
 
     #endregion
 
+    #region Test 5: GET /missions/{id}/overview - CGA Extraction Success
+
+    [Fact]
+    public async Task GetMissionOverview_WithCgaInGeoJson_ShouldExtractControlledGroundAreaGeoJson()
+    {
+        // Arrange
+        var orchestrator = CreateMockOrchestrator();
+        var repository = CreateMockRepositoryWithCGA();
+        var controller = new MissionsController(orchestrator, repository);
+        var missionId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+        // Act
+        var result = await controller.GetMissionOverview(missionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<MissionOverviewResponse>(okResult.Value);
+        
+        Assert.NotNull(response.Geometry);
+        Assert.NotNull(response.Geometry.ControlledGroundAreaGeoJson);
+        Assert.Contains("Polygon", response.Geometry.ControlledGroundAreaGeoJson);
+        Assert.Contains("13.4", response.Geometry.ControlledGroundAreaGeoJson);
+    }
+
+    #endregion
+
+    #region Test 6: GET /missions/{id}/overview - No CGA in GeoJson
+
+    [Fact]
+    public async Task GetMissionOverview_WithoutCga_ShouldReturnNullControlledGroundAreaGeoJson()
+    {
+        // Arrange
+        var orchestrator = CreateMockOrchestrator();
+        var repository = CreateMockRepository(); // Uses GeoJSON without CGA
+        var controller = new MissionsController(orchestrator, repository);
+        var missionId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        // Act
+        var result = await controller.GetMissionOverview(missionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<MissionOverviewResponse>(okResult.Value);
+        
+        Assert.NotNull(response.Geometry);
+        Assert.Null(response.Geometry.ControlledGroundAreaGeoJson); // No CGA in mock data
+    }
+
+    #endregion
+
     #region Helper: Mock Orchestrator
 
     /// <summary>
@@ -139,6 +189,11 @@ public class MissionsControllerTests
     private IMissionRepository CreateMockRepository()
     {
         return new SimpleMockRepositoryService();
+    }
+
+    private IMissionRepository CreateMockRepositoryWithCGA()
+    {
+        return new SimpleMockRepositoryWithCGAService();
     }
 
     private class SimpleMockOrchestratorService : IMissionOrchestratorService
@@ -189,6 +244,77 @@ public class MissionsControllerTests
                         RequiredOsosJson = "[\"OSO#1\",\"OSO#2\"]",
                         CoveredOsosJson = "[\"OSO#1\"]",
                         MissingOsosJson = "[\"OSO#2\"]"
+                    }
+                });
+            }
+            return Task.FromResult<Mission?>(null);
+        }
+
+        public Task<Guid> SaveMissionAsync(Mission mission)
+        {
+            return Task.FromResult(Guid.NewGuid());
+        }
+    }
+
+    private class SimpleMockRepositoryWithCGAService : IMissionRepository
+    {
+        public Task<Mission?> GetMissionByIdAsync(Guid id)
+        {
+            if (id == Guid.Parse("22222222-2222-2222-2222-222222222222"))
+            {
+                // GeoJSON FeatureCollection with CGA polygon
+                var geoJsonWithCGA = @"{
+                    ""type"": ""FeatureCollection"",
+                    ""features"": [
+                        {
+                            ""type"": ""Feature"",
+                            ""properties"": { ""type"": ""route"" },
+                            ""geometry"": {
+                                ""type"": ""LineString"",
+                                ""coordinates"": [[13.4, 52.5], [13.5, 52.6]]
+                            }
+                        },
+                        {
+                            ""type"": ""Feature"",
+                            ""properties"": { ""type"": ""cga"", ""name"": ""Controlled Ground Area"" },
+                            ""geometry"": {
+                                ""type"": ""Polygon"",
+                                ""coordinates"": [
+                                    [[13.4, 52.5], [13.5, 52.5], [13.5, 52.6], [13.4, 52.6], [13.4, 52.5]]
+                                ]
+                            }
+                        }
+                    ]
+                }";
+
+                return Task.FromResult<Mission?>(new Mission
+                {
+                    MissionId = id,
+                    Name = "Mission with CGA",
+                    TemplateCode = MissionTemplateCode.PhotovoltaicParkInspection,
+                    Category = MissionCategory.EnergyAndUtilities,
+                    Type = MissionType.Solar,
+                    Geometry = new MissionGeometry
+                    {
+                        GeoJson = geoJsonWithCGA,
+                        RouteLength_m = 2000,
+                        CgaArea_m2 = 8000,
+                        MaxHeightAGL_m = 120
+                    },
+                    SoraAssessment = new MissionSoraAssessment
+                    {
+                        InitialGrc = 6,
+                        FinalGrc = 4,
+                        InitialArc = "c",
+                        ResidualArc = "b",
+                        Sail = "III"
+                    },
+                    Erp = new MissionErp { ErpJson = "{}", ErpText = "ERP with safe area" },
+                    OsoCoverage = new MissionOsoCoverage
+                    {
+                        RequiredOsosJson = "[\"OSO#1\"]",
+                        CoveredOsosJson = "[\"OSO#1\"]",
+                        MissingOsosJson = "[]"
                     }
                 });
             }
