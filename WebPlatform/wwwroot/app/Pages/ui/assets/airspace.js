@@ -78,23 +78,172 @@ async function loadMissionFromApi(missionId) {
 function renderMissionGeometry(geoJson) {
   if (!map2D) return;
   
+  // Remove existing layers
   if (map2D.getSource('mission-route')) {
     map2D.removeLayer('mission-route-line');
     map2D.removeSource('mission-route');
   }
+  if (map2D.getLayer('mission-cga-fill')) map2D.removeLayer('mission-cga-fill');
+  if (map2D.getLayer('mission-cga-outline')) map2D.removeLayer('mission-cga-outline');
+  if (map2D.getSource('mission-cga')) map2D.removeSource('mission-cga');
+  if (map2D.getLayer('mission-corridor-fill')) map2D.removeLayer('mission-corridor-fill');
+  if (map2D.getLayer('mission-corridor-outline')) map2D.removeLayer('mission-corridor-outline');
+  if (map2D.getSource('mission-corridor')) map2D.removeSource('mission-corridor');
+  if (map2D.getLayer('mission-geofence-fill')) map2D.removeLayer('mission-geofence-fill');
+  if (map2D.getLayer('mission-geofence-outline')) map2D.removeLayer('mission-geofence-outline');
+  if (map2D.getSource('mission-geofence')) map2D.removeSource('mission-geofence');
   
-  map2D.addSource('mission-route', { type: 'geojson', data: geoJson });
-  map2D.addLayer({
-    id: 'mission-route-line',
-    type: 'line',
-    source: 'mission-route',
-    paint: { 'line-color': '#0066ff', 'line-width': 3 }
+  // Remove existing start/end markers
+  const existingMarkers = document.querySelectorAll('.mission-start-marker, .mission-end-marker');
+  existingMarkers.forEach(m => m.remove());
+  
+  // Separate features by type
+  const routeFeatures = [];
+  const cgaFeatures = [];
+  const corridorFeatures = [];
+  const geofenceFeatures = [];
+  
+  geoJson.features.forEach(f => {
+    if (f.geometry.type === 'LineString') {
+      routeFeatures.push(f);
+    } else if (f.geometry.type === 'Polygon') {
+      const polyType = f.properties?.type?.toLowerCase() || 'cga';
+      if (polyType === 'corridor') {
+        corridorFeatures.push(f);
+      } else if (polyType === 'geofence' || polyType === 'no-fly') {
+        geofenceFeatures.push(f);
+      } else {
+        cgaFeatures.push(f); // Default to CGA
+      }
+    }
   });
   
+  // Render route
+  if (routeFeatures.length > 0) {
+    map2D.addSource('mission-route', { 
+      type: 'geojson', 
+      data: { type: 'FeatureCollection', features: routeFeatures }
+    });
+    map2D.addLayer({
+      id: 'mission-route-line',
+      type: 'line',
+      source: 'mission-route',
+      paint: { 'line-color': '#0066ff', 'line-width': 3 }
+    });
+  }
+  
+  // Render CGA polygon (yellow, 30% opacity)
+  if (cgaFeatures.length > 0) {
+    map2D.addSource('mission-cga', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: cgaFeatures }
+    });
+    map2D.addLayer({
+      id: 'mission-cga-fill',
+      type: 'fill',
+      source: 'mission-cga',
+      paint: {
+        'fill-color': '#FFD700', // Gold/Yellow
+        'fill-opacity': 0.3
+      }
+    });
+    map2D.addLayer({
+      id: 'mission-cga-outline',
+      type: 'line',
+      source: 'mission-cga',
+      paint: {
+        'line-color': '#FFD700',
+        'line-width': 2
+      }
+    });
+  }
+  
+  // Render Corridor polygon (blue, 25% opacity)
+  if (corridorFeatures.length > 0) {
+    map2D.addSource('mission-corridor', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: corridorFeatures }
+    });
+    map2D.addLayer({
+      id: 'mission-corridor-fill',
+      type: 'fill',
+      source: 'mission-corridor',
+      paint: {
+        'fill-color': '#3b82f6', // Blue
+        'fill-opacity': 0.25
+      }
+    });
+    map2D.addLayer({
+      id: 'mission-corridor-outline',
+      type: 'line',
+      source: 'mission-corridor',
+      paint: {
+        'line-color': '#3b82f6',
+        'line-width': 2,
+        'line-dasharray': [2, 2]
+      }
+    });
+  }
+  
+  // Render Geofence/No-Fly polygon (red, 20% opacity)
+  if (geofenceFeatures.length > 0) {
+    map2D.addSource('mission-geofence', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: geofenceFeatures }
+    });
+    map2D.addLayer({
+      id: 'mission-geofence-fill',
+      type: 'fill',
+      source: 'mission-geofence',
+      paint: {
+        'fill-color': '#ef4444', // Red
+        'fill-opacity': 0.2
+      }
+    });
+    map2D.addLayer({
+      id: 'mission-geofence-outline',
+      type: 'line',
+      source: 'mission-geofence',
+      paint: {
+        'line-color': '#ef4444',
+        'line-width': 3,
+        'line-dasharray': [4, 2]
+      }
+    });
+  }
+  
+  // Add Start/End markers
+  routeFeatures.forEach(f => {
+    if (f.geometry.coordinates.length >= 2) {
+      const coords = f.geometry.coordinates;
+      
+      // Start marker "S"
+      const startEl = document.createElement('div');
+      startEl.className = 'mission-start-marker';
+      startEl.innerHTML = '<span>S</span>';
+      new maplibregl.Marker({ element: startEl })
+        .setLngLat(coords[0])
+        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML('<strong>Start Point</strong>'))
+        .addTo(map2D);
+      
+      // End marker "E"
+      const endEl = document.createElement('div');
+      endEl.className = 'mission-end-marker';
+      endEl.innerHTML = '<span>E</span>';
+      new maplibregl.Marker({ element: endEl })
+        .setLngLat(coords[coords.length - 1])
+        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML('<strong>End Point</strong>'))
+        .addTo(map2D);
+    }
+  });
+  
+  // Fit bounds
   const bounds = new maplibregl.LngLatBounds();
   geoJson.features.forEach(f => {
     if (f.geometry.type === 'LineString') {
       f.geometry.coordinates.forEach(c => bounds.extend(c));
+    } else if (f.geometry.type === 'Polygon') {
+      f.geometry.coordinates[0].forEach(c => bounds.extend(c));
     }
   });
   map2D.fitBounds(bounds, { padding: 50 });
@@ -114,6 +263,44 @@ function updateErpPanel(erp) {
   const panel = document.getElementById('erp-panel');
   if (!panel) return;
   panel.innerHTML = `<h4>ERP Summary</h4><pre>${erp.erpText || 'No ERP data'}</pre>`;
+  
+  // Render emergency landing sites on map
+  if (map2D && erp.erpJson) {
+    try {
+      const erpData = typeof erp.erpJson === 'string' ? JSON.parse(erp.erpJson) : erp.erpJson;
+      
+      // Remove existing emergency markers
+      const existingEmergency = document.querySelectorAll('.mission-emergency-marker');
+      existingEmergency.forEach(m => m.remove());
+      
+      // Extract emergency landing sites
+      const emergencySites = erpData.EmergencyLanding?.Sites || erpData.emergencyLanding?.sites || [];
+      
+      emergencySites.forEach((site, index) => {
+        if (site.lat && site.lon) {
+          const markerEl = document.createElement('div');
+          markerEl.className = 'mission-emergency-marker';
+          markerEl.innerHTML = `<span>E${index + 1}</span>`;
+          
+          new maplibregl.Marker({ element: markerEl })
+            .setLngLat([site.lon, site.lat])
+            .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML(
+              `<strong>Emergency Landing Site ${index + 1}</strong><br>` +
+              `Lat: ${site.lat.toFixed(5)}<br>` +
+              `Lon: ${site.lon.toFixed(5)}<br>` +
+              `${site.description || 'Safe landing area'}`
+            ))
+            .addTo(map2D);
+        }
+      });
+      
+      if (emergencySites.length > 0) {
+        logToConsole(`✅ Rendered ${emergencySites.length} emergency landing sites`, 'success');
+      }
+    } catch (error) {
+      logToConsole(`⚠️ Failed to parse ERP emergency sites: ${error.message}`, 'warning');
+    }
+  }
 }
 
 function updateOsoPanel(oso) {
