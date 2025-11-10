@@ -738,6 +738,191 @@ function handleEmail() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// MISSION WIZARD
+// ═══════════════════════════════════════════════════════════════════
+
+let wizardCurrentStep = 1;
+const MISSION_TEMPLATES = [
+  {code:'PhotovoltaicParkInspection',name:'Photovoltaic Park Inspection',cat:'EnergyAndUtilities',type:'Solar',env:'rural',sora:'2.5'},
+  {code:'BridgeStructuralInspection',name:'Bridge Structural Inspection',cat:'InfrastructureAndTransport',type:'Facade',env:'suburban',sora:'2.5'},
+  {code:'SolarPanelCleaning',name:'Solar Panel Cleaning',cat:'EnergyAndUtilities',type:'Roof',env:'suburban',sora:'2.5'},
+  {code:'TrainingFlightVLOS',name:'Training Flight VLOS',cat:'TrainingAndTest',type:'Agriculture',env:'rural',sora:'2.5'},
+  {code:'FacadeInspection',name:'Facade Inspection',cat:'BuildingsAndFacades',type:'Facade',env:'urban',sora:'2.5'}
+];
+
+function initMissionWizard() {
+  const wizard = document.getElementById('missionWizard');
+  if (!wizard) return;
+  
+  loadMissionTemplates();
+  
+  wizard.querySelectorAll('.wizard-next').forEach(btn => {
+    btn.addEventListener('click', () => navigateWizard(1));
+  });
+  
+  wizard.querySelectorAll('.wizard-prev').forEach(btn => {
+    btn.addEventListener('click', () => navigateWizard(-1));
+  });
+  
+  document.getElementById('wizard-template')?.addEventListener('change', (e) => {
+    updateTemplatePreview(e.target.value);
+  });
+  
+  document.getElementById('btn-parse-gmaps')?.addEventListener('click', parseGoogleMapsInput);
+  document.getElementById('wizard-create')?.addEventListener('click', createMission);
+}
+
+function loadMissionTemplates() {
+  const select = document.getElementById('wizard-template');
+  if (!select) return;
+  
+  MISSION_TEMPLATES.forEach(t => {
+    const option = document.createElement('option');
+    option.value = t.code;
+    option.textContent = `${t.cat} - ${t.name}`;
+    select.appendChild(option);
+  });
+}
+
+function updateTemplatePreview(code) {
+  const template = MISSION_TEMPLATES.find(t => t.code === code);
+  const preview = document.getElementById('template-preview');
+  if (!template || !preview) return;
+  
+  preview.style.display = 'block';
+  document.getElementById('preview-category').textContent = template.cat;
+  document.getElementById('preview-type').textContent = template.type;
+  document.getElementById('preview-environment').textContent = template.env;
+  document.getElementById('preview-sora').textContent = `SORA ${template.sora}`;
+}
+
+function navigateWizard(direction) {
+  const newStep = wizardCurrentStep + direction;
+  if (newStep < 1 || newStep > 3) return;
+  
+  if (direction > 0 && !validateWizardStep(wizardCurrentStep)) return;
+  
+  document.querySelectorAll('.wizard-step').forEach(step => step.style.display = 'none');
+  document.querySelector(`[data-step="${newStep}"]`).style.display = 'block';
+  
+  document.querySelectorAll('.progress-step').forEach(step => step.classList.remove('active'));
+  document.querySelector(`.progress-step[data-step="${newStep}"]`)?.classList.add('active');
+  
+  wizardCurrentStep = newStep;
+  
+  if (newStep === 3) updateSummary();
+}
+
+function validateWizardStep(step) {
+  if (step === 1) {
+    const template = document.getElementById('wizard-template').value;
+    if (!template) { alert('Please select a template'); return false; }
+  }
+  if (step === 2) {
+    const lat = document.getElementById('wizard-lat').value;
+    const lon = document.getElementById('wizard-lon').value;
+    const model = document.getElementById('wizard-drone-model').value;
+    const mtom = document.getElementById('wizard-drone-mtom').value;
+    const droneClass = document.getElementById('wizard-drone-class').value;
+    
+    if (!lat || !lon || !model || !mtom || !droneClass) {
+      alert('Please fill all required fields');
+      return false;
+    }
+  }
+  return true;
+}
+
+function updateSummary() {
+  const template = MISSION_TEMPLATES.find(t => t.code === document.getElementById('wizard-template').value);
+  const lat = document.getElementById('wizard-lat').value;
+  const lon = document.getElementById('wizard-lon').value;
+  const height = document.getElementById('wizard-height').value;
+  const model = document.getElementById('wizard-drone-model').value;
+  const mtom = document.getElementById('wizard-drone-mtom').value;
+  const droneClass = document.getElementById('wizard-drone-class').value;
+  
+  const summary = `
+    <ul style="list-style:none;padding:0;">
+      <li><strong>Template:</strong> ${template?.name || 'N/A'}</li>
+      <li><strong>Category:</strong> ${template?.cat || 'N/A'}</li>
+      <li><strong>Location:</strong> ${lat}, ${lon}</li>
+      <li><strong>Max Height:</strong> ${height} m AGL</li>
+      <li><strong>Drone:</strong> ${model} (${mtom} kg, ${droneClass})</li>
+    </ul>
+  `;
+  
+  document.getElementById('wizard-summary').innerHTML = summary;
+}
+
+function parseGoogleMapsInput() {
+  const input = document.getElementById('gmaps-paste-input').value.trim();
+  if (!input) return;
+  
+  const latLonRegex = /(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)/;
+  const match = input.match(latLonRegex);
+  
+  if (match) {
+    document.getElementById('wizard-lat').value = match[1];
+    document.getElementById('wizard-lon').value = match[2];
+    logToConsole(`✅ Parsed coordinates: ${match[1]}, ${match[2]}`, 'success');
+  } else {
+    alert('Could not parse coordinates. Please use format: "lat, lon"');
+  }
+}
+
+async function createMission() {
+  const statusEl = document.getElementById('wizard-status');
+  const resultEl = document.getElementById('wizard-result');
+  
+  statusEl.innerHTML = '<div class="loading">Creating mission...</div>';
+  resultEl.style.display = 'none';
+  
+  try {
+    const request = {
+      templateCode: document.getElementById('wizard-template').value,
+      centerLat: parseFloat(document.getElementById('wizard-lat').value),
+      centerLon: parseFloat(document.getElementById('wizard-lon').value),
+      maxHeightAGL_m: parseFloat(document.getElementById('wizard-height').value),
+      droneModel: document.getElementById('wizard-drone-model').value,
+      droneMtom_kg: parseFloat(document.getElementById('wizard-drone-mtom').value),
+      droneClass: document.getElementById('wizard-drone-class').value
+    };
+    
+    const response = await fetch('/api/v1/missions/auto-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request)
+    });
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create mission');
+    }
+    
+    const data = await response.json();
+    const missionId = data.missionId;
+    
+    localStorage.setItem('lastMissionId', missionId);
+    
+    statusEl.innerHTML = '';
+    resultEl.style.display = 'block';
+    document.getElementById('result-mission-id').textContent = missionId;
+    document.getElementById('link-maps').href = `airspace-maps.html?missionId=${missionId}`;
+    document.getElementById('link-report').href = `final-report.html?missionId=${missionId}`;
+    
+    logToConsole(`✅ Mission created: ${missionId}`, 'success');
+  } catch (error) {
+    statusEl.innerHTML = `<div class="error" style="color:red;padding:10px;background:#fee;">❌ ${error.message}</div>`;
+    logToConsole(`❌ Mission creation failed: ${error.message}`, 'error');
+  }
+}
+
+if (document.getElementById('missionWizard')) {
+  initMissionWizard();
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // GLOBAL EXPORTS (for module compatibility)
 // ═══════════════════════════════════════════════════════════════════
 

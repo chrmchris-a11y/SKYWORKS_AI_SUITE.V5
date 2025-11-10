@@ -21,7 +21,8 @@ public class MissionsControllerTests
     {
         // Arrange
         var orchestrator = CreateMockOrchestrator();
-        var controller = new MissionsController(orchestrator);
+        var repository = CreateMockRepository();
+        var controller = new MissionsController(orchestrator, repository);
 
         var request = new CreateMissionRequest
         {
@@ -52,7 +53,8 @@ public class MissionsControllerTests
     {
         // Arrange
         var orchestrator = CreateMockOrchestrator();
-        var controller = new MissionsController(orchestrator);
+        var repository = CreateMockRepository();
+        var controller = new MissionsController(orchestrator, repository);
 
         // Create invalid request (missing drone info)
         var request = new CreateMissionRequest
@@ -79,6 +81,50 @@ public class MissionsControllerTests
 
     #endregion
 
+    #region Test 3: GET /missions/{id}/overview - Success
+
+    [Fact]
+    public async Task GetMissionOverview_ValidId_ShouldReturn200WithData()
+    {
+        // Arrange
+        var orchestrator = CreateMockOrchestrator();
+        var repository = CreateMockRepository();
+        var controller = new MissionsController(orchestrator, repository);
+        var missionId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+
+        // Act
+        var result = await controller.GetMissionOverview(missionId);
+
+        // Assert
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<MissionOverviewResponse>(okResult.Value);
+        Assert.Equal(missionId, response.MissionId);
+        Assert.Equal("Test Mission", response.Name);
+        Assert.Equal("PhotovoltaicParkInspection", response.TemplateCode);
+    }
+
+    #endregion
+
+    #region Test 4: GET /missions/{id}/overview - Not Found
+
+    [Fact]
+    public async Task GetMissionOverview_InvalidId_ShouldReturn404()
+    {
+        // Arrange
+        var orchestrator = CreateMockOrchestrator();
+        var repository = CreateMockRepository();
+        var controller = new MissionsController(orchestrator, repository);
+        var nonExistentId = Guid.NewGuid();
+
+        // Act
+        var result = await controller.GetMissionOverview(nonExistentId);
+
+        // Assert
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    #endregion
+
     #region Helper: Mock Orchestrator
 
     /// <summary>
@@ -90,6 +136,11 @@ public class MissionsControllerTests
         return new SimpleMockOrchestratorService();
     }
 
+    private IMissionRepository CreateMockRepository()
+    {
+        return new SimpleMockRepositoryService();
+    }
+
     private class SimpleMockOrchestratorService : IMissionOrchestratorService
     {
         public Task<Guid> CreateMissionAsync(CreateMissionRequest request)
@@ -99,6 +150,53 @@ public class MissionsControllerTests
                 throw new ArgumentNullException(nameof(request));
 
             // Return a new mission ID
+            return Task.FromResult(Guid.NewGuid());
+        }
+    }
+
+    private class SimpleMockRepositoryService : IMissionRepository
+    {
+        public Task<Mission?> GetMissionByIdAsync(Guid id)
+        {
+            if (id == Guid.Parse("11111111-1111-1111-1111-111111111111"))
+            {
+                return Task.FromResult<Mission?>(new Mission
+                {
+                    MissionId = id,
+                    Name = "Test Mission",
+                    TemplateCode = MissionTemplateCode.PhotovoltaicParkInspection,
+                    Category = MissionCategory.EnergyAndUtilities,
+                    Type = MissionType.Solar,
+                    Geometry = new MissionGeometry 
+                    { 
+                        GeoJson = "{\"type\":\"LineString\",\"coordinates\":[[13.4,52.5],[13.5,52.6]]}",
+                        RouteLength_m = 1500,
+                        CgaArea_m2 = 5000,
+                        MaxHeightAGL_m = 100
+                    },
+                    SoraAssessment = new MissionSoraAssessment
+                    {
+                        InitialGrc = 5,
+                        FinalGrc = 3,
+                        InitialArc = "c",
+                        ResidualArc = "a",
+                        Sail = "II",
+                        InputsSnapshotJson = "{}"
+                    },
+                    Erp = new MissionErp { ErpJson = "{}", ErpText = "Emergency plan" },
+                    OsoCoverage = new MissionOsoCoverage 
+                    { 
+                        RequiredOsosJson = "[\"OSO#1\",\"OSO#2\"]",
+                        CoveredOsosJson = "[\"OSO#1\"]",
+                        MissingOsosJson = "[\"OSO#2\"]"
+                    }
+                });
+            }
+            return Task.FromResult<Mission?>(null);
+        }
+
+        public Task<Guid> SaveMissionAsync(Mission mission)
+        {
             return Task.FromResult(Guid.NewGuid());
         }
     }

@@ -378,6 +378,103 @@
 
         </div>
       </div>
+
+      <!-- MISSION WIZARD -->
+      <section id="missionWizard" class="wizard-card" style="margin-top: 40px;">
+        <div class="wizard-header">
+          <h2>🚀 Mission Wizard - Auto Creation</h2>
+          <div class="wizard-progress">
+            <div class="progress-step active" data-step="1">1. Template</div>
+            <div class="progress-step" data-step="2">2. Location & Drone</div>
+            <div class="progress-step" data-step="3">3. Confirm</div>
+          </div>
+        </div>
+
+        <div class="wizard-step active" data-step="1">
+          <h3>Select Mission Template</h3>
+          <div class="form-group">
+            <label>Mission Template:</label>
+            <select id="wizard-template" class="form-input">
+              <option value="">Select template...</option>
+            </select>
+          </div>
+          <div class="template-preview" id="template-preview" style="display:none;">
+            <div class="preview-item"><strong>Category:</strong> <span id="preview-category">-</span></div>
+            <div class="preview-item"><strong>Mission Type:</strong> <span id="preview-type">-</span></div>
+            <div class="preview-item"><strong>Environment:</strong> <span id="preview-environment">-</span></div>
+            <div class="preview-item"><strong>SORA Version:</strong> <span id="preview-sora">-</span></div>
+          </div>
+          <button class="btn btn-primary wizard-next">Next →</button>
+        </div>
+
+        <div class="wizard-step" data-step="2" style="display:none;">
+          <h3>Mission Area & Drone Details</h3>
+          <div class="grid-2col">
+            <div class="form-group">
+              <label>Center Latitude:</label>
+              <input type="number" id="wizard-lat" class="form-input" step="0.0001" min="-90" max="90" placeholder="e.g. 41.0082">
+            </div>
+            <div class="form-group">
+              <label>Center Longitude:</label>
+              <input type="number" id="wizard-lon" class="form-input" step="0.0001" min="-180" max="180" placeholder="e.g. 28.9784">
+            </div>
+            <div class="form-group">
+              <label>Max Height AGL (m):</label>
+              <input type="number" id="wizard-height" class="form-input" min="5" max="120" value="60">
+            </div>
+            <div class="form-group">
+              <label>Drone Model:</label>
+              <input type="text" id="wizard-drone-model" class="form-input" placeholder="e.g. DJI Matrice 300 RTK">
+            </div>
+            <div class="form-group">
+              <label>Drone MTOM (kg):</label>
+              <input type="number" id="wizard-drone-mtom" class="form-input" step="0.01" min="0.25" max="150" placeholder="e.g. 6.3">
+            </div>
+            <div class="form-group">
+              <label>Drone Class:</label>
+              <select id="wizard-drone-class" class="form-input">
+                <option value="">Select...</option>
+                <option value="C0">C0</option>
+                <option value="C1">C1</option>
+                <option value="C2">C2</option>
+                <option value="C3">C3</option>
+                <option value="C4">C4</option>
+                <option value="C5">C5</option>
+                <option value="C6">C6</option>
+                <option value="Legacy">Legacy</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:20px;">
+            <label>📍 Paste from Google Maps (optional):</label>
+            <input type="text" id="gmaps-paste-input" class="form-input" placeholder='Paste "37.9838, 23.7275" or full URL'>
+            <button type="button" class="btn btn-secondary" id="btn-parse-gmaps" style="margin-top:8px;">Parse Coordinates</button>
+          </div>
+          <div class="wizard-nav" style="display:flex;gap:12px;margin-top:20px;">
+            <button class="btn btn-secondary wizard-prev">← Back</button>
+            <button class="btn btn-primary wizard-next">Next →</button>
+          </div>
+        </div>
+
+        <div class="wizard-step" data-step="3" style="display:none;">
+          <h3>Confirm & Create Mission</h3>
+          <div class="summary-card" id="wizard-summary"></div>
+          <div class="wizard-actions" style="display:flex;gap:12px;margin-top:20px;">
+            <button class="btn btn-secondary wizard-prev">← Back</button>
+            <button class="btn btn-primary" id="wizard-create">Create Mission 🚀</button>
+          </div>
+          <div id="wizard-status" class="wizard-status"></div>
+          <div id="wizard-result" class="wizard-result" style="display:none;">
+            <h4>✅ Mission Created Successfully!</h4>
+            <p>Mission ID: <strong id="result-mission-id"></strong></p>
+            <div class="result-actions" style="display:flex;gap:12px;justify-content:center;margin-top:20px;">
+              <a href="#" id="link-maps" class="btn btn-primary">Open in Maps 🗺️</a>
+              <a href="#" id="link-report" class="btn btn-secondary">View Final Report 📄</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 

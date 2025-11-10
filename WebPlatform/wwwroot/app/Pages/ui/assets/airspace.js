@@ -40,8 +40,93 @@ let layerVisibility = {
 document.addEventListener('DOMContentLoaded', () => {
   init2DMap();
   attachEventListeners();
+  checkMissionIdParam();
   logToConsole('Airspace Maps initialized (2D mode)', 'success');
 });
+
+async function checkMissionIdParam() {
+  const params = new URLSearchParams(window.location.search);
+  const missionId = params.get('missionId');
+  if (missionId) {
+    logToConsole(`Loading mission: ${missionId}`, 'info');
+    await loadMissionFromApi(missionId);
+  }
+}
+
+async function loadMissionFromApi(missionId) {
+  try {
+    const response = await fetch(`/api/v1/missions/${missionId}/overview`);
+    if (!response.ok) throw new Error(`Mission not found: ${missionId}`);
+    
+    const mission = await response.json();
+    
+    if (mission.geometry?.routeGeoJson) {
+      const geoJson = JSON.parse(mission.geometry.routeGeoJson);
+      renderMissionGeometry(geoJson);
+    }
+    
+    updateSoraBadges(mission.sora);
+    updateErpPanel(mission.erp);
+    updateOsoPanel(mission.oso);
+    
+    logToConsole(`✅ Mission loaded: ${mission.name}`, 'success');
+  } catch (error) {
+    logToConsole(`❌ Failed to load mission: ${error.message}`, 'error');
+  }
+}
+
+function renderMissionGeometry(geoJson) {
+  if (!map2D) return;
+  
+  if (map2D.getSource('mission-route')) {
+    map2D.removeLayer('mission-route-line');
+    map2D.removeSource('mission-route');
+  }
+  
+  map2D.addSource('mission-route', { type: 'geojson', data: geoJson });
+  map2D.addLayer({
+    id: 'mission-route-line',
+    type: 'line',
+    source: 'mission-route',
+    paint: { 'line-color': '#0066ff', 'line-width': 3 }
+  });
+  
+  const bounds = new maplibregl.LngLatBounds();
+  geoJson.features.forEach(f => {
+    if (f.geometry.type === 'LineString') {
+      f.geometry.coordinates.forEach(c => bounds.extend(c));
+    }
+  });
+  map2D.fitBounds(bounds, { padding: 50 });
+}
+
+function updateSoraBadges(sora) {
+  if (!sora) return;
+  document.getElementById('badge-igrc')?.textContent = sora.initialGrc || 'N/A';
+  document.getElementById('badge-fgrc')?.textContent = sora.finalGrc || 'N/A';
+  document.getElementById('badge-iarc')?.textContent = sora.initialArc || 'N/A';
+  document.getElementById('badge-rarc')?.textContent = sora.residualArc || 'N/A';
+  document.getElementById('badge-sail')?.textContent = sora.sail || 'N/A';
+}
+
+function updateErpPanel(erp) {
+  if (!erp) return;
+  const panel = document.getElementById('erp-panel');
+  if (!panel) return;
+  panel.innerHTML = `<h4>ERP Summary</h4><pre>${erp.erpText || 'No ERP data'}</pre>`;
+}
+
+function updateOsoPanel(oso) {
+  if (!oso) return;
+  const panel = document.getElementById('oso-panel');
+  if (!panel) return;
+  panel.innerHTML = `
+    <h4>OSO Coverage</h4>
+    <p>Required: ${oso.requiredCount || 0}</p>
+    <p>Covered: ${oso.coveredCount || 0}</p>
+    <p>Missing: ${oso.missingCount || 0}</p>
+  `;
+}
 
 function init2DMap() {
   // MapLibre GL JS (OSM raster tiles)
