@@ -2211,10 +2211,205 @@ window.renderMission = function(missionData) {
     }
     
     console.log('[renderMission] Mission markers and polygons rendered');
+    
+    // 7. ADD MISSION ANNOTATIONS (TOL, distances, observers, etc.)
+    addMissionAnnotations(missionData);
   } catch (error) {
     console.error('[renderMission] ERROR:', error);
   }
 };
+
+// ================================================================
+// MISSION ANNOTATIONS - Labels, distances, TOL, observers, crew
+// ================================================================
+function addMissionAnnotations(missionData) {
+  if (!map2D || !missionData) return;
+  
+  const annotations = [];
+  
+  // Helper: Calculate distance in meters using Haversine formula
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    return R * c; // Distance in meters
+  }
+  
+  // 1. TOL (Take-Off Location) - First waypoint
+  if (missionData.waypoints && missionData.waypoints.length > 0) {
+    const tol = missionData.waypoints[0];
+    annotations.push({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [tol.lon, tol.lat]
+      },
+      properties: {
+        label: `TOL\n${tol.lat.toFixed(5)}°N\n${tol.lon.toFixed(5)}°E\nAlt: ${tol.alt || 0}m`,
+        type: 'tol',
+        color: '#10b981', // green
+        size: 14
+      }
+    });
+  }
+  
+  // 2. Landing Location - Last waypoint
+  if (missionData.waypoints && missionData.waypoints.length > 1) {
+    const landing = missionData.waypoints[missionData.waypoints.length - 1];
+    const tol = missionData.waypoints[0];
+    const distance = calculateDistance(tol.lat, tol.lon, landing.lat, landing.lon);
+    
+    annotations.push({
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: [landing.lon, landing.lat]
+      },
+      properties: {
+        label: `LANDING\n${landing.lat.toFixed(5)}°N\n${landing.lon.toFixed(5)}°E\nDistance from TOL: ${(distance/1000).toFixed(2)}km`,
+        type: 'landing',
+        color: '#ef4444', // red
+        size: 14
+      }
+    });
+  }
+  
+  // 3. Safe Area annotation (if exists)
+  const erpData = missionData.erp || {};
+  const flyAway = erpData.flyAway || erpData.FlyAway;
+  if (flyAway) {
+    const safeAreaLat = flyAway.safeAreaLat || flyAway.SafeAreaLat;
+    const safeAreaLon = flyAway.safeAreaLon || flyAway.SafeAreaLon;
+    const safeAreaRadius = flyAway.safeAreaRadius_m || flyAway.SafeAreaRadius_m;
+    
+    if (safeAreaLat && safeAreaLon && safeAreaRadius) {
+      const area_km2 = (Math.PI * Math.pow(safeAreaRadius, 2) / 1000000).toFixed(2);
+      annotations.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [safeAreaLon, safeAreaLat]
+        },
+        properties: {
+          label: `SAFE AREA\nRadius: ${safeAreaRadius}m\nArea: ${area_km2}km²\n(C2 Loss Containment)`,
+          type: 'safe-area',
+          color: '#3b82f6', // blue
+          size: 12
+        }
+      });
+    }
+  }
+  
+  // 4. Emergency Sites distances
+  const emergencyLanding = erpData.emergencyLanding || erpData.EmergencyLanding;
+  const emergencySites = emergencyLanding?.sites || emergencyLanding?.Sites;
+  
+  if (emergencySites && emergencySites.length > 0 && missionData.waypoints.length > 0) {
+    const tol = missionData.waypoints[0];
+    emergencySites.forEach((site, idx) => {
+      const siteLat = site.Lat || site.lat;
+      const siteLon = site.Lon || site.lon;
+      const distance = calculateDistance(tol.lat, tol.lon, siteLat, siteLon);
+      
+      annotations.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [siteLon + 0.001, siteLat + 0.001] // Offset to avoid overlap
+        },
+        properties: {
+          label: `${(distance/1000).toFixed(2)}km from TOL`,
+          type: 'distance',
+          color: '#6b7280', // gray
+          size: 10
+        }
+      });
+    });
+  }
+  
+  // 5. Observer positions (if available in mission data)
+  if (missionData.observers && missionData.observers.length > 0) {
+    missionData.observers.forEach((observer, idx) => {
+      annotations.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [observer.lon, observer.lat]
+        },
+        properties: {
+          label: `OBSERVER ${idx + 1}\n${observer.name || 'Ground Observer'}`,
+          type: 'observer',
+          color: '#8b5cf6', // purple
+          size: 12
+        }
+      });
+    });
+  }
+  
+  // 6. Crew positions (Remote Pilot, VO, etc.)
+  if (missionData.crew && missionData.crew.length > 0) {
+    missionData.crew.forEach((member, idx) => {
+      annotations.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [member.lon, member.lat]
+        },
+        properties: {
+          label: `${member.role || 'CREW'}\n${member.name || `Member ${idx+1}`}`,
+          type: 'crew',
+          color: '#f59e0b', // orange
+          size: 12
+        }
+      });
+    });
+  }
+  
+  // Add all annotations as a layer
+  if (annotations.length > 0) {
+    if (!map2D.getSource('mission-annotations')) {
+      map2D.addSource('mission-annotations', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: annotations }
+      });
+      
+      map2D.addLayer({
+        id: 'mission-annotations-labels',
+        type: 'symbol',
+        source: 'mission-annotations',
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-size': ['get', 'size'],
+          'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+          'text-anchor': 'top',
+          'text-offset': [0, 1.5],
+          'text-justify': 'center'
+        },
+        paint: {
+          'text-color': ['get', 'color'],
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 2,
+          'text-halo-blur': 1
+        }
+      });
+    } else {
+      map2D.getSource('mission-annotations').setData({
+        type: 'FeatureCollection',
+        features: annotations
+      });
+    }
+    
+    console.log(`[addMissionAnnotations] Added ${annotations.length} labels to map`);
+  }
+}
 
 
 window.updateErpPanel = updateErpPanel;
