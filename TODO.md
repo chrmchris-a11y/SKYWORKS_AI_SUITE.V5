@@ -1,11 +1,43 @@
 # SKYWORKS AI SUITE V5 - Feature Development TODO
 
-**Last Updated**: November 10, 2025 (Phase 6 - Mission Wizard + Maps Complete!)  
-**Current Status**: ✅ **Mission Wizard + Maps + GET endpoint** + ✅ **49/49 Tests PASSING**
+**Last Updated**: November 11, 2025 (Phase 6 - E2E Tests Complete!)  
+**Current Status**: ✅ **Mission Wizard + Maps + GET endpoint** + ✅ **49/49 Backend Tests** + ✅ **72/72 E2E Tests PASSING**
 
 ---
 
-## ✅ COMPLETED - LATEST SESSION (November 10, 2025 - Phase 6 UI/MAPS Part 3)
+## 📊 **Phase 6 - E2E Test Status**
+
+**Playwright UI Tests**: 78 total
+- ✅ **72 passing** (100% of active tests)
+- ⏭️ **6 skipped** (Google Maps paste – UI feature not implemented yet)
+- ❌ **0 failing**
+
+**How to run**:
+```bash
+cd e2e
+npx playwright test --workers=1
+```
+
+**Test Coverage**:
+- ✅ Airspace Maps (17 tests) - 2D/3D toggle, layers, waypoints, geofence, CGA, exports
+- ✅ ARC Step #5 (3 tests) - Tactical mitigation credit
+- ✅ GRC 2.0/2.5 Validation (7 tests) - Dropdown options, M1A/M2/M3 validation
+- ✅ KML Import (5 tests) - Route, CGA, dual import, error handling
+- ✅ Map Markings (8 tests) - Start/End markers, CGA, corridor, geofence, legend
+- ✅ Mission Wizard (6 tests) - Template selection, validation, Google Maps parsing
+- ✅ Mission Planner (6 tests) - SORA version toggle, field visibility
+- ✅ Enhanced Panels (12 tests) - ERP, SORA, OSO panels
+- ✅ SORA API Integration (4 tests) - Toggle functionality, dropdown options
+- ✅ Debug Map Properties (2 tests) - Map initialization, renderMission validation
+- ⏭️ Google Maps Paste (6 skipped) - Feature pending implementation
+
+**Known Issues**:
+- MapLibre GL text-symbol layers produce glyphs warnings (non-breaking, visual only)
+- Google Maps paste feature UI not implemented (tests skipped with `.skip`)
+
+---
+
+## ✅ COMPLETED - LATEST SESSION (November 10-11, 2025 - Phase 6 UI/MAPS Part 3)
 
 ### 🎯 **Phase 6 - Mission Planning & Maps (COMPLETE)**
 
