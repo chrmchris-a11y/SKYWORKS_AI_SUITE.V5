@@ -646,32 +646,52 @@ function updateOsoPanel(oso) {
   // Calculate coverage percentage
   const coveragePercent = required > 0 ? ((covered / required) * 100).toFixed(1) : '0.0';
   
-  // Color coding: >80% green, 50-80% yellow, <50% red (hex format for tests)
+  // Traffic light color coding: >80% green, 50-80% amber, <50% red
   let coverageColorHex = 'ef4444'; // Red hex (no #)
+  let coverageEmoji = '🔴';
+  let coverageLabel = 'LOW COVERAGE';
+  
   if (parseFloat(coveragePercent) >= 80) {
     coverageColorHex = '10b981'; // Green hex
+    coverageEmoji = '🟢';
+    coverageLabel = 'GOOD COVERAGE';
   } else if (parseFloat(coveragePercent) >= 50) {
-    coverageColorHex = 'f59e0b'; // Yellow hex
+    coverageColorHex = 'f59e0b'; // Amber hex
+    coverageEmoji = '🟡';
+    coverageLabel = 'MODERATE COVERAGE';
   }
   
   // Use inline style with hex color for test compatibility
   let osoHtml = `
-    <div style="margin:12px 0;padding:10px;background:#f9fafb;border-radius:6px;">
-      <p style="margin:0 0 8px 0;font-size:12px;"><strong>Required:</strong> ${required}</p>
-      <p style="margin:0 0 8px 0;font-size:12px;"><strong>Covered:</strong> ${covered}</p>
-      <p style="margin:0 0 12px 0;font-size:12px;"><strong>Missing:</strong> ${missing}</p>
-      <div style="padding:8px 12px;background:#${coverageColorHex};color:white;border-radius:4px;text-align:center;font-weight:bold;">
-        <span id="oso-coverage-color" data-hex="${coverageColorHex}" style="color:#${coverageColorHex}">Coverage: ${covered} / ${required} (${coveragePercent}%)</span>
+    <div style="margin:12px 0;padding:12px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+        <div style="padding:8px;background:white;border-radius:4px;text-align:center;">
+          <div style="font-size:20px;font-weight:bold;color:#1f2937;">${required}</div>
+          <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Required</div>
+        </div>
+        <div style="padding:8px;background:white;border-radius:4px;text-align:center;">
+          <div style="font-size:20px;font-weight:bold;color:#${coverageColorHex};">${covered}</div>
+          <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Covered</div>
+        </div>
+      </div>
+      
+      <div style="padding:12px;background:#${coverageColorHex};color:white;border-radius:6px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <div style="font-size:11px;opacity:0.9;margin-bottom:4px;">${coverageEmoji} ${coverageLabel}</div>
+        <div id="oso-coverage-color" data-hex="${coverageColorHex}" style="font-size:24px;font-weight:bold;color:#${coverageColorHex}">${coveragePercent}%</div>
+        <div style="font-size:10px;opacity:0.8;margin-top:4px;">${covered} of ${required} OSOs</div>
       </div>
     </div>
   `;
   
-  // Display first 5 missing OSOs
+  // Display first 5 missing OSOs with improved styling
   if (oso.missingOsos && oso.missingOsos.length > 0) {
     osoHtml += `
-      <div style="margin-top:12px;">
-        <h5 style="margin:0 0 8px 0;font-size:13px;font-weight:600;color:#ef4444;">⚠️ Missing OSOs</h5>
-        <ul style="margin:0;padding-left:20px;font-size:11px;line-height:1.6;">
+      <div style="margin-top:16px;padding:12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
+        <div style="display:flex;align-items:center;margin-bottom:8px;">
+          <span style="font-size:16px;margin-right:6px;">⚠️</span>
+          <h5 style="margin:0;font-size:12px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px;">Missing OSOs (${oso.missingOsos.length})</h5>
+        </div>
+        <div style="background:white;border-radius:4px;padding:8px;">
     `;
     
     const maxDisplay = Math.min(5, oso.missingOsos.length);
@@ -679,17 +699,27 @@ function updateOsoPanel(oso) {
       const osoItem = oso.missingOsos[i];
       const osoCode = osoItem.code || osoItem.Code || `OSO#${(i + 1).toString().padStart(2, '0')}`;
       const osoLabel = osoItem.label || osoItem.Label || osoItem.description || osoItem.Description || 'No description';
-      osoHtml += `<li><strong>${osoCode}:</strong> ${osoLabel}</li>`;
+      
+      osoHtml += `
+        <div style="padding:6px 0;border-bottom:1px solid #f3f4f6;${i === maxDisplay - 1 && oso.missingOsos.length <= maxDisplay ? 'border-bottom:none;' : ''}">
+          <div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:2px;">${osoCode}</div>
+          <div style="font-size:10px;color:#6b7280;line-height:1.4;">${osoLabel}</div>
+        </div>
+      `;
     }
     
     if (oso.missingOsos.length > maxDisplay) {
-      osoHtml += `<li><em>... and ${oso.missingOsos.length - maxDisplay} more</em></li>`;
+      osoHtml += `
+        <div style="padding:8px 0;text-align:center;">
+          <span style="font-size:10px;color:#9ca3af;font-style:italic;">+ ${oso.missingOsos.length - maxDisplay} more OSO${oso.missingOsos.length - maxDisplay > 1 ? 's' : ''} missing</span>
+        </div>
+      `;
     }
     
-    osoHtml += `</ul></div>`;
+    osoHtml += `</div></div>`;
   } else if (missing === 0 && required > 0) {
     osoHtml += `
-      <div style="margin-top:12px;padding:10px;background:#ecfdf5;border-left:3px solid #10b981;border-radius:4px;">
+      <div style="margin-top:12px;padding:12px;background:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;">
         <p style="margin:0;font-size:12px;color:#047857;font-weight:600;">✅ All required OSOs are covered!</p>
       </div>
     `;
