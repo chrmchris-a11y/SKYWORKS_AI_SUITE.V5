@@ -44,7 +44,7 @@
                 glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf'
             },
             center: [25.01, 41.01],
-            zoom: 13
+            zoom: 16  // Higher zoom to see closely-spaced E1/E2/E3 markers
         });
         
         map.on('load', () => {
@@ -81,33 +81,34 @@
                     data: { type: 'FeatureCollection', features: emergencyFeatures }
                 });
                 
-                // Red text markers
+                // Red circle markers (add FIRST - below text)
+                map.addLayer({
+                    id: 'emergency-sites-circle',
+                    type: 'circle',
+                    source: 'emergency-sites',
+                    paint: {
+                        'circle-radius': 10,
+                        'circle-color': '#dc2626',
+                        'circle-stroke-width': 3,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+                
+                // White text labels on top
                 map.addLayer({
                     id: 'emergency-sites-symbol',
                     type: 'symbol',
                     source: 'emergency-sites',
                     layout: {
                         'text-field': ['get', 'label'],
-                        'text-size': 16,
-                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
+                        'text-size': 14,
+                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                        'text-anchor': 'center'
                     },
                     paint: {
-                        'text-color': '#dc2626',
-                        'text-halo-color': '#ffffff',
-                        'text-halo-width': 2
-                    }
-                });
-                
-                // Red circle markers
-                map.addLayer({
-                    id: 'emergency-sites-circle',
-                    type: 'circle',
-                    source: 'emergency-sites',
-                    paint: {
-                        'circle-radius': 8,
-                        'circle-color': '#dc2626',
-                        'circle-stroke-width': 2,
-                        'circle-stroke-color': '#ffffff'
+                        'text-color': '#ffffff',
+                        'text-halo-color': '#dc2626',
+                        'text-halo-width': 1
                     }
                 });
                 

@@ -2056,6 +2056,20 @@ window.renderMission = function(missionData) {
           data: { type: 'FeatureCollection', features: emergencyFeatures }
         });
         
+        // Red circle markers (add first - below text)
+        map2D.addLayer({
+          id: 'emergency-sites-circle',
+          type: 'circle',
+          source: 'emergency-sites',
+          paint: {
+            'circle-radius': 10,
+            'circle-color': '#dc2626',
+            'circle-stroke-width': 3,
+            'circle-stroke-color': '#ffffff'
+          }
+        });
+        
+        // White text labels on top
         map2D.addLayer({
           id: 'emergency-sites-symbol',
           type: 'symbol',
@@ -2063,12 +2077,13 @@ window.renderMission = function(missionData) {
           layout: {
             'text-field': ['get', 'label'],
             'text-size': 14,
-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-anchor': 'center'
           },
           paint: {
-            'text-color': '#dc2626',
-            'text-halo-color': '#ffffff',
-            'text-halo-width': 2
+            'text-color': '#ffffff',
+            'text-halo-color': '#dc2626',
+            'text-halo-width': 1
           }
         });
       } else {
