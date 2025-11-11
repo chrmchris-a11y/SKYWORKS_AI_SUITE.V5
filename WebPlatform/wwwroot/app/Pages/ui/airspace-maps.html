@@ -278,9 +278,10 @@
 
   <main class="main-content maps-layout">
     <!-- Map Container (2D/3D) -->
-    <div id="map2D" class="map-container">
-      <!-- Airspace Legend Panel -->
-      <div id="airspace-legend" class="airspace-legend">
+    <div class="map-wrapper">
+      <div id="map2D" class="map-container">
+        <!-- Airspace Legend Panel -->
+        <div id="airspace-legend" class="airspace-legend">
         <h4 style="margin:0 0 10px 0;font-size:14px;font-weight:600;border-bottom:1px solid #ddd;padding-bottom:8px;">
           🗺️ Airspace Layers
         </h4>
@@ -329,6 +330,7 @@
       </div>
     </div>
     <div id="map3D" class="map-container" style="display:none;"></div>
+    </div>
 
     <!-- Right Panel: Compliance & ERP/TMPR -->
     <aside class="right-panel">
@@ -347,22 +349,22 @@
         <div class="kpi-grid">
           <div class="kpi-card">
             <div class="kpi-label">iGRC</div>
-            <div id="kpi_igrc" class="kpi-value">–</div>
+            <div id="kpi_igrc" class="kpi-value badge-igrc">–</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Final GRC</div>
-            <div id="kpi_fgrc" class="kpi-value">–</div>
+            <div id="kpi_fgrc" class="kpi-value badge-fgrc">–</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Initial ARC</div>
-            <div id="kpi_iarc" class="kpi-value">–</div>
+            <div id="kpi_iarc" class="kpi-value badge-iarc">–</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Residual ARC</div>
-            <div id="kpi_rarc" class="kpi-value">–</div>
+            <div id="kpi_rarc" class="kpi-value badge-rarc">–</div>
           </div>
         </div>
-        <div class="sail-badge" id="sailBadge">SAIL: –</div>
+        <div class="sail-badge badge-sail" id="sailBadge">SAIL: –</div>
 
         <!-- SORA 2.5 Mitigations (Ground Risk) -->
         <div id="mitigations_25" class="mitigations-section">
@@ -447,11 +449,21 @@
 
       <div class="card">
         <h3>ERP / TMPR</h3>
+        <div id="erp-panel"></div>
         <label><input type="checkbox" id="erp_emergency_sites"> Emergency Landing Sites</label>
         <label><input type="checkbox" id="erp_recovery_routes"> Recovery Routes</label>
         <label><input type="checkbox" id="erp_muster_points"> Muster Points</label>
         <label><input type="checkbox" id="erp_comms_backup"> Backup Comms (C2 link loss)</label>
         <p class="help-text">M3 ERP: Emergency Response Plan overlays for SAIL III–VI</p>
+      </div>
+      
+      <div class="card">
+        <div id="oso-panel">
+          <h4>OSO Coverage</h4>
+          <div id="oso-panel-content">
+            <p><em>Load mission to view OSO coverage</em></p>
+          </div>
+        </div>
       </div>
 
       <div class="card">

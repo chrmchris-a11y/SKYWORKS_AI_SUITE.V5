@@ -40,8 +40,18 @@ test.describe('SORA API Integration E2E Tests', () => {
   // ========================================================================
   // Test 2: Mission Planner SORA 2.0 - Framework toggle
   // ========================================================================
-  test.skip('Mission Planner: SORA 2.0 toggle works', async ({ page }) => {
-    // Skipping - toggle JavaScript not yet wired up in mission.html
+  test('Mission Planner: SORA 2.0 toggle works', async ({ page }) => {
+    // Toggle now wired with inline script
+    await page.goto('http://localhost:5210/app/Pages/ui/mission.html');
+    
+    // Toggle to SORA 2.0
+    await page.evaluate(() => {
+      (window as any).toggleFramework('sora20');
+    });
+    
+    // Verify toggle worked
+    const sora20Visible = await page.locator('#sora20-fields').isVisible();
+    expect(sora20Visible).toBe(true);
   });
 
   // ========================================================================

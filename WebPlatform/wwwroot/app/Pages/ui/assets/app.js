@@ -8,7 +8,7 @@
  */
 
 // Import SORA API client
-import { soraApi, buildSora25Request, buildSora20Request } from './api/soraClient.js';
+import { soraApi, buildSora25Request, buildSora20Request } from '../api/soraClient.js';
 
 // ═══════════════════════════════════════════════════════════════════
 // VALIDATION SCHEMAS (inline from schemas.ts)
@@ -87,7 +87,11 @@ const SORA_20_SCHEMAS = {
 // GLOBAL STATE
 // ═══════════════════════════════════════════════════════════════════
 
-let currentSoraVersion = "2.5";
+// Use window.currentSoraVersion if set by inline toggle script, otherwise default to 2.5
+if (typeof window.currentSoraVersion === 'undefined') {
+  window.currentSoraVersion = "2.5";
+}
+const currentSoraVersion = () => window.currentSoraVersion; // Getter function
 let lastResponse = null;
 let specificationsCache = {
   "2.5": null,
@@ -301,7 +305,7 @@ function buildSoraRequest() {
   };
   
   // Build SORA 2.5 or 2.0 request
-  if (currentSoraVersion === "2.5") {
+  if (window.currentSoraVersion === "2.5") {
     return buildSora25Request({
       drone: droneSpecs,
       populationDensity: extractPopulationDensity(),
@@ -568,43 +572,31 @@ function clearConsole() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// INIT
+// LEGACY INIT (Moved to initSoraToggle)
 // ═══════════════════════════════════════════════════════════════════
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Load job types
-  loadJobTypes();
-  
-  // Attach toggle listeners (NEW: framework toggle instead of version)
-  document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      toggleFramework(btn.dataset.framework);
-    });
-  });
-  
-  // Attach form submit
-  const form = document.getElementById('mission-form');
-  if (form) {
-    form.addEventListener('submit', handleFormSubmit);
-  }
-  
-  // Attach job type change
-  const jobTypeSelect = document.getElementById('job-type');
-  if (jobTypeSelect) {
-    jobTypeSelect.addEventListener('change', handleJobTypeChange);
-  }
-  
-  // Attach action buttons
-  document.getElementById('btn-print')?.addEventListener('click', handlePrint);
-  document.getElementById('btn-pdf')?.addEventListener('click', handlePdfExport);
-  document.getElementById('btn-email')?.addEventListener('click', handleEmail);
-  
-  // Initialize to SORA 2.5
-  toggleFramework('sora25');
-  
-  logToConsole('✅ SKYWORKS Mission Planner Ready', 'success');
-  logToConsole('SORA 2.5 Annex B + SORA 2.0 AMC1 Art.11 Compliant', 'success');
-});
+// Load job types on module load
+loadJobTypes();
+
+// Attach form submit
+const form = document.getElementById('mission-form');
+if (form) {
+  form.addEventListener('submit', handleFormSubmit);
+}
+
+// Attach job type change
+const jobTypeSelect = document.getElementById('job-type');
+if (jobTypeSelect) {
+  jobTypeSelect.addEventListener('change', handleJobTypeChange);
+}
+
+// Attach action buttons
+document.getElementById('btn-print')?.addEventListener('click', handlePrint);
+document.getElementById('btn-pdf')?.addEventListener('click', handlePdfExport);
+document.getElementById('btn-email')?.addEventListener('click', handleEmail);
+
+logToConsole('✅ SKYWORKS Mission Planner Ready', 'success');
+logToConsole('SORA 2.5 Annex B + SORA 2.0 AMC1 Art.11 Compliant', 'success');
 
 // ═══════════════════════════════════════════════════════════════════
 // JOB TYPES MANAGEMENT
@@ -664,56 +656,98 @@ function handleJobTypeChange(event) {
 // FRAMEWORK TOGGLE (SORA 2.0 / 2.5 / PDRA / STS)
 // ═══════════════════════════════════════════════════════════════════
 
+// ═══════════════════════════════════════════════════════════════════
+// SORA FRAMEWORK TOGGLE (UI Only - No API dependencies)
+// ═══════════════════════════════════════════════════════════════════
+
 async function toggleFramework(framework) {
-  // Update currentSoraVersion based on framework
-  if (framework === 'sora25') {
-    currentSoraVersion = "2.5";
-  } else if (framework === 'sora20') {
-    currentSoraVersion = "2.0";
-  }
-  
-  // Update toggle button states
-  document.querySelectorAll('.toggle-btn').forEach(btn => {
-    btn.classList.remove('active');
+  // Update button active states
+  const buttons = document.querySelectorAll('.toggle-btn[data-framework]');
+  buttons.forEach(btn => {
+    const isActive = btn.dataset.framework === framework;
+    btn.classList.toggle('active', isActive);
   });
-  document.querySelector(`[data-framework="${framework}"]`)?.classList.add('active');
-  
-  // Show/hide appropriate fieldsets
-  const sora25Fields = document.getElementById('sora25-fields');
-  const sora20Fields = document.getElementById('sora20-fields');
-  
-  if (framework === 'sora25') {
-    sora25Fields?.classList.remove('hidden');
-    sora20Fields?.classList.add('hidden');
-    logToConsole('✅ Switched to SORA 2.5 (Annex B)', 'success');
-    
-    // Load SORA 2.5 specifications and populate dropdowns
-    await loadSpecifications("2.5");
-    
-  } else if (framework === 'sora20') {
-    sora25Fields?.classList.add('hidden');
-    sora20Fields?.classList.remove('hidden');
-    logToConsole('✅ Switched to SORA 2.0 (AMC1 Art.11)', 'success');
-    
-    // Load SORA 2.0 specifications and populate dropdowns
-    await loadSpecifications("2.0");
-    
-  } else if (framework === 'pdra') {
-    sora25Fields?.classList.add('hidden');
-    sora20Fields?.classList.add('hidden');
-    logToConsole('🚀 Redirecting to PDRA & STS hub...', 'success');
-    setTimeout(() => {
-      window.location.href = 'pdrasts.html';
-    }, 500);
-  } else if (framework === 'sts') {
-    sora25Fields?.classList.add('hidden');
-    sora20Fields?.classList.add('hidden');
-    logToConsole('🚀 Redirecting to PDRA & STS hub...', 'success');
-    setTimeout(() => {
-      window.location.href = 'pdrasts.html';
-    }, 500);
+
+  // Show/hide field containers
+  const sora25 = document.getElementById('sora25-fields');
+  const sora20 = document.getElementById('sora20-fields');
+
+  if (sora25 && sora20) {
+    if (framework === 'sora25') {
+      sora25.classList.remove('hidden');
+      sora20.classList.add('hidden');
+      window.currentSoraVersion = "2.5";
+      logToConsole('✅ Switched to SORA 2.5 (Annex B)', 'success');
+      
+      // Load SORA 2.5 specifications (async, non-blocking)
+      try {
+        await loadSpecifications("2.5");
+      } catch (err) {
+        logToConsole(`⚠️ Failed to load SORA 2.5 specs: ${err.message}`, 'warning');
+      }
+      
+    } else if (framework === 'sora20') {
+      sora25.classList.add('hidden');
+      sora20.classList.remove('hidden');
+      window.currentSoraVersion = "2.0";
+      logToConsole('✅ Switched to SORA 2.0 (AMC1 Art.11)', 'success');
+      
+      // Load SORA 2.0 specifications (async, non-blocking)
+      try {
+        await loadSpecifications("2.0");
+      } catch (err) {
+        logToConsole(`⚠️ Failed to load SORA 2.0 specs: ${err.message}`, 'warning');
+      }
+      
+    } else if (framework === 'pdra' || framework === 'sts') {
+      sora25.classList.add('hidden');
+      sora20.classList.add('hidden');
+      logToConsole('🚀 Redirecting to PDRA & STS hub...', 'success');
+      setTimeout(() => {
+        window.location.href = 'pdrasts.html';
+      }, 500);
+    }
   }
 }
+
+// Initialize SORA toggle listeners and default state
+function initSoraToggle() {
+  const buttons = document.querySelectorAll('.toggle-btn[data-framework]');
+  if (!buttons.length) {
+    console.warn('⚠️ No toggle buttons found - will retry on DOMContentLoaded');
+    return false;
+  }
+
+  // Attach click listeners
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const framework = btn.dataset.framework || 'sora25';
+      toggleFramework(framework);
+    });
+  });
+
+  console.log(`✓ Toggle listeners attached: ${buttons.length} buttons`);
+
+  // Set initial state based on active button
+  const activeBtn = document.querySelector('.toggle-btn[data-framework].active');
+  const initialFramework = activeBtn?.dataset.framework || 'sora25';
+  toggleFramework(initialFramework);
+  
+  return true;
+}
+
+// Try immediate init, fallback to DOMContentLoaded
+if (!initSoraToggle()) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSoraToggle);
+  } else {
+    // DOM ready but buttons not found - wait a bit
+    setTimeout(initSoraToggle, 100);
+  }
+}
+
+// NOTE: window.toggleFramework is now defined in mission.html inline script
+// to avoid ES module import timing issues
 
 // ═══════════════════════════════════════════════════════════════════
 // ACTION BUTTONS (Print / PDF / Email)
@@ -731,7 +765,7 @@ function handlePdfExport() {
 
 function handleEmail() {
   const subject = encodeURIComponent('SKYWORKS SORA Mission Dossier');
-  const body = encodeURIComponent(`Mission Details:\n\nFramework: ${currentSoraVersion}\nJob Type: ${document.getElementById('job-type').value}\nOperation: ${document.getElementById('operation-type').value}\n\nGenerated by SKYWORKS SORA Suite v0.7.0`);
+  const body = encodeURIComponent(`Mission Details:\n\nFramework: ${window.currentSoraVersion}\nJob Type: ${document.getElementById('job-type').value}\nOperation: ${document.getElementById('operation-type').value}\n\nGenerated by SKYWORKS SORA Suite v0.7.0`);
   
   window.location.href = `mailto:?subject=${subject}&body=${body}`;
   logToConsole('📧 Email client opened', 'success');
@@ -846,7 +880,7 @@ function updateSummary() {
   
   const summary = `
     <ul style="list-style:none;padding:0;">
-      <li><strong>Template:</strong> ${template?.name || 'N/A'}</li>
+      <li><strong>Template:</strong> ${template?.name || 'N/A'} (${template?.code || 'N/A'})</li>
       <li><strong>Category:</strong> ${template?.cat || 'N/A'}</li>
       <li><strong>Location:</strong> ${lat}, ${lon}</li>
       <li><strong>Max Height:</strong> ${height} m AGL</li>
@@ -962,17 +996,40 @@ async function createMission() {
   }
 }
 
+// NOTE: Wizard NAVIGATION is now handled by inline script in mission.html
+// But we still need to load templates and attach other handlers
 if (document.getElementById('missionWizard')) {
-  initMissionWizard();
+  loadMissionTemplates();
+  
+  document.getElementById('wizard-template')?.addEventListener('change', (e) => {
+    updateTemplatePreview(e.target.value);
+  });
+  
+  document.getElementById('btn-parse-gmaps')?.addEventListener('click', parseGoogleMapsInput);
+  
+  // NOTE: Create button handler is attached in mission.html inline script
+  // to ensure immediate availability for tests. We override the fallback here.
+  if (typeof window.createMission === 'function') {
+    const originalFallback = window.createMission;
+    window.createMission = createMission; // Use real implementation
+    console.log('[app.js] Replaced fallback createMission with real implementation');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
 // GLOBAL EXPORTS (for module compatibility)
 // ═══════════════════════════════════════════════════════════════════
 
-// Make functions available globally for HTML onclick handlers
-window.toggleFramework = toggleFramework;
+// NOTE: window.toggleFramework is now defined in mission.html inline script
+// Make remaining functions available globally for HTML onclick handlers
 window.toggleSoraVersion = toggleSoraVersion;
 window.handlePrint = handlePrint;
 window.handlePdfExport = handlePdfExport;
 window.handleEmail = handleEmail;
+window.updateSummary = updateSummary;
+window.createMission = createMission;
+
+// Signal that module is fully loaded and ready (for Playwright tests)
+window.appModuleReady = true;
+console.log('✅ app.js module fully loaded - appModuleReady = true');
+

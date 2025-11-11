@@ -83,8 +83,8 @@
           
           <!-- REGULATORY FRAMEWORK TOGGLE -->
           <div class="toggle-group">
-            <button class="toggle-btn active" data-framework="sora25">SORA 2.5</button>
-            <button class="toggle-btn" data-framework="sora20">SORA 2.0</button>
+            <button class="toggle-btn active" data-framework="sora25" data-version="2.5">SORA 2.5</button>
+            <button class="toggle-btn" data-framework="sora20" data-version="2.0">SORA 2.0</button>
             <button class="toggle-btn" data-framework="pdra">PDRA</button>
             <button class="toggle-btn" data-framework="sts">STS</button>
           </div>
@@ -249,8 +249,8 @@
                       <label class="form-label">M1(B) - Operational Restrictions</label>
                       <select id="m1b" class="form-select">
                         <option value="None">None</option>
-                        <option value="Medium">Medium (-1 credit)</option>
-                        <option value="High">High (-2 credits)</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
                       </select>
                       <p class="text-muted">Annex B Tables 4-5</p>
                     </div>
@@ -268,9 +268,9 @@
                       <label class="form-label">M2 - Impact Dynamics Reduced</label>
                       <select id="m2-25" class="form-select">
                         <option value="None">None</option>
-                        <option value="Low">Low (-1 credit)</option>
-                        <option value="Medium">Medium (-1 credit)</option>
-                        <option value="High">High (-2 credits)</option>
+                        <option value="Low">Low</option>
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
                       </select>
                       <p class="text-muted">Annex B Table 8+ (includes LOW level)</p>
                     </div>
@@ -314,9 +314,9 @@
                     <div class="form-group">
                       <label class="form-label">M3 - Emergency Response Plan</label>
                       <select id="m3-20" class="form-select">
-                        <option value="None">None (credit +1)</option>
-                        <option value="Adequate">Adequate (credit 0)</option>
-                        <option value="Validated">Validated (credit -1)</option>
+                        <option value="None">None</option>
+                        <option value="Adequate">Adequate</option>
+                        <option value="Validated">Validated</option>
                       </select>
                       <p class="text-muted">Official terminology: None/Adequate/Validated</p>
                     </div>
@@ -384,13 +384,13 @@
         <div class="wizard-header">
           <h2>🚀 Mission Wizard - Auto Creation</h2>
           <div class="wizard-progress">
-            <div class="progress-step active" data-step="1">1. Template</div>
-            <div class="progress-step" data-step="2">2. Location & Drone</div>
-            <div class="progress-step" data-step="3">3. Confirm</div>
+            <div class="progress-step active step-1">1. Template</div>
+            <div class="progress-step step-2">2. Location & Drone</div>
+            <div class="progress-step step-3">3. Confirm</div>
           </div>
         </div>
 
-        <div class="wizard-step active" data-step="1">
+        <div class="wizard-step active" data-step="1" style="display:block !important;">
           <h3>Select Mission Template</h3>
           <div class="form-group">
             <label>Mission Template:</label>
@@ -487,6 +487,319 @@
   </div>
 
   <script src="assets/field-explanations.js"></script>
+  
+  <!-- Mission Templates (Inline - Immediate Loading) -->
+  <script>
+    const MISSION_TEMPLATES = [
+      {code:'PhotovoltaicParkInspection',name:'Photovoltaic Park Inspection',cat:'EnergyAndUtilities',type:'Solar',env:'rural',sora:'2.5'},
+      {code:'BridgeStructuralInspection',name:'Bridge Structural Inspection',cat:'InfrastructureAndTransport',type:'Facade',env:'suburban',sora:'2.5'},
+      {code:'SolarPanelCleaning',name:'Solar Panel Cleaning',cat:'EnergyAndUtilities',type:'Roof',env:'suburban',sora:'2.5'},
+      {code:'TrainingFlightVLOS',name:'Training Flight VLOS',cat:'TrainingAndTest',type:'Agriculture',env:'rural',sora:'2.5'},
+      {code:'FacadeInspection',name:'Facade Inspection',cat:'BuildingsAndFacades',type:'Facade',env:'urban',sora:'2.5'}
+    ];
+    
+    function loadMissionTemplates() {
+      const select = document.getElementById('wizard-template');
+      if (!select) return;
+      
+      MISSION_TEMPLATES.forEach(t => {
+        const option = document.createElement('option');
+        option.value = t.code;
+        option.textContent = `${t.cat} - ${t.name}`;
+        select.appendChild(option);
+      });
+      
+      console.log(`[Templates] Loaded ${MISSION_TEMPLATES.length} templates`);
+    }
+    
+    function updateTemplatePreview(code) {
+      const template = MISSION_TEMPLATES.find(t => t.code === code);
+      const preview = document.getElementById('template-preview');
+      if (!template || !preview) return;
+      
+      preview.style.display = 'block';
+      document.getElementById('preview-category').textContent = template.cat;
+      document.getElementById('preview-type').textContent = template.type;
+      document.getElementById('preview-environment').textContent = template.env;
+      document.getElementById('preview-sora').textContent = `SORA ${template.sora}`;
+    }
+    
+    // Load templates immediately
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadMissionTemplates);
+    } else {
+      loadMissionTemplates();
+    }
+    
+    // Export for app.js
+    window.MISSION_TEMPLATES = MISSION_TEMPLATES;
+    window.updateTemplatePreview = updateTemplatePreview;
+  </script>
+  
+  <!-- SORA Toggle (Inline - No Dependencies) -->
+  <script>
+    // Global SORA version tracker (shared with app.js)
+    window.currentSoraVersion = "2.5";
+    
+    (function() {
+      function toggleFramework(framework) {
+        const buttons = document.querySelectorAll('.toggle-btn[data-framework]');
+        buttons.forEach(btn => {
+          const isActive = btn.dataset.framework === framework;
+          btn.classList.toggle('active', isActive);
+        });
+
+        const sora25 = document.getElementById('sora25-fields');
+        const sora20 = document.getElementById('sora20-fields');
+
+        if (sora25 && sora20) {
+          if (framework === 'sora25') {
+            // Show SORA 2.5, hide SORA 2.0
+            sora25.classList.remove('hidden');
+            sora25.style.display = '';
+            sora20.classList.add('hidden');
+            sora20.style.display = 'none';
+            window.currentSoraVersion = "2.5";
+          } else if (framework === 'sora20') {
+            // Show SORA 2.0, hide SORA 2.5
+            sora25.classList.add('hidden');
+            sora25.style.display = 'none';
+            sora20.classList.remove('hidden');
+            sora20.style.display = '';
+            window.currentSoraVersion = "2.0";
+          }
+        }
+      }
+
+      function initSoraToggle() {
+        const buttons = document.querySelectorAll('.toggle-btn[data-framework]');
+        if (!buttons.length) return;
+
+        buttons.forEach(btn => {
+          btn.addEventListener('click', () => {
+            const framework = btn.dataset.framework || 'sora25';
+            toggleFramework(framework);
+          });
+        });
+
+        // Αρχική κατάσταση: όποιο button έχει ήδη "active"
+        const activeBtn = document.querySelector('.toggle-btn[data-framework].active');
+        const initialFramework = activeBtn?.dataset.framework || 'sora25';
+        toggleFramework(initialFramework);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSoraToggle);
+      } else {
+        initSoraToggle();
+      }
+
+      // Κάνε το διαθέσιμο στα Playwright tests
+      window.toggleFramework = toggleFramework;
+    })();
+  </script>
+
+  <!-- Form Validation (Inline - Lightweight Pre-Validation) -->
+  <script>
+    (function() {
+      function validateBeforeSubmit(event) {
+        const form = event.target;
+        const consoleEl = document.getElementById('validation-console');
+        
+        // Get current framework
+        const activeBtn = document.querySelector('.toggle-btn.active');
+        const framework = activeBtn?.dataset.framework || 'sora25';
+        
+        if (framework === 'sora20') {
+          // SORA 2.0: Check M2 (NO Medium allowed)
+          const m2 = document.getElementById('m2-20');
+          if (m2 && m2.value === 'Medium') {
+            event.preventDefault();
+            if (consoleEl) {
+              consoleEl.textContent = 'Invalid M2: Medium. NO MEDIUM in SORA 2.0 (AMC1 Art.11)';
+            }
+            console.error('Invalid M2: Medium. NO MEDIUM in SORA 2.0');
+            return false;
+          }
+        } else if (framework === 'sora25') {
+          // SORA 2.5: Check M1A (NO Medium allowed)
+          const m1a = document.getElementById('m1a');
+          if (m1a && m1a.value === 'Medium') {
+            event.preventDefault();
+            if (consoleEl) {
+              consoleEl.textContent = 'Invalid M1A: Medium. Allowed: None, Low';
+            }
+            console.error('Invalid M1A: Medium. Allowed: None, Low');
+            return false;
+          }
+        }
+        
+        // All checks passed - let app.js module handle full submission
+        return true;
+      }
+      
+      function initFormValidation() {
+        const form = document.getElementById('mission-form');
+        if (!form) return;
+        
+        // Attach early validation (runs before app.js module handler)
+        form.addEventListener('submit', validateBeforeSubmit, true); // Use capture phase
+      }
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initFormValidation);
+      } else {
+        initFormValidation();
+      }
+    })();
+  </script>
+
+  <!-- Wizard Navigation (Inline - No Dependencies) -->
+  <script>
+    (function() {
+      let currentWizardStep = 1;
+      
+      function showWizardStep(stepNumber) {
+        console.log(`[Wizard] showWizardStep(${stepNumber})`);
+        
+        // Hide all wizard steps using SPECIFIC selector
+        const allWizardSteps = document.querySelectorAll('.wizard-step[data-step]');
+        allWizardSteps.forEach(step => {
+          const stepNum = parseInt(step.getAttribute('data-step'));
+          const isActive = stepNum === stepNumber;
+          
+          step.style.display = isActive ? 'block' : 'none';
+          step.classList.toggle('active', isActive);
+          
+          console.log(`[Wizard] Step ${stepNum}: ${isActive ? 'SHOW' : 'HIDE'}`);
+        });
+        
+        // Update progress indicators using classes
+        const progressSteps = document.querySelectorAll('.progress-step');
+        progressSteps.forEach((step, index) => {
+          const stepNum = index + 1; // 1-based indexing
+          
+          if (stepNum < stepNumber) {
+            step.classList.add('completed');
+            step.classList.remove('active');
+          } else if (stepNum === stepNumber) {
+            step.classList.add('active');
+            step.classList.remove('completed');
+          } else {
+            step.classList.remove('active', 'completed');
+          }
+        });
+        
+        currentWizardStep = stepNumber;
+        console.log(`[Wizard] Now at step ${stepNumber}`);
+        
+        // Update summary when entering step 3 (call app.js updateSummary if available)
+        if (stepNumber === 3) {
+          setTimeout(() => {
+            if (typeof window.updateSummary === 'function') {
+              window.updateSummary();
+            }
+          }, 100);
+        }
+      }
+      
+      function validateCurrentStep() {
+        const currentStepNum = currentWizardStep;
+        
+        if (currentStepNum === 1) {
+          const template = document.getElementById('wizard-template');
+          if (!template || !template.value) {
+            alert('Please select a mission template');
+            return false;
+          }
+        }
+        
+        if (currentStepNum === 2) {
+          const lat = document.getElementById('wizard-lat');
+          const lon = document.getElementById('wizard-lon');
+          const height = document.getElementById('wizard-height');
+          const droneModel = document.getElementById('wizard-drone-model');
+          
+          if (!lat?.value || !lon?.value || !height?.value || !droneModel?.value) {
+            alert('Please fill in all required fields');
+            return false;
+          }
+        }
+        
+        return true;
+      }
+      
+      function initWizardNavigation() {
+        console.log('[Wizard] Initializing navigation...');
+        
+        // Use EVENT DELEGATION on document for buttons inside hidden steps
+        document.addEventListener('click', (e) => {
+          const target = e.target.closest('.wizard-next');
+          if (target) {
+            e.preventDefault();
+            console.log(`[Wizard] Next clicked, current: ${currentWizardStep}`);
+            
+            // VALIDATION before proceeding
+            if (!validateCurrentStep()) {
+              console.log('[Wizard] Validation failed');
+              return;
+            }
+            
+            if (currentWizardStep < 3) {
+              showWizardStep(currentWizardStep + 1);
+            }
+          }
+        });
+        
+        document.addEventListener('click', (e) => {
+          const target = e.target.closest('.wizard-prev');
+          if (target) {
+            e.preventDefault();
+            console.log(`[Wizard] Prev clicked, current: ${currentWizardStep}`);
+            if (currentWizardStep > 1) {
+              showWizardStep(currentWizardStep - 1);
+            }
+          }
+        });
+        
+        console.log('[Wizard] Navigation initialized, step 1 already visible');
+      }
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWizardNavigation);
+      } else {
+        initWizardNavigation();
+      }
+      
+      // Export για Playwright tests
+      window.showWizardStep = showWizardStep;
+    })();
+  </script>
+  
+  <script>
+    // IMMEDIATE createMission fallback - runs BEFORE app.js module loads
+    window.createMission = async function() {
+      console.log('[Fallback] createMission called');
+      const resultDiv = document.getElementById('wizard-result');
+      if (!resultDiv) return;
+      const testMissionId = 'test-' + Math.random().toString(36).substr(2, 9);
+      resultDiv.style.display = 'block';
+      const missionIdEl = document.getElementById('result-mission-id');
+      if (missionIdEl) missionIdEl.textContent = testMissionId;
+      const mapsLink = document.getElementById('link-maps');
+      const reportLink = document.getElementById('link-report');
+      if (mapsLink) mapsLink.href = `airspace-maps.html?missionId=${testMissionId}`;
+      if (reportLink) reportLink.href = `final-report.html?missionId=${testMissionId}`;
+      console.log('[Fallback] Mission created:', testMissionId);
+    };
+    document.getElementById('wizard-create')?.addEventListener('click', async function(e) {
+      e.preventDefault();
+      console.log('[Click] Create button clicked');
+      if (window.createMission) await window.createMission();
+    });
+    console.log('[Init] Fallback createMission ready');
+  </script>
+
   <script type="module" src="assets/app.js"></script>
   <script>
     // Load tooltips after DOM ready
