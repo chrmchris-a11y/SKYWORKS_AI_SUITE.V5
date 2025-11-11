@@ -74,9 +74,9 @@ test.describe('Google Maps - Search & Geocode', () => {
     }, testUrl);
     
     expect(parsed).not.toBeNull();
-    expect(parsed.lat).toBeCloseTo(37.9838, 4);
-    expect(parsed.lng).toBeCloseTo(23.7275, 4);
-    expect(parsed.zoom).toBe(12);
+    expect(parsed!.lat).toBeCloseTo(37.9838, 4);
+    expect(parsed!.lng).toBeCloseTo(23.7275, 4);
+    expect(parsed!.zoom).toBe(12);
   });
 
   test('should parse Google Maps URL (?q=lat,lng format)', async ({ page }) => {
@@ -87,9 +87,9 @@ test.describe('Google Maps - Search & Geocode', () => {
     }, testUrl);
     
     expect(parsed).not.toBeNull();
-    expect(parsed.lat).toBeCloseTo(40.6401, 4);
-    expect(parsed.lng).toBeCloseTo(22.9444, 4);
-    expect(parsed.zoom).toBe(14); // Default zoom
+    expect(parsed!.lat).toBeCloseTo(40.6401, 4);
+    expect(parsed!.lng).toBeCloseTo(22.9444, 4);
+    expect(parsed!.zoom).toBe(14); // Default zoom
   });
 
   test('should parse Google Maps place URL', async ({ page }) => {
@@ -100,8 +100,8 @@ test.describe('Google Maps - Search & Geocode', () => {
     }, testUrl);
     
     expect(parsed).not.toBeNull();
-    expect(parsed.lat).toBeCloseTo(37.9838, 4);
-    expect(parsed.lng).toBeCloseTo(23.7275, 4);
+    expect(parsed!.lat).toBeCloseTo(37.9838, 4);
+    expect(parsed!.lng).toBeCloseTo(23.7275, 4);
   });
 
   test('should return null for invalid URL', async ({ page }) => {

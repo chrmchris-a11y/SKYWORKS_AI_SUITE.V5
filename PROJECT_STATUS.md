@@ -1,53 +1,80 @@
 # 🚀 SKYWORKS AI SUITE V5 - PROJECT STATUS REPORT
 
-**Τελευταία Ενημέρωση:** 2025-11-11 23:59 UTC (Phase 6 FINAL - EASA/JARUS Compliance 100%!)  
+**Τελευταία Ενημέρωση:** 2025-11-11 (Google Maps Migration - Πακέτο 1 & 2 Ολοκληρώθηκαν)  
 **Branch:** feat/complete-ui-features  
-**Current Phase:** Phase 6 - EASA/JARUS SORA 2.5 Annex A Compliance ✅✅✅  
-**Status:** ✅✅✅ **ALL 22 TASKS + ANNOTATIONS + COMPLIANCE FIXES** + ✅ **51/51 BACKEND TESTS GREEN** + ✅ **76/76 E2E TESTS PASSING (Expected)**
+**Current Phase:** Google Maps JavaScript API Integration (STRICT - NO OSM/Nominatim/MapLibre/Leaflet/Cesium)  
+**Status:** 🚧 **IN PROGRESS** - Πακέτο 1 & 2 ✅ | Πακέτο 3-6 ⏳ PENDING
 
 ---
 
-## 🎯 IMMEDIATE STATUS - READ THIS FIRST!
+## 🎯 ΤΡΕΧΟΥΣΑ ΚΑΤΑΣΤΑΣΗ - ΔΙΑΒΑΣΕ ΠΡΩΤΑ!
 
-### ✅✅✅ LATEST: Phase 6 FINAL - Overlapping Labels Fixed + Dynamic SORA + Generic Labels (2025-11-11 23:59 UTC)
+### 🚧 Google Maps Migration - Πακέτο 1 & 2 ΟΛΟΚΛΗΡΩΘΗΚΑΝ (2025-11-11)
 
-**Just Completed - CRITICAL COMPLIANCE FIXES:**
-- ✅ **Fixed Overlapping Labels** - **4 permanent labels vs. 8+ before (50% reduction)**
-  - TOL/Landing tooltips: direction 'bottom', offset [0, 18] (labels below markers)
-  - Observers/Crew: Changed from permanent tooltips to popups (bindPopup instead of bindTooltip)
-  - Distance labels: Only E1 visible by default, E2/E3 in popups
-  - **Result:** Clean ConOps diagram with minimal visual overlap
-  
-- ✅ **Removed ALL Fake Names** - **Generic labels only (EASA-compliant)**
-  - BEFORE: "John Smith", "Sarah Connor", "Alex Johnson", "Maria Lopez"
-  - AFTER: "Observer 1", "Remote Pilot", "Visual Observer" (roles only)
-  - Applied to: test-mission-annotations.html mock data, airspace.js production
-  - **NO personal data on ConOps diagrams** per SORA 2.5 Annex A standards
-  
-- ✅ **Dynamic SORA Version Badge** - **Fully dynamic, NO hardcoded values**
-  - BEFORE: Hardcoded "🛡️ JARUS SORA 2.5 Annex A", default soraVersion = '2.5'
-  - AFTER: Reads mission.soraVersion, conditional rendering:
-    * SORA 2.0 → Blue badge (bg-blue-100) "🛡️ EASA SORA 2.0 AMC"
-    * SORA 2.5 → Green badge (bg-green-100) "🛡️ JARUS SORA 2.5 Annex A"
-    * NO version → Blank badge (hide, console warning)
-  - Impact: ALL pages (airspace-maps.html, test pages) now show correct version
-  
-- ✅ **EASA Annex A Positioning Standards** - **Generic labels, max 3 distances**
-  - Observers: `"Observer ${idx+1}"` (no ${observer.name})
-  - Crew: `"${member.role || 'Crew'}"` (no ${member.name})
-  - Max 3 key distances: TOL → CGA Edge, Safe Area Radius, TOL → E1
-  - Console log: "Displayed X key distances (max 3)"
-  
-- ✅ **Removed Marketing Text** - **EASA-compliant text only**
-  - BEFORE: "All annotations appear automatically when a mission is loaded..."
-  - AFTER: "Distances calculated using Haversine formula (WGS84)" (technical, factual)
+**ΟΛΟΚΛΗΡΩΘΗΚΕ:**
+- ✅ **Πακέτο 1: Keys & Loader** (Commit: c5ca2c6)
+  - Created `maps.config.json` with placeholder API key
+  - Implemented `config-loader.js` (dynamic script injection)
+  - Healthcheck function: `window.checkGoogleMapsHealth()`
+  - Blocking error panel if API key missing/invalid
+  - README updated with Google Cloud Console setup (6 steps)
+  - E2E tests: `google-maps-init.spec.ts` (9 scenarios)
 
-**Files Modified:**
-1. **test-mission-annotations.html** (6 edits):
-   - Dynamic SORA badge function + mockMission.soraVersion
-   - Fake names removed (observers/crew mock data)
-   - Marketing text removed (legend section)
-   - TOL/Landing tooltip offsets fixed
+- ✅ **Πακέτο 2: Map Init + Search/Geocode + Paste** (Commit: a3d6dda)
+  - `initGoogleMaps()` callback - Athens center (37.9838, 23.7275)
+  - Google Places Autocomplete on `#searchLocationInput`
+  - Geocoder functions: `geocodeLatLng()`, `geocodeAddress()`
+  - URL paste parser: 3 patterns (@lat,lng,zoom | ?q=lat,lng | /place/@lat,lng)
+  - Map type controls: roadmap/satellite/hybrid/terrain
+  - 2D/Oblique toggle (tilt 0° ↔ 45°)
+  - E2E tests: `google-maps-search.spec.ts` (14 scenarios)
+
+**ΠΡΟΒΛΗΜΑΤΑ:**
+- ⚠️ **API Key Required** - Placeholder key `*****PLACEHOLDER*****` δεν δουλεύει
+  - Χρειάζεται: Google Cloud Console → Create API Key
+  - Restriction: HTTP referrer `http://localhost:5210/*`
+  - Κόστος: FREE 28,000 loads/μήνα
+  - **BLOCKING**: Μέχρι να μπει real API key, χάρτης δεν φορτώνει
+
+- ⚠️ **Unsaved Files in VS Code** - 8 αρχεία με κόκκινο icon
+  - [`maps.config.json`](maps.config.json ), [`TODO.md`](TODO.md ), [`google-maps-search.spec.ts`](google-maps-search.spec.ts ), [`airspace.js`](airspace.js )
+  - [`google-maps-init.spec.ts`](google-maps-init.spec.ts ), [`README.md`](README.md ), [`airspace-maps.html`](airspace-maps.html ), [`config-loader.js`](config-loader.js )
+  - **ACTION NEEDED**: Save All (Ctrl+K S) πριν το commit
+
+**ΕΠΟΜΕΝΑ ΒΗΜΑΤΑ (Πακέτο 3-6):**
+- ⏳ **Πακέτο 3: Mission Geometry + Markers**
+  - TOL/Start/End/E1/E2/E3 markers με `google.maps.Marker`
+  - Remote Pilot / Visual Observer / Observer 1..N labels
+  - Route: `google.maps.Polyline`
+  - CGA: `google.maps.Polygon` (yellow)
+  - Geofence: `google.maps.Polygon` (red dashed)
+  - Key distances με `OverlayView`
+
+- ⏳ **Πακέτο 4: KML Import**
+  - Local file parser (DOMParser → GeoJSON → Google Maps geometries)
+  - `google.maps.KmlLayer` για hosted URLs
+  - Merge με missionData, fitBounds
+
+- ⏳ **Πακέτο 5: SORA/EASA Visuals**
+  - Badge 2.0/2.5 (blue/green)
+  - FG/CV/GRB toggles (placeholder αν δεν υπάρχουν geometries)
+  - Airspace layers με Google Maps Data Layer
+
+- ⏳ **Πακέτο 6: Docs + Final Tests**
+  - TODO/PROJECT_STATUS/README ενημέρωση
+  - Όλα tests πράσινα (51/51 backend + E2E)
+  - Git commit με EASA reference
+
+**COMPLIANCE:**
+- ✅ **ΑΠΑΓΟΡΕΥΣΕΙΣ ΤΗΡΗΘΗΚΑΝ:**
+  - ❌ ΔΕΝ χρησιμοποιήθηκε OSM/Nominatim
+  - ❌ ΔΕΝ χρησιμοποιήθηκε MapLibre/Leaflet/Cesium
+  - ❌ ΔΕΝ υπάρχει fallback σε development mode
+  - ✅ ΜΟΝΟ Google Maps JavaScript API
+
+---
+
+## 📊 BACKEND TESTS STATUS
    - Observers/Crew changed to popups
    - E1-E3 distance labels limited (only E1 visible)
 

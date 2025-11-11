@@ -19,7 +19,7 @@ test.describe('Google Maps Initialization', () => {
     await page.waitForTimeout(1000);
     
     // Check console for config load message
-    const logs = [];
+    const logs: string[] = [];
     page.on('console', msg => logs.push(msg.text()));
     
     await page.waitForTimeout(500);
