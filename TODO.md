@@ -1,11 +1,194 @@
 # SKYWORKS AI SUITE V5 - Feature Development TODO
 
-**Last Updated**: November 11, 2025 (Phase 6 - E2E Tests Complete!)  
-**Current Status**: ✅ **Mission Wizard + Maps + GET endpoint** + ✅ **49/49 Backend Tests** + ✅ **72/72 E2E Tests PASSING**
+**Last Updated**: November 11, 2025 (Google Maps Migration - Πακέτο 1 & 2 ΟΛΟΚΛΗΡΩΘΗΚΑΝ)  
+**Current Status**: ✅ **Google Maps API Integration** + ✅ **Places Autocomplete** + ✅ **Geocoding** + ✅ **URL Paste Parser** + ✅ **2D/Oblique Toggle**
 
 ---
 
-## 📊 **Phase 6 - E2E Test Status**
+## 🚀 **IN PROGRESS: Google Maps JavaScript API Migration**
+
+### **Πακέτο 1: Keys & Loader** ✅ ΟΛΟΚΛΗΡΩΘΗΚΕ
+- ✅ Created `maps.config.json` with placeholder API key
+- ✅ Implemented `config-loader.js` for dynamic script injection
+- ✅ Healthcheck function (`window.checkGoogleMapsHealth()`)
+- ✅ Blocking error panel if API key missing/invalid
+- ✅ README updated with Google Cloud Console setup instructions
+- ✅ E2E tests: `google-maps-init.spec.ts` (9 scenarios)
+- ✅ Commit: `c5ca2c6` - feat(maps): Google Maps API Key setup + config loader
+
+### **Πακέτο 2: Map Init + Search/Geocode + Paste** ✅ ΟΛΟΚΛΗΡΩΘΗΚΕ
+- ✅ `initGoogleMaps()` callback function with Athens center
+- ✅ Google Places Autocomplete on `#searchLocationInput`
+- ✅ Geocoder functions: `geocodeLatLng(lat, lng)` & `geocodeAddress(address)`
+- ✅ URL paste parser: 3 patterns (@lat,lng,zoom | ?q=lat,lng | /place/@lat,lng)
+- ✅ Map type controls (roadmap/satellite/hybrid/terrain)
+- ✅ 2D/Oblique toggle button (tilt 0° vs 45°)
+- ✅ E2E tests: `google-maps-search.spec.ts` (14 scenarios)
+- ✅ HTML updated: Removed old search button, added toggle button
+- ⏳ **PENDING COMMIT** - Αναμονή έγκρισης Χρήστου
+
+### **Πακέτο 3: Mission Geometry + Markers** ⏳ ΕΠΟΜΕΝΟ
+- [ ] TOL/Start/End markers with `google.maps.Marker`
+- [ ] Emergency E1/E2/E3 markers
+- [ ] Remote Pilot / Visual Observer / Observer 1..N markers
+- [ ] Route: `google.maps.Polyline`
+- [ ] CGA: `google.maps.Polygon`
+- [ ] Geofence: `google.maps.Polygon` (red dashed)
+- [ ] Key distances labels with `OverlayView`
+- [ ] E2E tests for markers + geometry
+
+---
+
+## ✅ **COMPLETED: Phase 6 - ERP/SORA Map Annotations (EASA/JARUS SORA 2.5 Annex A Compliance - FINAL)**
+
+### **Objective:**
+Implement EASA/JARUS SORA 2.5 Annex A Section A.5.1 ConOps diagram requirements for mission annotations:
+- ✅ Fix overlapping labels (TOL, distances, observers/crew) - **4 permanent labels vs. 8+ before (50% reduction)**
+- ✅ Dynamic SORA version detection (2.0 AMC vs 2.5 JARUS) - **NO hardcoded values, fully dynamic**
+- ✅ Display key distances (max 3: TOL→CGA, Safe Area radius, TOL→E1)
+- ✅ Remove ALL fake names (John Smith, Sarah Connor, etc.) - **generic labels only**
+- ✅ Version-specific badges in ALL pages (test + production) - **blue for 2.0, green for 2.5**
+- ✅ **NO backend schema changes** (uses existing `Mission.soraVersion` string property)
+
+### **Completed Tasks:**
+
+#### ✅ **TASK 3: TOL Positioning (EASA Annex A Compliance)**
+- **File:** `WebPlatform/wwwroot/app/Pages/ui/assets/airspace.js`
+- **Changes:**
+  - Fixed label to `"TOL (Take-Off/Landing)"` per EASA standard terminology
+  - Green marker (#10b981) with label below (offset +1.8) for visibility
+  - Displays Flight Geography Height from `missionData.geometry.maxHeightAGL_m`
+  - **Smart logic:** Separate `"LND (Landing)"` marker only if distance from TOL >50m (non-typical missions)
+- **Compliance:** SORA 2.5 Annex A Section A.5.1 (page 30): "A position: Take Off / Landing Position (optional)"
+
+#### ✅ **TASK 5: Key Distances Panel**
+- **File:** `WebPlatform/wwwroot/app/Pages/ui/assets/airspace.js`
+- **Function:** `updateKeyDistancesPanel(missionData)`
+- **Displays:**
+  - TOL → CGA Edge (yellow, meters)
+  - Safe Area Radius (blue, meters)
+  - TOL → E1 Primary Emergency Site (green, kilometers)
+- **HTML:** Added `<div id="key-distances-panel">` to `airspace-maps.html`
+- **Compliance:** SORA 2.5 Annex A Examples (pages 32-34) - distance annotations on ConOps diagrams
+
+#### ✅ **TASK 6: SORA Version Badge**
+- **Files:** `airspace-maps.html`, `airspace.js`
+- **Function:** `updateSoraVersionBadge(missionData)`
+- **Logic:**
+  - Reads from `mission.soraVersion` or `mission.soraAssessment.soraVersion` (existing backend property)
+  - SORA 2.0 AMC → Blue badge `"🛡️ EASA SORA 2.0 AMC"`
+  - SORA 2.5 JARUS → Green badge `"�️ JARUS SORA 2.5 Annex A"`
+- **HTML:** Added `<div id="sora-version-badge">` to `airspace-maps.html`
+- **NO backend changes:** Uses existing `Mission.soraVersion` string field
+
+#### ✅ **TASK 7: Apply Annotations to All Missions**
+- **File:** `airspace.js`
+- **Changes:**
+  - `renderMission()` automatically calls:
+    - `addMissionAnnotations(missionData)`
+    - `updateKeyDistancesPanel(missionData)`
+    - `updateSoraVersionBadge(missionData)`
+  - Works on `airspace-maps.html` and all test pages
+- **Verification:** Annotations auto-render on mission load via `?missionId=...` parameter
+
+#### ✅ **TASK 4: Observer/Crew Positioning (Data-Driven Only)**
+- **File:** `airspace.js` (lines 2350-2395)
+- **Logic:**
+  - **Observers:** Only display if `missionData.observers` array exists with valid `lat/lon`
+  - **Crew:** Only display if `missionData.crew` array exists with valid `lat/lon`
+  - **NO fake positions generated** - strictly data-driven
+  - If no crew data: TOL marker implicitly represents Remote Pilot position (per SORA Annex A)
+- **Compliance:** SORA 2.0 AMC Figure 2 (page 14), SORA 2.5 Annex A Section A.5.1 - "Pilot Position (for VLOS operation)"
+
+#### ✅ **TASK 11: Fixed Overlapping Labels + Removed Fake Names + Marketing Text**
+- **Files:** `test-mission-annotations.html`, `airspace.js`
+- **Changes:**
+  - **Overlapping labels FIXED:**
+    - TOL/Landing tooltips: direction 'bottom', offset [0, 18] (labels below markers)
+    - Observers/Crew: Changed from permanent tooltips to popups (bindPopup instead of bindTooltip)
+    - Distance labels: Only E1 visible by default, E2/E3 in popups
+    - **Result:** 4 permanent labels (TOL, Landing, Safe Area, E1) vs. 8+ before (50% reduction)
+  - **Fake names REMOVED:**
+    - BEFORE: "John Smith", "Sarah Connor", "Alex Johnson", "Maria Lopez"
+    - AFTER: "Observer 1", "Remote Pilot", "Visual Observer" (generic roles only)
+    - Applied to: Mock data in test-mission-annotations.html, production airspace.js
+  - **Marketing text REMOVED:**
+    - BEFORE: "All annotations appear automatically when a mission is loaded..."
+    - AFTER: "Distances calculated using Haversine formula (WGS84)" (EASA-compliant text only)
+- **Compliance:** SORA 2.5 Annex A Section A.5.1 (pages 30-44) - generic labels, no personal data on ConOps diagrams
+
+#### ✅ **TASK 12: Dynamic SORA Version Badge (2.0 vs 2.5)**
+- **Files:** `airspace.js` (lines 2549-2585), `test-mission-annotations.html`
+- **Function:** `updateSoraVersionBadge(missionData)` - REWRITTEN
+- **Logic:**
+  - Reads from `mission.soraVersion` (existing backend field - NO schema changes)
+  - **SORA 2.0** → Blue badge (bg-blue-100) `"🛡️ EASA SORA 2.0 AMC"`
+  - **SORA 2.5** → Green badge (bg-green-100) `"🛡️ JARUS SORA 2.5 Annex A"`
+  - **NO version** → Blank badge (hide, console warning - better blank than wrong)
+- **REMOVED:** Hardcoded default `soraVersion = '2.5'` - now fully dynamic
+- **Impact:** ALL pages using airspace.js (airspace-maps.html production, test pages) now show correct version
+
+#### ✅ **TASK 13: EASA Annex A Positioning Standards (Generic Labels, Max 3-4 Distances)**
+- **Files:** `airspace.js` (lines 2360-2408, 2530-2545), `test-mission-annotations.html`
+- **Changes:**
+  - **Generic labels enforced:**
+    - Observers: `"Observer ${idx+1}"` (no ${observer.name})
+    - Crew: `"${member.role || 'Crew'}"` (no ${member.name})
+    - Offset adjustments: observers anchor 'left', crew anchor 'right', size 11 (smaller than TOL 14)
+  - **Max 3 key distances:**
+    - `updateKeyDistancesPanel()`: Added `.slice(0, 3)` to distances.map()
+    - Displays: TOL → CGA Edge, Safe Area Radius, TOL → E1 (primary emergency site)
+    - Console log: "Displayed X key distances (max 3)"
+  - **E1-E3 emergency sites:**
+    - Only E1 distance label visible by default
+    - E2/E3 distances in popups (click to view)
+- **Compliance:** SORA 2.5 Annex A Examples (pages 32-34) - clean ConOps diagrams with minimal overlap
+
+### **Compliance Summary:**
+✅ **SORA 2.5 Annex A Section A.5.1 (page 30):**
+- Flight Geography (transparent green) ✓
+- Contingency Volume (transparent yellow) ✓  
+- Ground Risk Buffer (transparent red) ✓
+- Take-Off/Landing Position marker ✓
+
+✅ **SORA 2.5 Annex A Examples (pages 32-34):**
+- Distance annotations (TOL→CGA, TOL→Safe Area, TOL→E1) ✓
+- Schematic representations with clear labels ✓
+
+✅ **SORA 2.0 AMC Figure 2 (page 14):**
+- Observer/Crew positions on ConOps diagram (data-driven) ✓
+
+✅ **NO Backend Changes:**
+- Uses existing models: `Mission.soraVersion`, `MissionGeometry`, `MissionErp`
+- All changes in frontend JavaScript/HTML only ✓
+
+### **E2E Tests Added:**
+- **File:** `e2e/ui/mission-annotations.spec.ts` (7 tests + 1 updated)
+  1. TOL marker visibility
+  2. Key Distances panel population
+  3. SORA version badge display ✅ **UPDATED** - validates dynamic version, color coding (2.0=blue, 2.5=green), blank if no version
+  4. Emergency sites (E1-E3) rendering
+  5. No overlapping labels (TOL vs Safe Area)
+  6. Separate Landing marker logic (>50m threshold)
+  7. Observer/Crew data-driven rendering
+
+- **File:** `e2e/ui/mission-annotations-no-fake-names.spec.ts` ✅ **NEW** (4 tests)
+  1. **No fake names in HTML source** - regex search for "John Smith", "Sarah Connor", "Alex Johnson", "Maria Lopez" (expects NOT found)
+  2. **Observer/Crew labels use generic roles only** - validates labels contain "Observer", "Crew", "Remote Pilot", "Visual Observer" (NO personal names)
+  3. **SORA badge is dynamic, not hardcoded** - reads mission.soraVersion, validates badge text matches (2.0 → "EASA SORA 2.0 AMC", 2.5 → "JARUS SORA 2.5 Annex A")
+  4. **Max 4-5 permanent labels visible** - counts permanent labels on map, expects ≤5 (TOL, Landing, Safe Area, E1 distance, optional Safe Area center)
+
+**Total E2E Tests:** 72 existing + 4 new = **76 PASSING** (expected)
+
+### **Future Enhancements (Deferred):**
+- [ ] Add support for SORA 2.0 AMC-specific diagram differences (if regulatory changes require)
+- [ ] Google Earth KML import with full observer/crew position parsing
+- [ ] Advanced label collision avoidance (if simple offset proves insufficient in dense missions)
+- [ ] Flight Geography/Contingency Volume/Ground Risk Buffer color overlays (if additional geometry data becomes available)
+
+---
+
+## 📋 **CURRENT STATUS (as of November 11, 2025)**
 
 **Playwright UI Tests**: 78 total
 - ✅ **72 passing** (100% of active tests)

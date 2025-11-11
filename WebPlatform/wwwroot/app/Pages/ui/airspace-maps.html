@@ -277,15 +277,21 @@
       <button id="drawCGA" class="btn-secondary full-width">🟩 Draw CGA (Polygon)</button>
       <button id="clearRoute" class="btn-secondary full-width">🗑️ Clear Route</button>
       
-      <!-- Simple Search Bar (like Google Maps) -->
+      <!-- Simple Search Bar (Google Places Autocomplete) -->
       <div style="margin-top:16px;padding:12px;background:#f0f9ff;border:1px solid #0284c7;border-radius:8px;">
         <label class="form-label" style="margin:0 0 8px 0;font-weight:600;color:#0369a1;">🔍 Αναζήτηση Τοποθεσίας</label>
-        <input type="text" id="searchLocationInput" placeholder="Πόλη, γειτονιά, διεύθυνση..." class="form-input" style="margin-bottom:8px;">
-        <button id="searchLocationBtn" class="btn-primary full-width">Εύρεση</button>
-        <div id="searchResults" style="margin-top:8px;display:none;max-height:200px;overflow-y:auto;background:white;border:1px solid #ddd;border-radius:4px;"></div>
+        <input type="text" id="searchLocationInput" placeholder="Αναζήτηση πόλης, διεύθυνσης, τοποθεσίας..." class="form-input" style="margin-bottom:8px;">
         <p class="help-text" style="margin:8px 0 0 0;font-size:10px;color:#0369a1;">
-          Παραδείγματα: "Θεσσαλονίκη", "Kolonaki Athens", "37.9838,23.7275"
+          Google Places: Πόλεις, διευθύνσεις, ταχυδρομικοί κώδικες, POIs παγκοσμίως.<br>
+          Paste Google Maps URL: Αυτόματη ανίχνευση συντεταγμένων.
         </p>
+      </div>
+      
+      <!-- 2D/Oblique Toggle Button -->
+      <div style="margin-top:12px;">
+        <button id="toggle-2d-oblique" onclick="toggle2DOblique()" class="btn-secondary full-width" title="Switch to oblique view">
+          2D
+        </button>
       </div>
     </div>
 

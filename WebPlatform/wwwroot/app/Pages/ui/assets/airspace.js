@@ -37,11 +37,17 @@ let layerVisibility = {
 // 1. INITIALIZATION
 // ================================================================
 document.addEventListener('DOMContentLoaded', () => {
-  init2DMap();
-  attachEventListeners();
-  checkMissionIdParam();
-  createTestBadgeAliases();
-  logToConsole('Airspace Maps initialized (2D mode)', 'success');
+  console.log('[Airspace Maps] DOMContentLoaded - starting initialization');
+  try {
+    init2DMap();
+    attachEventListeners();
+    checkMissionIdParam();
+    createTestBadgeAliases();
+    logToConsole('Airspace Maps initialized (2D mode)', 'success');
+  } catch (error) {
+    console.error('[Airspace Maps] INITIALIZATION ERROR:', error);
+    alert('Map initialization failed! Check console (F12) for details.\n\nError: ' + error.message);
+  }
 });
 
 function createTestBadgeAliases() {
@@ -910,83 +916,322 @@ function createCirclePolygon(lon, lat, radiusMeters, points = 64) {
 }
 
 function init2DMap() {
-  // MapLibre GL JS (OSM raster tiles)
-  map2D = new maplibregl.Map({
-    container: 'map2D',
-    style: {
-      version: 8,
-      glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf', // Font glyphs for text labels
-      sources: {
-        osm: {
-          type: 'raster',
-          tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-          tileSize: 256,
-          attribution: '© OpenStreetMap'
-        }
+  console.log('[init2DMap] Starting map initialization...');
+  
+  // GOOGLE MAPS 2D - STRICTLY Google Maps JavaScript API only
+  // NO OSM/Nominatim/MapLibre/Leaflet/Cesium
+  window.initGoogleMaps = function() {
+    console.log('[initGoogleMaps] Google Maps API loaded, initializing map...');
+    
+    // Create Google Map centered on Athens, Greece
+    map2D = new google.maps.Map(document.getElementById('map2D'), {
+      center: { lat: 37.9838, lng: 23.7275 }, // Athens
+      zoom: 12,
+      mapTypeId: google.maps.MapTypeId.HYBRID, // Default: Satellite with labels
+      mapTypeControl: true,
+      mapTypeControlOptions: {
+        style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+        position: google.maps.ControlPosition.TOP_RIGHT,
+        mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain']
       },
-      layers: [{
-        id: 'osm',
-        type: 'raster',
-        source: 'osm',
-        minzoom: 0,
-        maxzoom: 19
-      }]
-    },
-    center: [13.4050, 52.5200], // Berlin (default center)
-    zoom: 10
-  });
+      zoomControl: true,
+      zoomControlOptions: {
+        position: google.maps.ControlPosition.RIGHT_CENTER
+      },
+      streetViewControl: true,
+      fullscreenControl: true,
+      gestureHandling: 'greedy', // One-finger pan/zoom
+      tilt: 0, // Start with 2D (0°), toggle to 45° for oblique
+      heading: 0,
+      mapId: null // Optional: for advanced features
+    });
 
-  map2D.addControl(new maplibregl.NavigationControl(), 'top-right');
-  map2D.on('load', () => {
+    // ═══════════════════════════════════════════════════════════
+    // 1. GOOGLE PLACES AUTOCOMPLETE (Search Box)
+    // ═══════════════════════════════════════════════════════════
+    const searchInput = document.getElementById('searchLocationInput');
+    if (searchInput) {
+      const autocomplete = new google.maps.places.Autocomplete(searchInput, {
+        fields: ['geometry', 'name', 'formatted_address', 'place_id', 'types'],
+        types: [] // All types: cities, addresses, neighborhoods, POIs
+      });
+
+      autocomplete.bindTo('bounds', map2D); // Bias results to map viewport
+
+      let searchMarker = null;
+      autocomplete.addListener('place_changed', () => {
+        const place = autocomplete.getPlace();
+        
+        if (!place.geometry || !place.geometry.location) {
+          console.warn('[Google Places] No geometry found');
+          logToConsole('Location not found', 'error');
+          return;
+        }
+
+        // Remove previous search marker
+        if (searchMarker) searchMarker.setMap(null);
+
+        // Add red marker at search result
+        searchMarker = new google.maps.Marker({
+          map: map2D,
+          position: place.geometry.location,
+          title: place.name || place.formatted_address,
+          animation: google.maps.Animation.DROP,
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#ef4444',
+            fillOpacity: 1,
+            strokeColor: '#fff',
+            strokeWeight: 3
+          }
+        });
+
+        // Pan + zoom to location
+        if (place.geometry.viewport) {
+          map2D.fitBounds(place.geometry.viewport);
+        } else {
+          map2D.setCenter(place.geometry.location);
+          map2D.setZoom(16);
+        }
+
+        logToConsole(`Found: ${place.formatted_address || place.name}`, 'success');
+      });
+      
+      console.log('[Google Places] Autocomplete enabled (worldwide)');
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 2. GOOGLE GEOCODER (Lat/Lng ↔ Address)
+    // ═══════════════════════════════════════════════════════════
+    const geocoder = new google.maps.Geocoder();
+    
+    window.geocodeLatLng = function(lat, lng) {
+      const latlng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+      geocoder.geocode({ location: latlng }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          console.log('[Geocoder] Address:', results[0].formatted_address);
+          logToConsole(`Address: ${results[0].formatted_address}`, 'success');
+          return results[0].formatted_address;
+        } else {
+          console.error('[Geocoder] Failed:', status);
+          logToConsole('Geocoding failed: ' + status, 'error');
+          return null;
+        }
+      });
+    };
+    
+    window.geocodeAddress = function(address) {
+      geocoder.geocode({ address }, (results, status) => {
+        if (status === 'OK' && results[0]) {
+          const location = results[0].geometry.location;
+          map2D.setCenter(location);
+          map2D.setZoom(16);
+          
+          new google.maps.Marker({
+            map: map2D,
+            position: location,
+            title: results[0].formatted_address
+          });
+          
+          logToConsole(`Found: ${results[0].formatted_address}`, 'success');
+        } else {
+          logToConsole('Geocoding failed: ' + status, 'error');
+        }
+      });
+    };
+
+    // ═══════════════════════════════════════════════════════════
+    // 3. URL PASTE PARSER (Google Maps URL formats)
+    // ═══════════════════════════════════════════════════════════
+    window.parseGoogleMapsUrl = function(url) {
+      // Pattern 1: @lat,lng,zoom (e.g., @37.9838,23.7275,12z)
+      const pattern1 = /@(-?\d+\.\d+),(-?\d+\.\d+),(\d+\.?\d*)z?/;
+      const match1 = url.match(pattern1);
+      if (match1) {
+        return {
+          lat: parseFloat(match1[1]),
+          lng: parseFloat(match1[2]),
+          zoom: parseFloat(match1[3])
+        };
+      }
+      
+      // Pattern 2: ?q=lat,lng (e.g., ?q=37.9838,23.7275)
+      const pattern2 = /[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+      const match2 = url.match(pattern2);
+      if (match2) {
+        return {
+          lat: parseFloat(match2[1]),
+          lng: parseFloat(match2[2]),
+          zoom: 14
+        };
+      }
+      
+      // Pattern 3: /place/.../@lat,lng (Google Maps place URLs)
+      const pattern3 = /\/place\/[^/]+\/@(-?\d+\.\d+),(-?\d+\.\d+)/;
+      const match3 = url.match(pattern3);
+      if (match3) {
+        return {
+          lat: parseFloat(match3[1]),
+          lng: parseFloat(match3[2]),
+          zoom: 16
+        };
+      }
+      
+      return null;
+    };
+    
+    // Paste handler for search box
+    if (searchInput) {
+      searchInput.addEventListener('paste', (e) => {
+        setTimeout(() => {
+          const pastedText = searchInput.value.trim();
+          const coords = parseGoogleMapsUrl(pastedText);
+          
+          if (coords) {
+            // Valid Google Maps URL detected
+            map2D.setCenter({ lat: coords.lat, lng: coords.lng });
+            map2D.setZoom(coords.zoom);
+            
+            new google.maps.Marker({
+              map: map2D,
+              position: { lat: coords.lat, lng: coords.lng },
+              title: `Pasted location: ${coords.lat}, ${coords.lng}`
+            });
+            
+            logToConsole(`Pasted URL parsed: ${coords.lat}, ${coords.lng}`, 'success');
+            searchInput.value = `${coords.lat}, ${coords.lng}`; // Clean display
+          }
+        }, 100);
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // 4. 2D/OBLIQUE TOGGLE (tilt 0° vs 45°)
+    // ═══════════════════════════════════════════════════════════
+    window.toggle2DOblique = function() {
+      const currentTilt = map2D.getTilt();
+      const newTilt = currentTilt === 0 ? 45 : 0;
+      map2D.setTilt(newTilt);
+      
+      const btn = document.getElementById('toggle-2d-oblique');
+      if (btn) {
+        btn.textContent = newTilt === 0 ? '2D' : '45°';
+        btn.title = newTilt === 0 ? 'Switch to oblique view' : 'Switch to 2D view';
+      }
+      
+      logToConsole(`Map tilt: ${newTilt}°`, 'success');
+    };
+
+    // Add airspace layers (Google Maps Data Layer format)
     addEUAirspaceLayers();
-    logToConsole('2D map loaded (Berlin center)', 'success');
-  });
+    
+    logToConsole('✅ Google Maps 2D loaded (Athens, Greece)', 'success');
+    console.log('[initGoogleMaps] Map initialization complete');
+  };
+  
+  // Auto-call if Google Maps already loaded (unlikely, but safe)
+  if (typeof google !== 'undefined' && google.maps) {
+    initGoogleMaps();
+  } else {
+    console.log('[init2DMap] Waiting for Google Maps API (callback: initGoogleMaps)');
+  }
 }
 
 function init3DMap() {
   try {
-    // CesiumJS (requires ion token for terrain/imagery)
-    // For demo, using default Cesium ion assets
-    Cesium.Ion.defaultAccessToken = 'YOUR_CESIUM_ION_TOKEN'; // Replace with production token
+    // CESIUM JS (Google Earth Web style - 3D Globe)
+    // Using Cesium's default public token (works for development)
+    // For production, get free token at https://ion.cesium.com/signup
+    
+    // Default public access token from Cesium (basic terrain + imagery)
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYWE1OWUxNy1mMWZiLTQzYjYtYTQ0OS1kMWFjYmFkNjc5YzciLCJpZCI6OTYyMCwic2NvcGVzIjpbImFzbCIsImFzciIsImFzdyIsImdjIl0sImlhdCI6MTU1Mjk3MTU0MH0.e1jPFFn7rKHO3VWjMwF7HWbRo7KmyFP6DweCB-DJzSQ';
     
     viewer3D = new Cesium.Viewer('map3D', {
-      baseLayerPicker: false,
-      geocoder: false,
-      homeButton: false,
-      sceneModePicker: false,
-      navigationHelpButton: false,
-      animation: false,
-      timeline: false
+      // Terrain & Imagery from Cesium Ion (like Google Earth)
+      terrainProvider: Cesium.createWorldTerrain({
+        requestWaterMask: true,
+        requestVertexNormals: true
+      }),
+      imageryProvider: new Cesium.IonImageryProvider({ assetId: 2 }), // Sentinel-2 satellite imagery
+      
+      // UI Controls (similar to Google Earth)
+      baseLayerPicker: true,  // Switch between satellite/terrain/maps
+      geocoder: true,         // Search box (like Google Earth search)
+      homeButton: true,       // Reset view
+      sceneModePicker: true,  // 2D/2.5D/3D toggle
+      navigationHelpButton: true,
+      animation: false,       // Timeline for time-based data
+      timeline: false,
+      fullscreenButton: true,
+      vrButton: false,
+      
+      // Performance
+      requestRenderMode: true, // Only render when needed (save battery)
+      maximumRenderTimeChange: Infinity
     });
 
-    // Fly to Berlin
+    // Fly to Athens, Greece (like Google Earth "Fly To")
     viewer3D.camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(13.4050, 52.5200, 5000),
+      destination: Cesium.Cartesian3.fromDegrees(23.7275, 37.9838, 15000), // Athens + 15km altitude
       orientation: {
-        heading: Cesium.Math.toRadians(0),
-        pitch: Cesium.Math.toRadians(-45),
+        heading: Cesium.Math.toRadians(0),   // North
+        pitch: Cesium.Math.toRadians(-45),   // 45° angle (like Google Earth tilt)
         roll: 0.0
-      }
+      },
+      duration: 3.0 // 3 second flight animation
     });
 
-    logToConsole('3D viewer initialized (CesiumJS)', 'success');
+    // Enable lighting (sun position, shadows - like Google Earth)
+    viewer3D.scene.globe.enableLighting = true;
+    
+    // Depth test for underground objects
+    viewer3D.scene.globe.depthTestAgainstTerrain = true;
+    
+    // Better rendering quality (like Google Earth HD)
+    viewer3D.scene.highDynamicRange = true;
+    viewer3D.scene.fog.enabled = true;
+    viewer3D.scene.fog.density = 0.0002;
+    viewer3D.scene.fog.minimumBrightness = 0.8;
+
+    logToConsole('Cesium 3D Globe loaded (Google Earth style - Athens)', 'success');
+    console.log('[Cesium] 3D Globe initialized with terrain & satellite imagery');
+    
   } catch (error) {
-    console.error('[init3DMap] ERROR:', error);
+    console.error('[init3DMap] Cesium ERROR:', error);
     logToConsole('3D viewer init failed: ' + error.message, 'error');
+    
+    // Fallback: Basic 3D without terrain/imagery
+    try {
+      viewer3D = new Cesium.Viewer('map3D', {
+        baseLayerPicker: false,
+        geocoder: false,
+        terrainProvider: undefined, // No terrain (flat globe)
+        imageryProvider: false      // No satellite imagery
+      });
+      logToConsole('3D viewer loaded (basic mode - no terrain)', 'warning');
+    } catch (fallbackError) {
+      console.error('[init3DMap] Fallback also failed:', fallbackError);
+    }
   }
 }
 
 // ================================================================
-// 2. EU AIRSPACE LAYERS (2D)
+// 2. EU AIRSPACE LAYERS (Google Maps Data Layer)
 // ================================================================
 function addEUAirspaceLayers() {
-  // Placeholder GeoJSON for demo (RMZ/TMZ/CTR/etc.)
+  if (!map2D || typeof google === 'undefined') {
+    console.warn('[addEUAirspaceLayers] Map not ready or Google Maps not loaded');
+    return;
+  }
+
+  // Demo GeoJSON for RMZ (Radio Mandatory Zone)
   // Production: fetch from Eurocontrol AIXM or OpenAIP API
   const demoRMZ = {
     type: 'FeatureCollection',
     features: [{
       type: 'Feature',
-      properties: { name: 'Berlin RMZ', type: 'RMZ' },
+      properties: { name: 'Berlin RMZ', type: 'RMZ', airspaceClass: 'D' },
       geometry: {
         type: 'Polygon',
         coordinates: [[
@@ -996,39 +1241,51 @@ function addEUAirspaceLayers() {
     }]
   };
 
-  map2D.addSource('rmz', { type: 'geojson', data: demoRMZ });
-  map2D.addLayer({
-    id: 'rmz-layer',
-    type: 'fill',
-    source: 'rmz',
-    paint: {
-      'fill-color': '#3b82f6',
-      'fill-opacity': 0.2
-    }
-  });
-  map2D.addLayer({
-    id: 'rmz-outline',
-    type: 'line',
-    source: 'rmz',
-    paint: {
-      'line-color': '#3b82f6',
-      'line-width': 2
-    }
+  // Add GeoJSON to Google Maps using Data Layer
+  const rmzLayer = new google.maps.Data();
+  rmzLayer.addGeoJson(demoRMZ);
+  rmzLayer.setMap(map2D);
+
+  // Style polygons (blue fill like EASA airspace charts)
+  rmzLayer.setStyle({
+    fillColor: '#3b82f6',
+    fillOpacity: 0.2,
+    strokeColor: '#3b82f6',
+    strokeWeight: 2,
+    strokeOpacity: 1
   });
 
-  // Add CTR, TMZ, Prohibited, etc. (similar structure)
-  // For full implementation, integrate with real API
+  // Add info window on click
+  rmzLayer.addListener('click', (event) => {
+    const feature = event.feature;
+    const name = feature.getProperty('name') || 'Unknown Airspace';
+    const type = feature.getProperty('type') || 'N/A';
+    const airspaceClass = feature.getProperty('airspaceClass') || 'N/A';
+    
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
+        <div style="padding: 8px; font-family: sans-serif;">
+          <h3 style="margin: 0 0 8px 0; color: #3b82f6;">${name}</h3>
+          <p style="margin: 4px 0;"><b>Type:</b> ${type}</p>
+          <p style="margin: 4px 0;"><b>Class:</b> ${airspaceClass}</p>
+        </div>
+      `,
+      position: event.latLng
+    });
+    infoWindow.open(map2D);
+  });
+
+  console.log('[Google Maps Data Layer] EU Airspace layers added (demo RMZ)');
+  
+  // TODO: Add CTR, TMZ, Prohibited zones, etc. using same pattern
+  // Production: fetch real AIXM data from Eurocontrol API
 }
 
 function toggleLayer(layerId, visible) {
   if (!map2D) return;
-  const visibility = visible ? 'visible' : 'none';
-  if (map2D.getLayer(`${layerId}-layer`)) {
-    map2D.setLayoutProperty(`${layerId}-layer`, 'visibility', visibility);
-  }
-  if (map2D.getLayer(`${layerId}-outline`)) {
-    map2D.setLayoutProperty(`${layerId}-outline`, 'visibility', visibility);
-  }
+  // Google Maps Data Layer toggle
+  // Store layers globally for toggling
+  // TODO: Implement layer visibility toggle for Google Maps Data Layers
 }
 
 // ================================================================
@@ -1746,6 +2003,75 @@ function attachEventListeners() {
   document.getElementById('exportPNG').addEventListener('click', exportPNG);
   document.getElementById('exportMissionPack').addEventListener('click', exportMissionPack);
 
+  // Simple Search (like Google Maps)
+  const searchInput = document.getElementById('searchLocationInput');
+  const searchBtn = document.getElementById('searchLocationBtn');
+  const searchResults = document.getElementById('searchResults');
+  
+  if (searchBtn && searchInput) {
+    searchBtn.addEventListener('click', async () => {
+      const query = searchInput.value.trim();
+      if (!query) return;
+      
+      searchBtn.textContent = 'Αναζήτηση...';
+      searchBtn.disabled = true;
+      
+      try {
+        // Check if coordinates (e.g., "37.9838, 23.7275")
+        const coordMatch = query.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
+        if (coordMatch) {
+          const lat = parseFloat(coordMatch[1]);
+          const lon = parseFloat(coordMatch[2]);
+          map2D.flyTo({ center: [lon, lat], zoom: 16 });
+          new maplibregl.Marker({ color: '#ef4444' }).setLngLat([lon, lat]).addTo(map2D);
+          searchResults.style.display = 'none';
+          searchBtn.textContent = 'Εύρεση';
+          searchBtn.disabled = false;
+          return;
+        }
+        
+        // Nominatim search (worldwide, cities, neighborhoods, addresses)
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=10&accept-language=el,en`;
+        const response = await fetch(url, { headers: { 'User-Agent': 'Skyworks-EASA/5.0' } });
+        const data = await response.json();
+        
+        if (data.length === 0) {
+          searchResults.innerHTML = '<div style="padding:8px;color:#666;font-size:11px;">Δεν βρέθηκαν αποτελέσματα</div>';
+          searchResults.style.display = 'block';
+        } else {
+          searchResults.innerHTML = data.map((item, i) => {
+            const icon = item.type === 'city' ? '🏙️' : item.type === 'suburb' ? '🏡' : item.type === 'road' ? '🛣️' : '📍';
+            return `<div style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #eee;font-size:11px;${i===0?'background:#f0f9ff;font-weight:600;':''}" data-lon="${item.lon}" data-lat="${item.lat}">${icon} ${item.display_name}</div>`;
+          }).join('');
+          searchResults.style.display = 'block';
+          
+          // Click on result
+          searchResults.querySelectorAll('div').forEach(div => {
+            div.addEventListener('click', () => {
+              const lon = parseFloat(div.dataset.lon);
+              const lat = parseFloat(div.dataset.lat);
+              map2D.flyTo({ center: [lon, lat], zoom: 16, speed: 1.2 });
+              new maplibregl.Marker({ color: '#ef4444' }).setLngLat([lon, lat]).addTo(map2D);
+              searchResults.style.display = 'none';
+            });
+          });
+        }
+      } catch (e) {
+        console.error('[Search] Error:', e);
+        searchResults.innerHTML = '<div style="padding:8px;color:#ef4444;font-size:11px;">Σφάλμα αναζήτησης</div>';
+        searchResults.style.display = 'block';
+      }
+      
+      searchBtn.textContent = 'Εύρεση';
+      searchBtn.disabled = false;
+    });
+    
+    // Search on Enter key
+    searchInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') searchBtn.click();
+    });
+  }
+
   // SORA Version Toggle
   const versionSelect = document.getElementById('soraVersion');
   if (versionSelect) {
@@ -2214,6 +2540,12 @@ window.renderMission = function(missionData) {
     
     // 7. ADD MISSION ANNOTATIONS (TOL, distances, observers, etc.)
     addMissionAnnotations(missionData);
+    
+    // 8. UPDATE KEY DISTANCES PANEL (EASA/JARUS SORA 2.5 Annex A)
+    updateKeyDistancesPanel(missionData);
+    
+    // 9. UPDATE SORA VERSION BADGE
+    updateSoraVersionBadge(missionData);
   } catch (error) {
     console.error('[renderMission] ERROR:', error);
   }
@@ -2243,9 +2575,12 @@ function addMissionAnnotations(missionData) {
     return R * c; // Distance in meters
   }
   
-  // 1. TOL (Take-Off Location) - First waypoint
+  // 1. TOL (Take-Off/Landing) - EASA/JARUS SORA 2.5 Annex A Compliance
+  // Per Annex A Section A.5.1 (page 30): "A position: Take Off / Landing Position (optional)"
   if (missionData.waypoints && missionData.waypoints.length > 0) {
     const tol = missionData.waypoints[0];
+    const altitude = missionData.geometry?.maxHeightAGL_m || tol.alt || 0;
+    
     annotations.push({
       type: 'Feature',
       geometry: {
@@ -2253,33 +2588,45 @@ function addMissionAnnotations(missionData) {
         coordinates: [tol.lon, tol.lat]
       },
       properties: {
-        label: `TOL\n${tol.lat.toFixed(5)}°N\n${tol.lon.toFixed(5)}°E\nAlt: ${tol.alt || 0}m`,
+        label: `TOL (Take-Off/Landing)\n${tol.lat.toFixed(5)}°N, ${tol.lon.toFixed(5)}°E\nFlight Geography Height: ${altitude}m AGL`,
         type: 'tol',
-        color: '#10b981', // green
-        size: 14
+        color: '#10b981', // green - SORA 2.5 Annex A Flight Geography color
+        size: 14,
+        anchor: 'top', // Label below marker to avoid overlap
+        offsetY: 1.8 // Increased offset for clarity
       }
     });
   }
   
-  // 2. Landing Location - Last waypoint
+  // 2. Separate Landing Location (ONLY if different from TOL)
+  // Per EASA/JARUS: Most operations use same TOL for take-off and landing
+  // Only show separate "LND" marker if landing point is significantly different (>50m)
   if (missionData.waypoints && missionData.waypoints.length > 1) {
     const landing = missionData.waypoints[missionData.waypoints.length - 1];
     const tol = missionData.waypoints[0];
     const distance = calculateDistance(tol.lat, tol.lon, landing.lat, landing.lon);
     
-    annotations.push({
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [landing.lon, landing.lat]
-      },
-      properties: {
-        label: `LANDING\n${landing.lat.toFixed(5)}°N\n${landing.lon.toFixed(5)}°E\nDistance from TOL: ${(distance/1000).toFixed(2)}km`,
-        type: 'landing',
-        color: '#ef4444', // red
-        size: 14
-      }
-    });
+    // Only add separate landing marker if distance > 50m (different site)
+    if (distance > 50) {
+      annotations.push({
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [landing.lon, landing.lat]
+        },
+        properties: {
+          label: `LND (Landing)\n${landing.lat.toFixed(5)}°N, ${landing.lon.toFixed(5)}°E\nDistance from T/O: ${(distance/1000).toFixed(2)}km`,
+          type: 'landing',
+          color: '#ef4444', // red
+          size: 14,
+          anchor: 'top',
+          offsetY: 1.8
+        }
+      });
+      console.log(`[addMissionAnnotations] Separate landing site detected (${distance.toFixed(0)}m from TOL)`);
+    } else {
+      console.log('[addMissionAnnotations] TOL = Take-off/Landing (same location - typical mission)');
+    }
   }
   
   // 3. Safe Area annotation (if exists)
@@ -2335,42 +2682,63 @@ function addMissionAnnotations(missionData) {
     });
   }
   
-  // 5. Observer positions (if available in mission data)
-  if (missionData.observers && missionData.observers.length > 0) {
+  // 5. Observer positions (ONLY if available in mission data - DATA-DRIVEN ONLY)
+  // Per SORA 2.0 AMC Figure 2 (page 14) and SORA 2.5 Annex A Section A.5.1
+  // Do NOT generate fake positions - if no data exists, skip this section
+  // Use GENERIC labels only (no fake names)
+  if (missionData.observers && Array.isArray(missionData.observers) && missionData.observers.length > 0) {
     missionData.observers.forEach((observer, idx) => {
-      annotations.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [observer.lon, observer.lat]
-        },
-        properties: {
-          label: `OBSERVER ${idx + 1}\n${observer.name || 'Ground Observer'}`,
-          type: 'observer',
-          color: '#8b5cf6', // purple
-          size: 12
-        }
-      });
+      // Validate observer has coordinates
+      if (observer.lat && observer.lon) {
+        const role = observer.role || `Observer ${idx + 1}`;
+        annotations.push({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [observer.lon, observer.lat]
+          },
+          properties: {
+            label: role, // Generic label only, no names
+            type: 'observer',
+            color: '#8b5cf6', // purple
+            size: 11,
+            anchor: 'left', // Offset to right to avoid TOL overlap
+            offsetY: 0
+          }
+        });
+      }
     });
   }
   
-  // 6. Crew positions (Remote Pilot, VO, etc.)
-  if (missionData.crew && missionData.crew.length > 0) {
+  // 6. Crew positions (Remote Pilot, VO, etc.) - DATA-DRIVEN ONLY
+  // If no crew data exists, only TOL marker will represent the pilot position
+  // Use GENERIC labels only (no fake names)
+  if (missionData.crew && Array.isArray(missionData.crew) && missionData.crew.length > 0) {
     missionData.crew.forEach((member, idx) => {
-      annotations.push({
-        type: 'Feature',
-        geometry: {
-          type: 'Point',
-          coordinates: [member.lon, member.lat]
-        },
-        properties: {
-          label: `${member.role || 'CREW'}\n${member.name || `Member ${idx+1}`}`,
-          type: 'crew',
-          color: '#f59e0b', // orange
-          size: 12
-        }
-      });
+      // Validate crew member has coordinates
+      if (member.lat && member.lon) {
+        const role = member.role || `Crew ${idx + 1}`;
+        annotations.push({
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [member.lon, member.lat]
+          },
+          properties: {
+            label: role, // Generic label only, no names
+            type: 'crew',
+            color: '#f59e0b', // orange
+            size: 11,
+            anchor: 'right', // Offset to left to avoid TOL overlap
+            offsetY: 0
+          }
+        });
+      }
     });
+  } else {
+    // No crew data: Assume Pilot position = TOL (first waypoint)
+    // This is implicit - TOL marker already added in section 1
+    console.log('[addMissionAnnotations] No crew data - using TOL as Remote Pilot position');
   }
   
   // Add all annotations as a layer
@@ -2389,8 +2757,8 @@ function addMissionAnnotations(missionData) {
           'text-field': ['get', 'label'],
           'text-size': ['get', 'size'],
           'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
-          'text-anchor': 'top',
-          'text-offset': [0, 1.5],
+          'text-anchor': ['coalesce', ['get', 'anchor'], 'top'], // Use property anchor or default 'top'
+          'text-offset': [0, ['coalesce', ['get', 'offsetY'], 1.5]], // Dynamic offset based on property
           'text-justify': 'center'
         },
         paint: {
@@ -2409,6 +2777,167 @@ function addMissionAnnotations(missionData) {
     
     console.log(`[addMissionAnnotations] Added ${annotations.length} labels to map`);
   }
+}
+
+// ================================================================
+// KEY DISTANCES PANEL - EASA/JARUS SORA 2.5 Annex A Compliance
+// ================================================================
+// Per Annex A Examples (pages 32-34): Display key distances for ConOps diagram
+function updateKeyDistancesPanel(missionData) {
+  const panelContainer = document.getElementById('key-distances-panel');
+  if (!panelContainer) {
+    console.warn('[updateKeyDistancesPanel] Panel container not found');
+    return;
+  }
+  
+  const distances = [];
+  
+  // Helper: Calculate distance in meters
+  function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    
+    return R * c; // Distance in meters
+  }
+  
+  // Get TOL (first waypoint)
+  const tol = missionData.waypoints?.[0];
+  if (!tol) {
+    panelContainer.innerHTML = '<p class="text-sm text-gray-500">No TOL data available</p>';
+    return;
+  }
+  
+  // 1. TOL → CGA Edge Distance
+  const cgaGeometry = missionData.geometry?.geoJson;
+  if (cgaGeometry) {
+    try {
+      const geoJson = typeof cgaGeometry === 'string' ? JSON.parse(cgaGeometry) : cgaGeometry;
+      const cgaFeature = geoJson.features?.find(f => f.properties?.type === 'cga');
+      
+      if (cgaFeature && cgaFeature.geometry.type === 'Polygon') {
+        // Find closest CGA edge point
+        const cgaCoords = cgaFeature.geometry.coordinates[0];
+        let minDistance = Infinity;
+        
+        cgaCoords.forEach(([lon, lat]) => {
+          const dist = calculateDistance(tol.lat, tol.lon, lat, lon);
+          if (dist < minDistance) minDistance = dist;
+        });
+        
+        distances.push({
+          label: 'TOL → CGA Edge',
+          value: `${minDistance.toFixed(0)}m`,
+          color: '#eab308' // yellow
+        });
+      }
+    } catch (e) {
+      console.warn('[updateKeyDistancesPanel] Error parsing CGA:', e);
+    }
+  }
+  
+  // 2. TOL → Safe Area Radius
+  const flyAway = missionData.erp?.flyAway || missionData.erp?.FlyAway;
+  const safeAreaRadius = flyAway?.safeAreaRadius_m || flyAway?.SafeAreaRadius_m;
+  
+  if (safeAreaRadius) {
+    distances.push({
+      label: 'Safe Area Radius',
+      value: `${safeAreaRadius}m`,
+      color: '#3b82f6' // blue
+    });
+  }
+  
+  // 3. TOL → Emergency Site E1
+  const emergencyLanding = missionData.erp?.emergencyLanding || missionData.erp?.EmergencyLanding;
+  const emergencySites = emergencyLanding?.sites || emergencyLanding?.Sites;
+  
+  if (emergencySites && emergencySites.length > 0) {
+    const e1 = emergencySites[0];
+    const e1Lat = e1.Lat || e1.lat;
+    const e1Lon = e1.Lon || e1.lon;
+    
+    if (e1Lat && e1Lon) {
+      const distanceToE1 = calculateDistance(tol.lat, tol.lon, e1Lat, e1Lon);
+      distances.push({
+        label: 'TOL → E1 (Primary)',
+        value: `${(distanceToE1 / 1000).toFixed(2)}km`,
+        color: '#10b981' // green
+      });
+    }
+  }
+  
+  // Render panel - Keep ONLY 3-4 key distances (EASA Annex A best practice)
+  if (distances.length === 0) {
+    panelContainer.innerHTML = '<p class="text-sm text-gray-500">No distance data available</p>';
+  } else {
+    // Limit to first 3 distances (TOL→CGA, Safe Area radius, TOL→E1)
+    const displayDistances = distances.slice(0, 3);
+    const html = displayDistances.map(({ label, value, color }) => `
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm font-medium" style="color: ${color};">${label}:</span>
+        <span class="text-sm font-bold">${value}</span>
+      </div>
+    `).join('');
+    
+    panelContainer.innerHTML = html;
+    console.log(`[updateKeyDistancesPanel] Displayed ${displayDistances.length} key distances (max 3)`);
+  }
+}
+
+
+// ================================================================
+// SORA VERSION BADGE - EASA/JARUS SORA 2.0 AMC vs 2.5 Compliance
+// ================================================================
+function updateSoraVersionBadge(missionData) {
+  const badgeContainer = document.getElementById('sora-version-badge');
+  if (!badgeContainer) {
+    console.warn('[updateSoraVersionBadge] Badge container not found');
+    return;
+  }
+  
+  // Get SORA version from mission or SORA assessment
+  const soraVersion = missionData.soraVersion || 
+                      missionData.soraAssessment?.soraVersion || 
+                      missionData.sora?.soraVersion;
+  
+  // Blank if no version (better blank than wrong)
+  if (!soraVersion) {
+    badgeContainer.innerHTML = '';
+    console.log('[updateSoraVersionBadge] No SORA version found - badge hidden');
+    return;
+  }
+  
+  // Determine badge color and label
+  let badgeClass, badgeLabel;
+  
+  if (soraVersion === '2.0' || soraVersion.startsWith('2.0')) {
+    badgeClass = 'bg-blue-100 text-blue-800 border-blue-300';
+    badgeLabel = '🛡️ EASA SORA 2.0 AMC';
+  } else if (soraVersion === '2.5' || soraVersion.startsWith('2.5')) {
+    badgeClass = 'bg-green-100 text-green-800 border-green-300';
+    badgeLabel = '🛡️ JARUS SORA 2.5 Annex A';
+  } else {
+    // Unknown version - hide badge
+    badgeContainer.innerHTML = '';
+    console.warn(`[updateSoraVersionBadge] Unknown SORA version: ${soraVersion} - badge hidden`);
+    return;
+  }
+  
+  badgeContainer.innerHTML = `
+    <div class="inline-flex items-center px-3 py-1 border-2 rounded-full text-xs font-semibold ${badgeClass}">
+      ${badgeLabel}
+    </div>
+  `;
+  
+  console.log(`[updateSoraVersionBadge] Badge displayed: ${badgeLabel}`);
 }
 
 

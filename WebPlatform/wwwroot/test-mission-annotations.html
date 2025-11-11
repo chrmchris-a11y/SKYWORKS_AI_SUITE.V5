@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission Annotations Test - EASA/JARUS SORA 2.5</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        #map { 
+            width: 100vw; 
+            height: 100vh; 
+        }
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            max-width: 350px;
+            z-index: 1000;
+        }
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: 700;
+            color: #1e40af;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 5px;
+        }
+        .info-panel ul {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+            font-size: 11px;
+            line-height: 1.8;
+        }
+        .info-panel li {
+            padding: 3px 0;
+        }
+        .info-panel .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 4px 0;
+        }
+        .info-panel .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .easa-branding {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="info-panel">
+        <div id="sora-version-badge" class="easa-branding">Loading...</div>
+        <h3>📍 Map Elements</h3>
+        <ul>
+            <li><strong>Auto-calculated:</strong></li>
+            <li class="legend-item">
+                <span class="legend-color" style="background: #10b981;"></span>
+                <span>TOL (Take-Off Location) + coordinates</span>
+            </li>
+            <li class="legend-item">
+                <span class="legend-color" style="background: #ef4444;"></span>
+                <span>Landing + distance from TOL</span>
+            </li>
+            <li class="legend-item">
+                <span class="legend-color" style="background: #3b82f6;"></span>
+                <span>Safe Area (radius, area km²)</span>
+            </li>
+            <li class="legend-item">
+                <span class="legend-color" style="background: #6b7280;"></span>
+                <span>Emergency Sites distances</span>
+            </li>
+            <li class="legend-item">
+                <span class="legend-color" style="background: #8b5cf6;"></span>
+                <span>Observers (Ground Visual)</span>
+            </li>
+            <li class="legend-item">
+                <span class="legend-color" style="background: #f59e0b;"></span>
+                <span>Crew (Remote Pilot, VO)</span>
+            </li>
+        </ul>
+        <p style="margin-top: 10px; font-size: 10px; color: #6b7280; font-style: italic;">
+            Distances calculated using Haversine formula (WGS84).
+        </p>
+    </div>
+    
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([41.01, 25.01], 13);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Mock mission data with all elements
+        const mockMission = {
+            soraVersion: '2.5', // Dynamic SORA version (2.0 or 2.5)
+            waypoints: [
+                { lat: 41.008, lon: 25.008, alt: 50, name: 'TOL' },      // Take-Off
+                { lat: 41.010, lon: 25.012, alt: 120, name: 'WP1' },
+                { lat: 41.012, lon: 25.015, alt: 120, name: 'WP2' },
+                { lat: 41.014, lon: 25.010, alt: 50, name: 'Landing' }   // Landing
+            ],
+            observers: [
+                { lat: 41.009, lon: 25.006, role: 'Observer 1' },
+                { lat: 41.013, lon: 25.017, role: 'Observer 2' }
+            ],
+            crew: [
+                { lat: 41.0075, lon: 25.0075, role: 'Remote Pilot' },
+                { lat: 41.0080, lon: 25.0085, role: 'Visual Observer' }
+            ],
+            erp: {
+                FlyAway: {
+                    SafeAreaLat: 41.011,
+                    SafeAreaLon: 25.011,
+                    SafeAreaRadius_m: 500
+                },
+                EmergencyLanding: {
+                    Sites: [
+                        { Lat: 41.010, Lon: 25.010, Description: 'Primary emergency site (open field)' },
+                        { Lat: 41.011, Lon: 25.009, Description: 'Secondary emergency site (park)' },
+                        { Lat: 41.012, Lon: 25.011, Description: 'Tertiary emergency site (cleared area)' }
+                    ]
+                }
+            }
+        };
+        
+        // Update SORA version badge dynamically
+        function updateSoraVersionBadge(soraVersion) {
+            const badgeContainer = document.getElementById('sora-version-badge');
+            if (!badgeContainer) return;
+            
+            if (!soraVersion) {
+                badgeContainer.innerHTML = ''; // Blank if no version
+                return;
+            }
+            
+            let badgeClass, badgeLabel;
+            if (soraVersion === '2.0' || soraVersion.startsWith('2.0')) {
+                badgeClass = 'background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);';
+                badgeLabel = '🛡️ EASA SORA 2.0 AMC';
+            } else {
+                badgeClass = 'background: linear-gradient(135deg, #059669 0%, #10b981 100%);';
+                badgeLabel = '🛡️ JARUS SORA 2.5 Annex A';
+            }
+            
+            badgeContainer.innerHTML = badgeLabel;
+            badgeContainer.style = badgeClass + ' color: white; padding: 8px 12px; border-radius: 6px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px;';
+        }
+        
+        // Haversine distance formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000; // Earth radius in meters
+            const φ1 = lat1 * Math.PI / 180;
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+            
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            
+            return R * c; // Distance in meters
+        }
+        
+        // Call badge update
+        updateSoraVersionBadge(mockMission.soraVersion);
+        
+        // 1. Draw route
+        const routeCoords = mockMission.waypoints.map(wp => [wp.lat, wp.lon]);
+        L.polyline(routeCoords, {
+            color: '#3b82f6',
+            weight: 3,
+            opacity: 0.7,
+            dashArray: '5, 10'
+        }).addTo(map);
+        
+        // 2. TOL (Take-Off Location) - GREEN
+        const tol = mockMission.waypoints[0];
+        const tolMarker = L.circleMarker([tol.lat, tol.lon], {
+            radius: 10,
+            fillColor: '#10b981',
+            color: '#ffffff',
+            weight: 3,
+            fillOpacity: 1
+        }).addTo(map);
+        
+        tolMarker.bindTooltip(`<b>TOL (Take-Off/Landing)</b><br>${tol.lat.toFixed(5)}°N<br>${tol.lon.toFixed(5)}°E<br>Alt: ${tol.alt}m AGL`, {
+            permanent: true,
+            direction: 'bottom',
+            className: 'custom-tooltip',
+            offset: [0, 18]
+        }).openTooltip();
+        
+        // 3. Landing Location - RED with distance
+        const landing = mockMission.waypoints[mockMission.waypoints.length - 1];
+        const distanceToLanding = calculateDistance(tol.lat, tol.lon, landing.lat, landing.lon);
+        
+        const landingMarker = L.circleMarker([landing.lat, landing.lon], {
+            radius: 10,
+            fillColor: '#ef4444',
+            color: '#ffffff',
+            weight: 3,
+            fillOpacity: 1
+        }).addTo(map);
+        
+        landingMarker.bindTooltip(`<b>LANDING</b><br>${(distanceToLanding/1000).toFixed(2)}km from TOL`, {
+            permanent: true,
+            direction: 'bottom',
+            className: 'custom-tooltip',
+            offset: [0, 18]
+        }).openTooltip();
+        
+        // 4. Safe Area - BLUE
+        const safeArea = mockMission.erp.FlyAway;
+        const safeAreaRadius = safeArea.SafeAreaRadius_m;
+        const area_km2 = (Math.PI * Math.pow(safeAreaRadius, 2) / 1000000).toFixed(2);
+        
+        L.circle([safeArea.SafeAreaLat, safeArea.SafeAreaLon], {
+            radius: safeAreaRadius,
+            color: '#3b82f6',
+            fillColor: '#60a5fa',
+            fillOpacity: 0.2,
+            weight: 2,
+            dashArray: '8, 4'
+        }).addTo(map).bindTooltip(`<b>SAFE AREA</b><br>Radius: ${safeAreaRadius}m<br>Area: ${area_km2}km²`, {
+            permanent: true,
+            direction: 'center',
+            className: 'custom-tooltip'
+        }).openTooltip();
+        
+        // 5. Emergency Sites - Only E1 visible by default, others on click
+        const emergencySites = mockMission.erp.EmergencyLanding.Sites;
+        const emergencyColors = ['#10b981', '#f59e0b', '#ef4444']; // E1, E2, E3
+        
+        emergencySites.forEach((site, idx) => {
+            const distance = calculateDistance(tol.lat, tol.lon, site.Lat, site.Lon);
+            
+            L.circleMarker([site.Lat, site.Lon], {
+                radius: 8,
+                fillColor: emergencyColors[idx],
+                color: '#ffffff',
+                weight: 2,
+                fillOpacity: 1
+            }).addTo(map).bindPopup(`<b>E${idx+1}</b><br>${site.Description}<br><b>${(distance/1000).toFixed(2)}km from TOL</b>`);
+            
+            // Show distance label ONLY for E1 (primary)
+            if (idx === 0) {
+                L.marker([site.Lat + 0.0008, site.Lon], {
+                    icon: L.divIcon({
+                        className: 'distance-label',
+                        html: `<div style="background: white; padding: 2px 5px; border-radius: 3px; font-size: 9px; font-weight: 600; color: #6b7280; border: 1px solid #d1d5db; white-space: nowrap; box-shadow: 0 1px 2px rgba(0,0,0,0.1);">${(distance/1000).toFixed(2)}km</div>`,
+                        iconSize: [50, 18]
+                    })
+                }).addTo(map);
+            }
+        });
+        
+        // 6. Observers - Popups only (NOT permanent)
+        mockMission.observers.forEach((obs, idx) => {
+            L.circleMarker([obs.lat, obs.lon], {
+                radius: 8,
+                fillColor: '#8b5cf6',
+                color: '#ffffff',
+                weight: 2,
+                fillOpacity: 1
+            }).addTo(map).bindPopup(`<b>${obs.role}</b><br>Click marker for details`);
+        });
+        
+        // 7. Crew - Popups only (NOT permanent)
+        mockMission.crew.forEach((member, idx) => {
+            L.circleMarker([member.lat, member.lon], {
+                radius: 8,
+                fillColor: '#f59e0b',
+                color: '#ffffff',
+                weight: 2,
+                fillOpacity: 1
+            }).addTo(map).bindPopup(`<b>${member.role}</b><br>Click marker for details`);
+        });
+        
+        // Style for all tooltips
+        const style = document.createElement('style');
+        style.textContent = `
+            .leaflet-tooltip {
+                background-color: white;
+                border: 1px solid #d1d5db;
+                border-radius: 4px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                font-size: 11px;
+                line-height: 1.4;
+                padding: 4px 8px;
+                white-space: nowrap;
+            }
+            .leaflet-tooltip b {
+                color: #1e3a8a;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        console.log('Mission annotations test loaded');
+    </script>
+</body>
+</html>

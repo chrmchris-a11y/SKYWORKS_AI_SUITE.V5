@@ -1,4 +1,5 @@
 // Phase1 Step4 — Skyworks V5
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.OpenApi.Models;
 using Skyworks.AgentComm;
@@ -41,10 +42,14 @@ app.UseSwaggerUI(c =>
 var webPlatformRoot = Path.Combine(workspaceRoot, "WebPlatform", "wwwroot");
 if (Directory.Exists(webPlatformRoot))
 {
+    var provider = new FileExtensionContentTypeProvider();
+    provider.Mappings[".js"] = "application/javascript; charset=utf-8";
+    
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider(webPlatformRoot),
-        RequestPath = ""
+        RequestPath = "",
+        ContentTypeProvider = provider
     });
 }
 
