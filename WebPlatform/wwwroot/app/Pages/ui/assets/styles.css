@@ -47,6 +47,33 @@ body {
   color: var(--slate-800);
   font-size: var(--font-body);
   line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent body scroll */
+}
+
+/* Map Container - CRITICAL for MapLibre/Cesium */
+#map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+#cesiumContainer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  display: none; /* Hidden by default, shown when switching to 3D */
+  z-index: 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
