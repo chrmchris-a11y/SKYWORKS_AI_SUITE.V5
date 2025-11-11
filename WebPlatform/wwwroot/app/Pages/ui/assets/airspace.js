@@ -96,23 +96,112 @@ async function checkMissionIdParam() {
 async function loadMissionFromApi(missionId) {
   try {
     const response = await fetch(`/api/v1/missions/${missionId}/overview`);
-    if (!response.ok) throw new Error(`Mission not found: ${missionId}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        logToConsole(`❌ Mission not found: ${missionId}`, 'error');
+        showMissionNotFoundBanner();
+        return;
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
     
     const mission = await response.json();
     
+    // Store mission metadata globally
+    window.currentMissionData = mission;
+    
+    // 1. GEOMETRY - Render route, CGA, waypoints
     if (mission.geometry?.routeGeoJson) {
-      const geoJson = JSON.parse(mission.geometry.routeGeoJson);
-      renderMissionGeometry(geoJson);
+      try {
+        const geoJson = JSON.parse(mission.geometry.routeGeoJson);
+        
+        // Extract waypoints from GeoJSON features
+        if (geoJson.type === 'FeatureCollection' && geoJson.features) {
+          missionData.waypoints = [];
+          missionData.cga = null;
+          
+          geoJson.features.forEach(feature => {
+            // Waypoints (Point features)
+            if (feature.geometry?.type === 'Point') {
+              const [lon, lat, alt] = feature.geometry.coordinates;
+              missionData.waypoints.push({ 
+                lat, 
+                lon, 
+                alt_m: alt || 0,
+                name: feature.properties?.name || 'WP'
+              });
+            }
+            
+            // CGA polygon
+            if (feature.properties?.type === 'cga' || feature.properties?.name?.includes('CGA')) {
+              missionData.cga = feature;
+            }
+          });
+        }
+        
+        renderMissionGeometry(geoJson);
+        logToConsole(`✅ Rendered mission geometry (${missionData.waypoints.length} waypoints)`, 'success');
+      } catch (parseError) {
+        logToConsole(`⚠️ GeoJSON parse error: ${parseError.message}`, 'warning');
+      }
     }
     
-    updateSoraBadges(mission.sora);
-    updateErpPanel(mission.erp);
-    updateOsoPanel(mission.oso);
+    // 2. SORA BADGES - Update iGRC, fGRC, iARC, rARC, SAIL
+    if (mission.sora) {
+      updateSoraBadges(mission.sora);
+      logToConsole(`✅ Updated SORA badges (SAIL: ${mission.sora.sail})`, 'success');
+    }
     
-    logToConsole(`✅ Mission loaded: ${mission.name}`, 'success');
+    // 3. ERP PANEL - Display 5-section breakdown
+    if (mission.erp) {
+      updateErpPanel(mission.erp);
+      logToConsole('✅ Updated ERP panel', 'success');
+    }
+    
+    // 4. OSO PANEL - Show coverage, missing OSOs
+    if (mission.oso) {
+      updateOsoPanel(mission.oso);
+      logToConsole(`✅ Updated OSO panel (${mission.oso.coveredCount}/${mission.oso.requiredCount} covered)`, 'success');
+    }
+    
+    logToConsole(`✅ Mission loaded: ${mission.name} (${mission.templateCode})`, 'success');
   } catch (error) {
     logToConsole(`❌ Failed to load mission: ${error.message}`, 'error');
+    showMissionNotFoundBanner();
   }
+}
+
+function showMissionNotFoundBanner() {
+  // Create a non-intrusive banner at the top of the map
+  const banner = document.createElement('div');
+  banner.id = 'mission-not-found-banner';
+  banner.style.cssText = `
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 12px 20px;
+    border-radius: 8px;
+    border-left: 4px solid #f59e0b;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+  `;
+  banner.innerHTML = `
+    <strong>⚠️ Mission not found.</strong> Showing empty map.
+    <button onclick="this.parentElement.remove()" style="margin-left:16px;padding:4px 12px;background:#f59e0b;color:white;border:none;border-radius:4px;cursor:pointer;">Dismiss</button>
+  `;
+  
+  const mapContainer = document.getElementById('map2D') || document.body;
+  mapContainer.appendChild(banner);
+  
+  // Auto-dismiss after 10 seconds
+  setTimeout(() => {
+    if (banner.parentElement) banner.remove();
+  }, 10000);
 }
 
 function renderMissionGeometry(geoJson) {
@@ -778,6 +867,7 @@ function init2DMap() {
     container: 'map2D',
     style: {
       version: 8,
+      glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf', // Font glyphs for text labels
       sources: {
         osm: {
           type: 'raster',

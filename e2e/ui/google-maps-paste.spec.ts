@@ -1,9 +1,9 @@
-// NOTE: Google Maps paste UI is NOT implemented in mission.html yet.
-// These tests are skipped intentionally and will be re-enabled in Phase X when the feature υλοποιηθεί.
+// NOTE: Google Maps paste UI is implemented in mission.html Step 2.
+// Tests use actual element IDs: #gmaps-paste-input and #btn-parse-gmaps
 
 import { test, expect } from '@playwright/test';
 
-test.describe.skip('Google Maps Paste - Enhanced Parsing (UI not implemented)', () => {
+test.describe('Google Maps Paste - Enhanced Parsing', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:5210/app/Pages/ui/mission.html');
     await page.waitForLoadState('domcontentloaded');
@@ -24,8 +24,8 @@ test.describe.skip('Google Maps Paste - Enhanced Parsing (UI not implemented)', 
 
   test('Simple lat/lon format: "52.5200, 13.4050"', async ({ page }) => {
     // Paste simple format
-    await page.fill('#wizard-google-maps-input', '52.5200, 13.4050');
-    await page.click('#wizard-parse-google-maps');
+    await page.fill('#gmaps-paste-input', '52.5200, 13.4050');
+    await page.click('#btn-parse-gmaps');
     
     // Wait for fields to populate
     await page.waitForTimeout(500);
@@ -40,8 +40,8 @@ test.describe.skip('Google Maps Paste - Enhanced Parsing (UI not implemented)', 
 
   test('Google Maps URL @pattern: https://www.google.com/maps/@52.5200,13.4050,15z', async ({ page }) => {
     // Paste URL with @ pattern
-    await page.fill('#wizard-google-maps-input', 'https://www.google.com/maps/@52.5200,13.4050,15z');
-    await page.click('#wizard-parse-google-maps');
+    await page.fill('#gmaps-paste-input', 'https://www.google.com/maps/@52.5200,13.4050,15z');
+    await page.click('#btn-parse-gmaps');
     
     await page.waitForTimeout(500);
     
@@ -54,8 +54,8 @@ test.describe.skip('Google Maps Paste - Enhanced Parsing (UI not implemented)', 
 
   test('Google Maps share link ?q= parameter: https://maps.app.goo.gl/?q=52.5200,13.4050', async ({ page }) => {
     // Paste share link with ?q=
-    await page.fill('#wizard-google-maps-input', 'https://maps.app.goo.gl/?q=52.5200,13.4050');
-    await page.click('#wizard-parse-google-maps');
+    await page.fill('#gmaps-paste-input', 'https://maps.app.goo.gl/?q=52.5200,13.4050');
+    await page.click('#btn-parse-gmaps');
     
     await page.waitForTimeout(500);
     
@@ -68,12 +68,19 @@ test.describe.skip('Google Maps Paste - Enhanced Parsing (UI not implemented)', 
 
   test('Validation: Invalid latitude (>90)', async ({ page }) => {
     // Paste invalid lat
-    await page.fill('#wizard-google-maps-input', '95.0, 13.4050');
-    await page.click('#wizard-parse-google-maps');
+    await page.fill('#gmaps-paste-input', '95.0, 13.4050');
+    
+    // Listen for alert dialog
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('Invalid latitude');
+      await dialog.accept();
+    });
+    
+    await page.click('#btn-parse-gmaps');
     
     await page.waitForTimeout(500);
     
-    // Fields should remain empty or show error
+    // Fields should remain empty (parsing rejected invalid value)
     const lat = await page.inputValue('#wizard-lat');
     const lon = await page.inputValue('#wizard-lon');
     
@@ -83,8 +90,15 @@ test.describe.skip('Google Maps Paste - Enhanced Parsing (UI not implemented)', 
 
   test('Validation: Invalid longitude (<-180)', async ({ page }) => {
     // Paste invalid lon
-    await page.fill('#wizard-google-maps-input', '52.5200, -185.0');
-    await page.click('#wizard-parse-google-maps');
+    await page.fill('#gmaps-paste-input', '52.5200, -185.0');
+    
+    // Listen for alert dialog
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('Invalid longitude');
+      await dialog.accept();
+    });
+    
+    await page.click('#btn-parse-gmaps');
     
     await page.waitForTimeout(500);
     
@@ -97,8 +111,15 @@ test.describe.skip('Google Maps Paste - Enhanced Parsing (UI not implemented)', 
 
   test('Validation: Unrecognized format', async ({ page }) => {
     // Paste garbage text
-    await page.fill('#wizard-google-maps-input', 'random text without coordinates');
-    await page.click('#wizard-parse-google-maps');
+    await page.fill('#gmaps-paste-input', 'random text without coordinates');
+    
+    // Listen for alert dialog
+    page.once('dialog', async dialog => {
+      expect(dialog.message()).toContain('Could not parse coordinates');
+      await dialog.accept();
+    });
+    
+    await page.click('#btn-parse-gmaps');
     
     await page.waitForTimeout(500);
     
