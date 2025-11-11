@@ -2033,11 +2033,15 @@ window.renderMission = function(missionData) {
       }
     }
     
-    // 6. EMERGENCY LANDING SITES (E1, E2, E3)
+    // 6. EMERGENCY LANDING SITES (E1, E2, E3) - EASA/JARUS SORA 2.5 Compliance
     const emergencyLanding = missionData.erp?.emergencyLanding || missionData.erp?.EmergencyLanding;
     const emergencySites = emergencyLanding?.sites || emergencyLanding?.Sites;
     
     if (emergencySites && emergencySites.length > 0) {
+      // Color-coded priority: E1=Primary(green), E2=Secondary(orange), E3=Tertiary(red)
+      const priorityColors = ['#10b981', '#f59e0b', '#ef4444']; // green, amber, red
+      const priorityLabels = ['PRIMARY', 'SECONDARY', 'TERTIARY'];
+      
       const emergencyFeatures = emergencySites.map((site, idx) => ({
         type: 'Feature',
         geometry: {
@@ -2046,7 +2050,10 @@ window.renderMission = function(missionData) {
         },
         properties: {
           label: `E${idx + 1}`,
-          name: site.Description || site.description || site.label || `Emergency Site ${idx + 1}`
+          priority: priorityLabels[idx] || 'FALLBACK',
+          description: site.Description || site.description || `Emergency Site ${idx + 1}`,
+          color: priorityColors[idx] || '#6b7280',
+          index: idx
         }
       }));
       
@@ -2056,34 +2063,56 @@ window.renderMission = function(missionData) {
           data: { type: 'FeatureCollection', features: emergencyFeatures }
         });
         
-        // Red circle markers (add first - below text)
+        // Color-coded circle markers (priority-based)
         map2D.addLayer({
           id: 'emergency-sites-circle',
           type: 'circle',
           source: 'emergency-sites',
           paint: {
-            'circle-radius': 10,
-            'circle-color': '#dc2626',
+            'circle-radius': 12,
+            'circle-color': ['get', 'color'],
             'circle-stroke-width': 3,
-            'circle-stroke-color': '#ffffff'
+            'circle-stroke-color': '#ffffff',
+            'circle-opacity': 0.9
           }
         });
         
-        // White text labels on top
+        // White text labels (E1, E2, E3)
         map2D.addLayer({
-          id: 'emergency-sites-symbol',
+          id: 'emergency-sites-label',
           type: 'symbol',
           source: 'emergency-sites',
           layout: {
             'text-field': ['get', 'label'],
-            'text-size': 14,
+            'text-size': 12,
             'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-            'text-anchor': 'center'
+            'text-anchor': 'center',
+            'text-offset': [0, 0]
           },
           paint: {
             'text-color': '#ffffff',
-            'text-halo-color': '#dc2626',
+            'text-halo-color': 'rgba(0,0,0,0.3)',
             'text-halo-width': 1
+          }
+        });
+        
+        // Description labels below markers
+        map2D.addLayer({
+          id: 'emergency-sites-description',
+          type: 'symbol',
+          source: 'emergency-sites',
+          layout: {
+            'text-field': ['concat', ['get', 'priority'], '\n', ['get', 'description']],
+            'text-size': 10,
+            'text-font': ['Open Sans Regular', 'Arial Unicode MS Regular'],
+            'text-anchor': 'top',
+            'text-offset': [0, 1.5],
+            'text-max-width': 15
+          },
+          paint: {
+            'text-color': '#374151',
+            'text-halo-color': '#ffffff',
+            'text-halo-width': 2
           }
         });
       } else {

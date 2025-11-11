@@ -3,44 +3,151 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Test ERP Emergency Markers (Leaflet)</title>
+    <title>ERP Emergency Landing Sites - EASA/JARUS SORA 2.5</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
         #info { 
             position: absolute; 
-            top: 10px; 
-            left: 10px; 
+            top: 15px; 
+            left: 15px; 
             background: white; 
-            padding: 15px; 
-            border-radius: 8px; 
-            font-family: Arial; 
+            padding: 20px; 
+            border-radius: 10px; 
             z-index: 1000;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 320px;
         }
-        .emergency-marker {
-            background: #dc2626;
-            color: white;
-            border: 3px solid white;
+        #info h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #1f2937;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 8px;
+        }
+        #info h3 {
+            margin: 15px 0 8px 0;
+            font-size: 13px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        .legend-marker {
+            width: 20px;
+            height: 20px;
             border-radius: 50%;
-            width: 30px;
-            height: 30px;
+            border: 2px solid white;
+            margin-right: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             display: flex;
             align-items: center;
             justify-content: center;
+            color: white;
+            font-size: 10px;
             font-weight: bold;
-            font-size: 14px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .legend-text {
+            flex: 1;
+        }
+        .legend-text strong {
+            display: block;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+        .legend-text span {
+            display: block;
+            color: #6b7280;
+            font-size: 11px;
+        }
+        #status {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f0fdf4;
+            border-left: 4px solid #10b981;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #065f46;
+        }
+        .emergency-marker-e1 { background: #10b981; border-color: #ffffff; }
+        .emergency-marker-e2 { background: #f59e0b; border-color: #ffffff; }
+        .emergency-marker-e3 { background: #ef4444; border-color: #ffffff; }
+        
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .leaflet-popup-content {
+            margin: 15px;
+            font-size: 13px;
+        }
+        .popup-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .popup-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            margin-left: 8px;
+        }
+        .popup-badge-e1 { background: #10b981; }
+        .popup-badge-e2 { background: #f59e0b; }
+        .popup-badge-e3 { background: #ef4444; }
+        .popup-desc {
+            color: #4b5563;
+            margin-bottom: 8px;
+        }
+        .popup-coords {
+            font-size: 11px;
+            color: #9ca3af;
+            font-family: 'Courier New', monospace;
         }
     </style>
 </head>
 <body>
     <div id="info">
-        <h3>🚨 ERP Emergency Landing Sites</h3>
-        <p>Testing E1, E2, E3 markers rendering</p>
-        <div id="status">Loading map...</div>
+        <h2>🚨 Emergency Response Plan</h2>
+        <p style="margin: 5px 0; font-size: 12px; color: #6b7280;">EASA/JARUS SORA 2.5 Compliant</p>
+        
+        <h3>Emergency Landing Sites</h3>
+        <div class="legend-item">
+            <div class="legend-marker emergency-marker-e1">E1</div>
+            <div class="legend-text">
+                <strong>Primary Site</strong>
+                <span>CGA central area (lowest risk)</span>
+            </div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-marker emergency-marker-e2">E2</div>
+            <div class="legend-text">
+                <strong>Secondary Site</strong>
+                <span>CGA north sector (backup)</span>
+            </div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-marker emergency-marker-e3">E3</div>
+            <div class="legend-text">
+                <strong>Tertiary Site</strong>
+                <span>SAIL ≥III only (fallback)</span>
+            </div>
+        </div>
+        
+        <div id="status">⏳ Loading map...</div>
     </div>
     <div id="map"></div>
     
@@ -58,12 +165,31 @@
         const mockErpData = {
             EmergencyLanding: {
                 Sites: [
-                    { Lat: 41.0, Lon: 25.0, Description: "E1: Primary - CGA central area" },
-                    { Lat: 41.0005, Lon: 25.0, Description: "E2: Secondary - CGA north sector" },
-                    { Lat: 41.0, Lon: 25.0007, Description: "E3: Tertiary - CGA east sector" }
+                    { 
+                        Lat: 41.0, 
+                        Lon: 25.0, 
+                        Description: "Primary: CGA central area (pre-assessed as low ground risk)" 
+                    },
+                    { 
+                        Lat: 41.0005, 
+                        Lon: 25.0, 
+                        Description: "Secondary: CGA north sector" 
+                    },
+                    { 
+                        Lat: 41.0, 
+                        Lon: 25.0007, 
+                        Description: "Tertiary: CGA east sector (fallback)" 
+                    }
                 ]
             }
         };
+        
+        // Priority configuration
+        const priorityConfig = [
+            { label: 'E1', priority: 'PRIMARY', class: 'emergency-marker-e1', badgeClass: 'popup-badge-e1' },
+            { label: 'E2', priority: 'SECONDARY', class: 'emergency-marker-e2', badgeClass: 'popup-badge-e2' },
+            { label: 'E3', priority: 'TERTIARY', class: 'emergency-marker-e3', badgeClass: 'popup-badge-e3' }
+        ];
         
         // Render emergency sites with dual-case support
         const emergencyLanding = mockErpData.emergencyLanding || mockErpData.EmergencyLanding;
@@ -74,30 +200,49 @@
                 const lat = site.Lat || site.lat;
                 const lon = site.Lon || site.lon;
                 const desc = site.Description || site.description || `Emergency Site ${idx + 1}`;
+                const config = priorityConfig[idx];
                 
-                // Create custom icon
+                // Create custom icon with priority color
                 const icon = L.divIcon({
-                    className: 'emergency-marker',
-                    html: `E${idx + 1}`,
+                    className: `${config.class}`,
+                    html: `<div style="width:30px;height:30px;border-radius:50%;border:3px solid white;background:inherit;display:flex;align-items:center;justify-content:center;color:white;font-weight:bold;font-size:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${config.label}</div>`,
                     iconSize: [30, 30],
                     iconAnchor: [15, 15]
                 });
                 
-                // Add marker to map
+                // Popup content
+                const popupContent = `
+                    <div class="popup-title">
+                        Emergency Site ${idx + 1}
+                        <span class="popup-badge ${config.badgeClass}">${config.priority}</span>
+                    </div>
+                    <div class="popup-desc">${desc}</div>
+                    <div class="popup-coords">
+                        📍 ${lat.toFixed(6)}°N, ${lon.toFixed(6)}°E
+                    </div>
+                `;
+                
+                // Add marker to map with popup
                 L.marker([lat, lon], { icon: icon })
                     .addTo(map)
-                    .bindPopup(`<b>Emergency Site ${idx + 1}</b><br>${desc}`);
+                    .bindPopup(popupContent, { 
+                        maxWidth: 280,
+                        className: 'emergency-popup'
+                    });
             });
             
             // Fit bounds to show all markers
             const bounds = emergencySites.map(s => [s.Lat || s.lat, s.Lon || s.lon]);
-            map.fitBounds(bounds, { padding: [50, 50] });
+            map.fitBounds(bounds, { padding: [80, 80] });
             
             document.getElementById('status').innerHTML = 
-                `✅ <strong>Success!</strong> Rendered ${emergencySites.length} emergency sites<br>` +
-                `<small>Click markers to see details</small>`;
+                `✅ <strong>Ready!</strong> ${emergencySites.length} sites identified<br>` +
+                `<small>Click markers for details</small>`;
         } else {
             document.getElementById('status').innerHTML = '❌ No emergency sites found';
+            document.getElementById('status').style.background = '#fef2f2';
+            document.getElementById('status').style.borderColor = '#ef4444';
+            document.getElementById('status').style.color = '#991b1b';
         }
     </script>
 </body>
