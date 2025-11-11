@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test ERP Emergency Markers</title>
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        #info { position: absolute; top: 10px; left: 10px; background: white; padding: 15px; border-radius: 8px; font-family: Arial; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h3>ERP Emergency Landing Sites Test</h3>
+        <p>Expecting 3 markers: E1, E2, E3</p>
+        <div id="status">Loading...</div>
+    </div>
+    <div id="map"></div>
+    
+    <script>
+        // Initialize map
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: {
+                version: 8,
+                sources: {
+                    osm: {
+                        type: 'raster',
+                        tiles: ['https://a.tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                        tileSize: 256,
+                        attribution: '© OpenStreetMap'
+                    }
+                },
+                layers: [{
+                    id: 'osm',
+                    type: 'raster',
+                    source: 'osm',
+                    minzoom: 0,
+                    maxzoom: 22
+                }],
+                glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf'
+            },
+            center: [25.01, 41.01],
+            zoom: 13
+        });
+        
+        map.on('load', () => {
+            // Mock ERP data with PascalCase (backend format)
+            const mockErpData = {
+                EmergencyLanding: {
+                    Sites: [
+                        { Lat: 41.0, Lon: 25.0, Description: "Primary: CGA central area" },
+                        { Lat: 41.0005, Lon: 25.0, Description: "Secondary: CGA north sector" },
+                        { Lat: 41.0, Lon: 25.0007, Description: "Tertiary: CGA east sector (fallback)" }
+                    ]
+                }
+            };
+            
+            // Render emergency sites (dual-case logic)
+            const emergencyLanding = mockErpData.emergencyLanding || mockErpData.EmergencyLanding;
+            const emergencySites = emergencyLanding?.sites || emergencyLanding?.Sites;
+            
+            if (emergencySites && emergencySites.length > 0) {
+                const emergencyFeatures = emergencySites.map((site, idx) => ({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [site.Lon || site.lon, site.Lat || site.lat]
+                    },
+                    properties: {
+                        label: `E${idx + 1}`,
+                        name: site.Description || site.description || `Emergency Site ${idx + 1}`
+                    }
+                }));
+                
+                map.addSource('emergency-sites', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: emergencyFeatures }
+                });
+                
+                // Red text markers
+                map.addLayer({
+                    id: 'emergency-sites-symbol',
+                    type: 'symbol',
+                    source: 'emergency-sites',
+                    layout: {
+                        'text-field': ['get', 'label'],
+                        'text-size': 16,
+                        'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold']
+                    },
+                    paint: {
+                        'text-color': '#dc2626',
+                        'text-halo-color': '#ffffff',
+                        'text-halo-width': 2
+                    }
+                });
+                
+                // Red circle markers
+                map.addLayer({
+                    id: 'emergency-sites-circle',
+                    type: 'circle',
+                    source: 'emergency-sites',
+                    paint: {
+                        'circle-radius': 8,
+                        'circle-color': '#dc2626',
+                        'circle-stroke-width': 2,
+                        'circle-stroke-color': '#ffffff'
+                    }
+                });
+                
+                document.getElementById('status').innerHTML = `✅ Rendered ${emergencySites.length} emergency sites!`;
+            } else {
+                document.getElementById('status').innerHTML = '❌ No emergency sites found';
+            }
+        });
+    </script>
+</body>
+</html>

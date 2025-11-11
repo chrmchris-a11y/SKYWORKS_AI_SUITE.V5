@@ -152,16 +152,34 @@ async function loadMissionFromApi(missionId) {
       logToConsole(`✅ Updated SORA badges (SAIL: ${mission.sora.sail})`, 'success');
     }
     
-    // 3. ERP PANEL - Display 5-section breakdown
+    // 3. ERP PANEL - Display 5-section breakdown + store parsed ERP
     if (mission.erp) {
       updateErpPanel(mission.erp);
-      logToConsole('✅ Updated ERP panel', 'success');
+      
+      // Parse and store ERP JSON globally for renderMission() to access
+      try {
+        const erpJson = mission.erp.erpJson || mission.erp.ErpJson;
+        missionData.erp = typeof erpJson === 'string' ? JSON.parse(erpJson) : erpJson;
+        
+        // Count emergency sites with dual-case support
+        const emergencyLanding = missionData.erp?.emergencyLanding || missionData.erp?.EmergencyLanding;
+        const sitesCount = emergencyLanding?.sites?.length || emergencyLanding?.Sites?.length || 0;
+        
+        logToConsole(`✅ Updated ERP panel (${sitesCount} emergency sites)`, 'success');
+      } catch (parseError) {
+        logToConsole(`⚠️ ERP JSON parse error: ${parseError.message}`, 'warning');
+      }
     }
     
     // 4. OSO PANEL - Show coverage, missing OSOs
     if (mission.oso) {
       updateOsoPanel(mission.oso);
       logToConsole(`✅ Updated OSO panel (${mission.oso.coveredCount}/${mission.oso.requiredCount} covered)`, 'success');
+    }
+    
+    // 5. RENDER EMERGENCY SITES & OTHER OVERLAYS
+    if (window.renderMission) {
+      window.renderMission(missionData);
     }
     
     logToConsole(`✅ Mission loaded: ${mission.name} (${mission.templateCode})`, 'success');
@@ -2016,16 +2034,19 @@ window.renderMission = function(missionData) {
     }
     
     // 6. EMERGENCY LANDING SITES (E1, E2, E3)
-    if (missionData.erp && missionData.erp.emergencyLanding && missionData.erp.emergencyLanding.sites) {
-      const emergencyFeatures = missionData.erp.emergencyLanding.sites.map((site, idx) => ({
+    const emergencyLanding = missionData.erp?.emergencyLanding || missionData.erp?.EmergencyLanding;
+    const emergencySites = emergencyLanding?.sites || emergencyLanding?.Sites;
+    
+    if (emergencySites && emergencySites.length > 0) {
+      const emergencyFeatures = emergencySites.map((site, idx) => ({
         type: 'Feature',
         geometry: {
           type: 'Point',
-          coordinates: [site.lon, site.lat]
+          coordinates: [site.Lon || site.lon, site.Lat || site.lat]  // Dual-case support
         },
         properties: {
           label: `E${idx + 1}`,
-          name: site.label || `Emergency Site ${idx + 1}`
+          name: site.Description || site.description || site.label || `Emergency Site ${idx + 1}`
         }
       }));
       
