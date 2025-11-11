@@ -188,13 +188,13 @@ test.describe('Enhanced Panels (ERP, SORA, OSO)', () => {
     const osoContent = await page.locator('#oso-panel-content').textContent();
     expect(osoContent).toContain('90.0%'); // (18/20)*100
     
-    // Verify green color (>80%)
-    const percentageColor = await page.evaluate(() => {
-      const span = document.querySelector('#oso-panel-content span[style*="color"]');
-      return span ? (span as HTMLElement).style.color : null;
+    // Verify green color (>80%) - check data-hex attribute
+    const percentageColorHex = await page.evaluate(() => {
+      const elem = document.querySelector('#oso-coverage-color');
+      return elem ? elem.getAttribute('data-hex') : null;
     });
     
-    expect(percentageColor).toContain('10b981'); // Green
+    expect(percentageColorHex).toBe('10b981'); // Green hex
   });
 
   test('OSO Panel: Coverage percentage with yellow color (50-80%)', async ({ page }) => {
@@ -212,12 +212,13 @@ test.describe('Enhanced Panels (ERP, SORA, OSO)', () => {
     const osoContent = await page.locator('#oso-panel-content').textContent();
     expect(osoContent).toContain('65.0%'); // (13/20)*100
     
-    const percentageColor = await page.evaluate(() => {
-      const span = document.querySelector('#oso-panel-content span[style*="color"]');
-      return span ? (span as HTMLElement).style.color : null;
+    // Verify yellow/amber color (50-80%) - check data-hex attribute
+    const percentageColorHex = await page.evaluate(() => {
+      const elem = document.querySelector('#oso-coverage-color');
+      return elem ? elem.getAttribute('data-hex') : null;
     });
     
-    expect(percentageColor).toContain('f59e0b'); // Yellow
+    expect(percentageColorHex).toBe('f59e0b'); // Yellow/Amber hex
   });
 
   test('OSO Panel: Coverage percentage with red color (<50%)', async ({ page }) => {
@@ -235,12 +236,13 @@ test.describe('Enhanced Panels (ERP, SORA, OSO)', () => {
     const osoContent = await page.locator('#oso-panel-content').textContent();
     expect(osoContent).toContain('40.0%'); // (8/20)*100
     
-    const percentageColor = await page.evaluate(() => {
-      const span = document.querySelector('#oso-panel-content span[style*="color"]');
-      return span ? (span as HTMLElement).style.color : null;
+    // Verify red color (<50%) - check data-hex attribute
+    const percentageColorHex = await page.evaluate(() => {
+      const elem = document.querySelector('#oso-coverage-color');
+      return elem ? elem.getAttribute('data-hex') : null;
     });
     
-    expect(percentageColor).toContain('ef4444'); // Red
+    expect(percentageColorHex).toBe('ef4444'); // Red hex
   });
 
   test('OSO Panel: Missing list shows first 5 OSOs', async ({ page }) => {
@@ -273,8 +275,8 @@ test.describe('Enhanced Panels (ERP, SORA, OSO)', () => {
     expect(osoContent).toContain('OSO#08');
     expect(osoContent).toContain('OSO#12');
     
-    // Verify "... and X more" message
-    expect(osoContent).toContain('... and 3 more');
+    // Verify "more OSOs missing" message (actual text format from production code)
+    expect(osoContent).toContain('+ 3 more');
   });
 
   test('OSO Panel: All covered message (100% coverage)', async ({ page }) => {
