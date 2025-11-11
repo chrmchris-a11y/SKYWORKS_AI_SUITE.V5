@@ -1,0 +1,6 @@
+{
+  "googleMapsApiKey": "*****PLACEHOLDER*****",
+  "libraries": "places,geocoding,marker",
+  "version": "weekly",
+  "notes": "PRODUCTION: Replace *****PLACEHOLDER***** with real Google Maps API key from Google Cloud Console"
+}
