@@ -291,7 +291,7 @@ public class SoraController : ControllerBase
 
             // Parse JSON result
             var result = System.Text.Json.JsonSerializer.Deserialize<object>(output);
-            return result;
+            return result!; // Node.js script always returns valid JSON
         }
         finally
         {
