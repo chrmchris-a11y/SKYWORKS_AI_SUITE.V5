@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ERP Fly-Away Safe Area - EASA/JARUS SORA 2.5</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Arial, sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        #info { 
+            position: absolute; 
+            top: 15px; 
+            left: 15px; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            max-width: 340px;
+        }
+        #info h2 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #1f2937;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 8px;
+        }
+        #info h3 {
+            margin: 15px 0 8px 0;
+            font-size: 13px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            font-size: 13px;
+        }
+        .legend-box {
+            width: 40px;
+            height: 24px;
+            margin-right: 12px;
+            border-radius: 4px;
+            border: 2px solid #2563eb;
+        }
+        .safe-area-box {
+            background: rgba(59, 130, 246, 0.2);
+            border-style: dashed;
+        }
+        .cga-box {
+            background: rgba(251, 191, 36, 0.3);
+            border-color: #f59e0b;
+        }
+        .legend-text {
+            flex: 1;
+        }
+        .legend-text strong {
+            display: block;
+            color: #1f2937;
+            margin-bottom: 2px;
+        }
+        .legend-text span {
+            display: block;
+            color: #6b7280;
+            font-size: 11px;
+        }
+        #status {
+            margin-top: 15px;
+            padding: 10px;
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #1e40af;
+        }
+        .info-section {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        .info-section strong {
+            color: #374151;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .info-section span {
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>🛡️ Emergency Response Plan</h2>
+        <p style="margin: 5px 0; font-size: 12px; color: #6b7280;">Fly-Away Containment Zone</p>
+        
+        <h3>Map Layers</h3>
+        <div class="legend-item">
+            <div class="legend-box safe-area-box"></div>
+            <div class="legend-text">
+                <strong>Safe Area (Blue)</strong>
+                <span>Emergency containment zone</span>
+            </div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box cga-box"></div>
+            <div class="legend-text">
+                <strong>CGA (Yellow)</strong>
+                <span>Controlled Ground Area</span>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <strong>📍 Safe Area Details</strong>
+            <span>Center: <code id="center-coords">-</code></span><br>
+            <span>Radius: <code id="radius">-</code></span>
+        </div>
+        
+        <div id="status">⏳ Loading map...</div>
+    </div>
+    <div id="map"></div>
+    
+    <script>
+        // Initialize Leaflet map
+        const map = L.map('map').setView([41.01, 25.01], 14);
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Mock ERP data (PascalCase - backend format)
+        const mockErpData = {
+            FlyAway: {
+                DefinedSafeArea: true,
+                SafeAreaLat: 41.01,
+                SafeAreaLon: 25.01,
+                SafeAreaRadius_m: 500,  // 500 meters radius
+                Actions: [
+                    "Attempt to re-establish C2 link immediately",
+                    "Monitor UA position and trajectory via GCS or tracking system",
+                    "Log incident details for post-flight analysis"
+                ]
+            }
+        };
+        
+        // Mock CGA polygon (for comparison)
+        const mockCgaPolygon = [
+            [41.008, 25.008],
+            [41.012, 25.008],
+            [41.012, 25.012],
+            [41.008, 25.012],
+            [41.008, 25.008]
+        ];
+        
+        // Render CGA polygon (yellow)
+        L.polygon(mockCgaPolygon, {
+            color: '#f59e0b',
+            fillColor: '#fbbf24',
+            fillOpacity: 0.3,
+            weight: 2,
+            dashArray: null
+        }).addTo(map).bindPopup('<b>Controlled Ground Area (CGA)</b><br>Pre-assessed low risk zone');
+        
+        // Render Safe Area (dual-case support)
+        const flyAway = mockErpData.flyAway || mockErpData.FlyAway;
+        const safeAreaLat = flyAway?.safeAreaLat || flyAway?.SafeAreaLat;
+        const safeAreaLon = flyAway?.safeAreaLon || flyAway?.SafeAreaLon;
+        const safeAreaRadius = flyAway?.safeAreaRadius_m || flyAway?.SafeAreaRadius_m;
+        
+        if (safeAreaLat && safeAreaLon && safeAreaRadius) {
+            // Draw safe area circle (blue, dashed)
+            L.circle([safeAreaLat, safeAreaLon], {
+                radius: safeAreaRadius,
+                color: '#2563eb',
+                fillColor: '#3b82f6',
+                fillOpacity: 0.15,
+                weight: 2,
+                dashArray: '8, 8'
+            }).addTo(map).bindPopup(
+                `<b>Fly-Away Safe Area</b><br>` +
+                `Emergency containment zone<br>` +
+                `<small>Radius: ${safeAreaRadius}m</small>`
+            );
+            
+            // Add center marker
+            L.circleMarker([safeAreaLat, safeAreaLon], {
+                radius: 5,
+                color: '#1e40af',
+                fillColor: '#3b82f6',
+                fillOpacity: 1,
+                weight: 2
+            }).addTo(map).bindPopup('<b>Safe Area Center</b>');
+            
+            // Update info panel
+            document.getElementById('center-coords').textContent = 
+                `${safeAreaLat.toFixed(6)}°N, ${safeAreaLon.toFixed(6)}°E`;
+            document.getElementById('radius').textContent = `${safeAreaRadius}m`;
+            
+            // Fit map to show both CGA and Safe Area
+            const bounds = [
+                ...mockCgaPolygon,
+                [safeAreaLat + safeAreaRadius/111000, safeAreaLon],
+                [safeAreaLat - safeAreaRadius/111000, safeAreaLon],
+                [safeAreaLat, safeAreaLon + safeAreaRadius/(111000 * Math.cos(safeAreaLat * Math.PI/180))],
+                [safeAreaLat, safeAreaLon - safeAreaRadius/(111000 * Math.cos(safeAreaLat * Math.PI/180))]
+            ];
+            map.fitBounds(bounds, { padding: [50, 50] });
+            
+            document.getElementById('status').innerHTML = 
+                `✅ <strong>Rendered!</strong> Safe Area: ${safeAreaRadius}m radius<br>` +
+                `<small>Click zones for details</small>`;
+        } else {
+            document.getElementById('status').innerHTML = '❌ No safe area data';
+            document.getElementById('status').style.background = '#fef2f2';
+            document.getElementById('status').style.borderColor = '#ef4444';
+            document.getElementById('status').style.color = '#991b1b';
+        }
+    </script>
+</body>
+</html>

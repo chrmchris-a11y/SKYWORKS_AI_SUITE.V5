@@ -2033,6 +2033,63 @@ window.renderMission = function(missionData) {
       }
     }
     
+    // 5. FLY-AWAY SAFE AREA - EASA/JARUS SORA 2.5 Emergency Containment Zone
+    const flyAway = missionData.erp?.flyAway || missionData.erp?.FlyAway;
+    const safeAreaLat = flyAway?.safeAreaLat || flyAway?.SafeAreaLat;
+    const safeAreaLon = flyAway?.safeAreaLon || flyAway?.SafeAreaLon;
+    const safeAreaRadius = flyAway?.safeAreaRadius_m || flyAway?.SafeAreaRadius_m;
+    
+    if (safeAreaLat && safeAreaLon && safeAreaRadius) {
+      const safeAreaCircle = createCirclePolygon(safeAreaLon, safeAreaLat, safeAreaRadius, 64);
+      const safeAreaFeature = {
+        type: 'Feature',
+        geometry: {
+          type: 'Polygon',
+          coordinates: [safeAreaCircle]
+        },
+        properties: { 
+          type: 'safe-area',
+          radius_m: safeAreaRadius,
+          description: 'Fly-Away Safe Area (Emergency Containment Zone)'
+        }
+      };
+      
+      if (!map2D.getSource('erp-safe-area')) {
+        map2D.addSource('erp-safe-area', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [safeAreaFeature] }
+        });
+        
+        // Semi-transparent blue fill
+        map2D.addLayer({
+          id: 'erp-safe-area-fill',
+          type: 'fill',
+          source: 'erp-safe-area',
+          paint: {
+            'fill-color': '#3b82f6',
+            'fill-opacity': 0.15
+          }
+        });
+        
+        // Dashed blue outline
+        map2D.addLayer({
+          id: 'erp-safe-area-outline',
+          type: 'line',
+          source: 'erp-safe-area',
+          paint: {
+            'line-color': '#2563eb',
+            'line-width': 2,
+            'line-dasharray': [4, 4]
+          }
+        });
+      } else {
+        map2D.getSource('erp-safe-area').setData({
+          type: 'FeatureCollection',
+          features: [safeAreaFeature]
+        });
+      }
+    }
+    
     // 6. EMERGENCY LANDING SITES (E1, E2, E3) - EASA/JARUS SORA 2.5 Compliance
     const emergencyLanding = missionData.erp?.emergencyLanding || missionData.erp?.EmergencyLanding;
     const emergencySites = emergencyLanding?.sites || emergencyLanding?.Sites;
