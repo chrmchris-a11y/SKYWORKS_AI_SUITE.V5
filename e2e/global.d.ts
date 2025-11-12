@@ -26,4 +26,23 @@ interface Window {
   geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null>;
   toggle2DOblique(): void;
   initGoogleMaps(): void;
+  
+  // Phase 6: Auto-Mission properties
+  fgPolygon: google.maps.Polygon | null;
+  cvPolygon: google.maps.Polygon | null;
+  grbPolygon: google.maps.Polygon | null;
+  autoMissionMarkers: google.maps.Marker[] | null;
+  lastAutoMissionJson: {
+    flightGeography: any;
+    contingencyVolume: any;
+    groundRiskBuffer: any;
+    markers: any;
+    distances: any;
+    options: any;
+  } | null;
+  autoMissionState: {
+    isReady: boolean;
+    USE_CESIUM_3D: boolean;
+    currentKmlBlobUrl: string | null;
+  } | null;
 }

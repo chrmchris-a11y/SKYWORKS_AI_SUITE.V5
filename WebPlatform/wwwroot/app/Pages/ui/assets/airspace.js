@@ -1281,6 +1281,9 @@ function init2DMap() {
     // Re-attach event listeners after map initialization (DOM elements now exist)
     attachEventListeners();
     
+    // Initialize auto-mission UI controls (Phase 6)
+    initAutoMissionUI();
+    
     logToConsole('✅ Google Maps 2D loaded (Athens, Greece)', 'success');
     console.log('[initGoogleMaps] Map initialization complete');
   };
@@ -3317,3 +3320,988 @@ window.updateOsoPanel = updateOsoPanel;
 Object.defineProperty(window, 'map2D', { get: () => map2D });
 Object.defineProperty(window, 'map3D', { get: () => viewer3D });
 window.missionData = missionData; // Expose for debug/tests
+
+
+// ================================================================
+// PHASE 6: AUTO MISSION DESIGN (ONE-CLICK 3D MISSION CREATION)
+// ================================================================
+
+// Global state for auto-mission
+let autoMissionState = {
+  isReady: false,
+  USE_CESIUM_3D: false, // Feature flag - only enable if Cesium is available
+  currentKmlBlobUrl: null
+};
+
+/**
+ * Initialize auto-mission UI controls
+ * Called after Google Maps loads and becomes idle
+ * Sets defaults, wires event handlers, enables controls
+ */
+function initAutoMissionUI() {
+  logToConsole('Initializing auto-mission UI controls', 'info');
+  
+  // Get all UI elements
+  const btnCreateMission = document.getElementById('btn-create-3d-mission');
+  const ddlSoraVersion = document.getElementById('ddl-sora-version');
+  const ddlMissionTemplate = document.getElementById('ddl-mission-template');
+  const inpHeightFg = document.getElementById('inp-height-fg');
+  const inpSpeed = document.getElementById('inp-speed');
+  const inpMtom = document.getElementById('inp-mtom');
+  const inpSafeRadius = document.getElementById('inp-safe-radius');
+  const sw3dMode = document.getElementById('sw-3d-mode');
+  const btnOpenEarth = document.getElementById('btn-open-earth');
+  
+  if (!btnCreateMission) {
+    console.warn('[initAutoMissionUI] Button #btn-create-3d-mission not found');
+    return;
+  }
+  
+  // Set default values
+  if (ddlSoraVersion) ddlSoraVersion.value = '2.5_jarus'; // Default SORA 2.5
+  if (ddlMissionTemplate) ddlMissionTemplate.value = 'VLOS_Spot'; // Default template
+  if (inpHeightFg) inpHeightFg.value = '60'; // 60m AGL
+  if (inpSpeed) inpSpeed.value = '10'; // 10 m/s
+  if (inpMtom) inpMtom.value = '25'; // 25 kg default
+  if (inpSafeRadius) inpSafeRadius.value = '500'; // 500m safe radius
+  
+  // Wire button click handler
+  btnCreateMission.addEventListener('click', () => {
+    handleCreateComplete3DMission();
+  });
+  
+  // Wire dropdown change handlers (for validation/updates)
+  if (ddlSoraVersion) {
+    ddlSoraVersion.addEventListener('change', () => {
+      logToConsole(`SORA version changed to: ${ddlSoraVersion.value}`, 'info');
+    });
+  }
+  
+  if (ddlMissionTemplate) {
+    ddlMissionTemplate.addEventListener('change', () => {
+      logToConsole(`Mission template changed to: ${ddlMissionTemplate.value}`, 'info');
+    });
+  }
+  
+  // Wire 3D mode switch
+  if (sw3dMode) {
+    sw3dMode.addEventListener('change', () => {
+      const isEnabled = sw3dMode.checked;
+      logToConsole(`3D mode ${isEnabled ? 'enabled' : 'disabled'}`, 'info');
+      
+      // Show notice if Cesium not available
+      if (isEnabled && !autoMissionState.USE_CESIUM_3D) {
+        logToConsole('Cesium 3D preview not available - will generate KML for Google Earth', 'warning');
+      }
+    });
+  }
+  
+  // Wire Google Earth export button
+  if (btnOpenEarth) {
+    btnOpenEarth.addEventListener('click', () => {
+      if (autoMissionState.currentKmlBlobUrl) {
+        window.open(autoMissionState.currentKmlBlobUrl, '_blank');
+        logToConsole('Opening KML in Google Earth', 'success');
+      } else {
+        logToConsole('No KML file available', 'warning');
+      }
+    });
+  }
+  
+  // Enable controls only after Google Maps is idle
+  if (map2D) {
+    map2D.addListener('idle', () => {
+      if (!autoMissionState.isReady) {
+        autoMissionState.isReady = true;
+        btnCreateMission.disabled = false;
+        logToConsole('Auto-mission controls enabled (Google Maps idle)', 'success');
+      }
+    });
+  } else {
+    // Fallback: enable after 2 seconds if map not available
+    setTimeout(() => {
+      autoMissionState.isReady = true;
+      btnCreateMission.disabled = false;
+      logToConsole('Auto-mission controls enabled (fallback timer)', 'warning');
+    }, 2000);
+  }
+  
+  logToConsole('Auto-mission UI initialized', 'success');
+}
+
+/**
+ * Main orchestrator for creating complete 3D mission
+ * Triggered by #btn-create-3d-mission button click
+ */
+async function handleCreateComplete3DMission() {
+  logToConsole('=== Starting Complete 3D Mission Creation ===', 'info');
+  
+  try {
+    // Gather inputs
+    const options = gatherMissionInputs();
+    logToConsole(`Inputs: ${JSON.stringify(options)}`, 'info');
+    
+    // Call main creation function
+    await createComplete3DMission(options);
+    
+    logToConsole('=== Complete 3D Mission Created Successfully ===', 'success');
+  } catch (error) {
+    console.error('[handleCreateComplete3DMission] ERROR:', error);
+    logToConsole(`Mission creation failed: ${error.message}`, 'error');
+    alert(`Mission creation failed!\n\n${error.message}\n\nCheck console (F12) for details.`);
+  }
+}
+
+/**
+ * Gather all input values from UI controls
+ * @returns {Object} Mission creation options
+ */
+function gatherMissionInputs() {
+  const ddlSoraVersion = document.getElementById('ddl-sora-version');
+  const ddlMissionTemplate = document.getElementById('ddl-mission-template');
+  const inpHeightFg = document.getElementById('inp-height-fg');
+  const inpSpeed = document.getElementById('inp-speed');
+  const inpMtom = document.getElementById('inp-mtom');
+  const inpSafeRadius = document.getElementById('inp-safe-radius');
+  const sw3dMode = document.getElementById('sw-3d-mode');
+  
+  // Get center point (from map or mission TOL)
+  let center;
+  if (map2D) {
+    const mapCenter = map2D.getCenter();
+    center = { lat: mapCenter.lat(), lng: mapCenter.lng() };
+  } else {
+    // Fallback to Athens if no map
+    center = { lat: 37.9838, lng: 23.7275 };
+  }
+  
+  return {
+    center,
+    soraVersion: ddlSoraVersion?.value || '2.5_jarus',
+    template: ddlMissionTemplate?.value || 'VLOS_Spot',
+    heightFg: parseFloat(inpHeightFg?.value || '60'),
+    speed: parseFloat(inpSpeed?.value || '10'),
+    mtom: parseFloat(inpMtom?.value || '25'),
+    safeRadius: parseFloat(inpSafeRadius?.value || '500'),
+    enable3D: sw3dMode?.checked || false
+  };
+}
+
+// Expose functions for testing
+window.initAutoMissionUI = initAutoMissionUI;
+window.handleCreateComplete3DMission = handleCreateComplete3DMission;
+window.autoMissionState = autoMissionState;
+
+
+/**
+ * Main orchestrator for creating complete 3D mission
+ * @param {Object} options - Mission creation options
+ */
+async function createComplete3DMission(options) {
+  const startTime = performance.now();
+  logToConsole(`Creating mission: ${options.template} at (${options.center.lat.toFixed(4)}, ${options.center.lng.toFixed(4)})`, 'info');
+  
+  // Step 1: Derive Flight Geography (FG) based on template
+  const fg = deriveFlightGeography(options);
+  logToConsole(`FG created: ${fg.type}`, 'info');
+  
+  // Step 2: Compute SORA envelopes (CV, GRB)
+  const envelopes = computeEnvelopes(fg, options.soraVersion);
+  logToConsole(`Envelopes computed: CV (${envelopes.cv.type}), GRB (${envelopes.grb.type})`, 'info');
+  
+  // Step 3: Place mandatory markers (TOL, RP, VO, Observers, E-sites)
+  const markers = placeMandatoryMarkers(options.center, fg, envelopes.cv, envelopes.grb, options.safeRadius);
+  logToConsole(`Markers placed: ${Object.keys(markers).length} types`, 'info');
+  
+  // Step 4: Draw distance annotations
+  const distances = drawDistances(markers, envelopes);
+  logToConsole(`Distance annotations: ${distances.length} lines`, 'info');
+  
+  // Step 5: Render SORA layers on map
+  renderSoraLayers(map2D, fg, envelopes.cv, envelopes.grb);
+  logToConsole('SORA layers rendered on map', 'success');
+  
+  // Step 6: Render markers on map
+  renderMarkersOnMap(map2D, markers);
+  logToConsole('Markers rendered on map', 'success');
+  
+  // Step 7: Handle 3D rendering or KML export
+  const kmlUrl = await render3DOrKml(fg, envelopes.cv, envelopes.grb, markers, options.heightFg, options.enable3D);
+  if (kmlUrl) {
+    autoMissionState.currentKmlBlobUrl = kmlUrl;
+    document.getElementById('btn-open-earth').style.display = 'block';
+    logToConsole('KML generated successfully', 'success');
+  }
+  
+  // Step 8: Update panels (SORA badges, version badge)
+  updateAutoMissionPanels(options.soraVersion);
+  logToConsole('Panels updated', 'success');
+  
+  // Step 9: Persist missionData
+  missionData.flightGeography = fg;
+  missionData.contingencyVolume = envelopes.cv;
+  missionData.groundRiskBuffer = envelopes.grb;
+  missionData.markers = markers;
+  missionData.distances = distances;
+  
+  // Step 10: Expose for debug/export
+  window.lastAutoMissionJson = {
+    flightGeography: fg,
+    contingencyVolume: envelopes.cv,
+    groundRiskBuffer: envelopes.grb,
+    markers,
+    distances,
+    options
+  };
+  
+  const elapsed = (performance.now() - startTime).toFixed(0);
+  logToConsole(`✅ Mission created in ${elapsed}ms`, 'success');
+  console.log('[createComplete3DMission] Exported to window.lastAutoMissionJson:', window.lastAutoMissionJson);
+}
+
+/**
+ * Derive Flight Geography based on mission template
+ * @param {Object} options - Mission options
+ * @returns {Object} GeoJSON Feature (Polygon or Circle)
+ */
+function deriveFlightGeography(options) {
+  const { center, template } = options;
+  
+  switch (template) {
+    case 'VLOS_Spot':
+      // Circle of 150m radius around TOL
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: [center.lng, center.lat]
+        },
+        properties: {
+          radius: 150, // meters
+          type: 'Circle'
+        }
+      };
+      
+    case 'Corridor':
+      // Polyline from existing waypoints + 25m buffer each side
+      if (!missionData.waypoints || missionData.waypoints.length < 2) {
+        throw new Error('Corridor template requires at least 2 waypoints. Please add waypoints first.');
+      }
+      
+      // Create LineString from waypoints
+      const lineCoords = missionData.waypoints.map(wp => [wp.lng, wp.lat]);
+      const line = turf.lineString(lineCoords);
+      
+      // Buffer by 25m (creates polygon)
+      const buffered = turf.buffer(line, 0.025, { units: 'kilometers' });
+      
+      return buffered;
+      
+    case 'AreaScan':
+      // Rectangle 200×150m centered at TOL (N-S/E-W aligned)
+      const halfWidth = 100; // meters (200m / 2)
+      const halfHeight = 75; // meters (150m / 2)
+      
+      // Convert meters to degrees (approximate at equator: 1 deg ≈ 111km)
+      const latOffset = halfHeight / 111000;
+      const lngOffset = halfWidth / (111000 * Math.cos(center.lat * Math.PI / 180));
+      
+      const bbox = [
+        [center.lng - lngOffset, center.lat - latOffset], // SW
+        [center.lng + lngOffset, center.lat - latOffset], // SE
+        [center.lng + lngOffset, center.lat + latOffset], // NE
+        [center.lng - lngOffset, center.lat + latOffset], // NW
+        [center.lng - lngOffset, center.lat - latOffset]  // close polygon
+      ];
+      
+      return turf.polygon([bbox]);
+      
+    default:
+      throw new Error(`Unknown mission template: ${template}`);
+  }
+}
+
+/**
+ * Compute SORA envelopes (CV, GRB) based on FG and SORA version
+ * @param {Object} fg - Flight Geography GeoJSON
+ * @param {String} soraVersion - '2.0_amc' or '2.5_jarus'
+ * @returns {Object} { cv: GeoJSON, grb: GeoJSON }
+ */
+function computeEnvelopes(fg, soraVersion) {
+  logToConsole(`Computing envelopes for SORA ${soraVersion}`, 'info');
+  
+  // Convert Circle (Point + radius) to Polygon if needed
+  let fgPolygon = fg;
+  if (fg.properties?.type === 'Circle') {
+    const point = turf.point(fg.geometry.coordinates);
+    fgPolygon = turf.buffer(point, fg.properties.radius / 1000, { units: 'kilometers' });
+  }
+  
+  // SORA 2.5 (Annex A §A.5.1)
+  if (soraVersion === '2.5_jarus') {
+    const cv = bufferPolygon(fgPolygon, 30); // CV = FG + 30m
+    const grb = bufferPolygon(cv, 30); // GRB = CV + 30m
+    
+    return { cv, grb };
+  }
+  
+  // SORA 2.0 AMC
+  if (soraVersion === '2.0_amc') {
+    const cv = bufferPolygon(fgPolygon, 30); // CV = FG + 30m
+    const grb = bufferPolygon(fgPolygon, 60); // GRB = FG + 60m (direct from FG)
+    
+    return { cv, grb };
+  }
+  
+  throw new Error(`Unsupported SORA version: ${soraVersion}`);
+}
+
+/**
+ * Buffer a polygon by specified meters
+ * @param {Object} geojson - GeoJSON Feature (Polygon, MultiPolygon, or Point)
+ * @param {Number} meters - Buffer distance in meters
+ * @returns {Object} Buffered GeoJSON Polygon
+ */
+function bufferPolygon(geojson, meters) {
+  if (!turf || !turf.buffer) {
+    throw new Error('Turf.js not loaded! Cannot buffer polygon.');
+  }
+  
+  // Convert meters to kilometers for Turf.js
+  const kilometers = meters / 1000;
+  
+  try {
+    const buffered = turf.buffer(geojson, kilometers, { units: 'kilometers' });
+    return buffered;
+  } catch (error) {
+    console.error('[bufferPolygon] Error:', error);
+    throw new Error(`Failed to buffer polygon: ${error.message}`);
+  }
+}
+
+// Expose for testing
+window.createComplete3DMission = createComplete3DMission;
+window.deriveFlightGeography = deriveFlightGeography;
+window.computeEnvelopes = computeEnvelopes;
+window.bufferPolygon = bufferPolygon;
+
+
+/**
+ * Place mandatory markers (TOL, RP, VO, Observers, E-sites)
+ * @param {Object} center - { lat, lng } of TOL
+ * @param {Object} fg - Flight Geography GeoJSON
+ * @param {Object} cv - Contingency Volume GeoJSON
+ * @param {Object} grb - Ground Risk Buffer GeoJSON
+ * @param {Number} safeRadius - Safe radius in meters
+ * @returns {Object} { tol, lnd?, rp, vo, observers[], eSites[] }
+ */
+function placeMandatoryMarkers(center, fg, cv, grb, safeRadius) {
+  const markers = {};
+  
+  // TOL (Take-Off/Landing): green pin at center
+  markers.tol = {
+    position: center,
+    label: 'TOL',
+    color: '#10b981', // green
+    type: 'tol'
+  };
+  
+  // Landing: only if distance from TOL > 50m (otherwise omit)
+  // For now, assume Landing = TOL (same position)
+  const landingDist = 0; // km - same as TOL
+  if (landingDist > 0.05) { // 50m in km
+    markers.lnd = {
+      position: center, // Would be different in real scenario
+      label: 'Landing',
+      color: '#ef4444', // red
+      type: 'landing'
+    };
+  }
+  
+  // RP (Remote Pilot): outside CV at 0.8 × safeRadius due South
+  const rpDist = 0.8 * safeRadius / 1000; // km
+  const rpLat = center.lat - (rpDist / 111); // ~111km per degree latitude
+  markers.rp = {
+    position: { lat: rpLat, lng: center.lng },
+    label: 'RP',
+    color: '#8b5cf6', // purple
+    type: 'remote-pilot'
+  };
+  
+  // VO (Visual Observer): +30m east of RP
+  const voLngOffset = 0.03 / (111 * Math.cos(rpLat * Math.PI / 180)); // 30m in degrees
+  markers.vo = {
+    position: { lat: rpLat, lng: center.lng + voLngOffset },
+    label: 'VO',
+    color: '#8b5cf6', // purple
+    type: 'visual-observer'
+  };
+  
+  // Observers #1-3: at 0°, 120°, 240° around FG bounding circle
+  const fgBounds = getFGBoundingCircle(fg);
+  const fgRadius = fgBounds.radius / 1000; // km
+  
+  markers.observers = [
+    {
+      position: calculatePosition(center, fgRadius, 0), // 0° (North)
+      label: 'Observer 1',
+      color: '#f97316', // orange
+      type: 'observer'
+    },
+    {
+      position: calculatePosition(center, fgRadius, 120), // 120°
+      label: 'Observer 2',
+      color: '#f97316',
+      type: 'observer'
+    },
+    {
+      position: calculatePosition(center, fgRadius, 240), // 240°
+      label: 'Observer 3',
+      color: '#f97316',
+      type: 'observer'
+    }
+  ];
+  
+  // Emergency sites E1-E3: on GRB at 45°, 180°, 300°
+  const grbBounds = getFGBoundingCircle(grb);
+  const grbRadius = grbBounds.radius / 1000; // km
+  
+  markers.eSites = [
+    {
+      position: calculatePosition(center, grbRadius, 45), // 45° (NE)
+      label: 'E1',
+      color: '#6b7280', // gray
+      type: 'emergency-site'
+    },
+    {
+      position: calculatePosition(center, grbRadius, 180), // 180° (South)
+      label: 'E2',
+      color: '#6b7280',
+      type: 'emergency-site'
+    },
+    {
+      position: calculatePosition(center, grbRadius, 300), // 300° (NW)
+      label: 'E3',
+      color: '#6b7280',
+      type: 'emergency-site'
+    }
+  ];
+  
+  return markers;
+}
+
+/**
+ * Get bounding circle of a GeoJSON feature
+ * @param {Object} geojson - GeoJSON Feature
+ * @returns {Object} { center: {lat, lng}, radius: meters }
+ */
+function getFGBoundingCircle(geojson) {
+  // For Circle type (Point + radius property)
+  if (geojson.properties?.type === 'Circle') {
+    const coords = geojson.geometry.coordinates;
+    return {
+      center: { lat: coords[1], lng: coords[0] },
+      radius: geojson.properties.radius
+    };
+  }
+  
+  // For Polygon: calculate bounding box and approximate circle
+  const bbox = turf.bbox(geojson);
+  const centerLng = (bbox[0] + bbox[2]) / 2;
+  const centerLat = (bbox[1] + bbox[3]) / 2;
+  
+  // Calculate radius as half of diagonal
+  const width = (bbox[2] - bbox[0]) * 111000 * Math.cos(centerLat * Math.PI / 180); // meters
+  const height = (bbox[3] - bbox[1]) * 111000; // meters
+  const radius = Math.sqrt(width * width + height * height) / 2;
+  
+  return {
+    center: { lat: centerLat, lng: centerLng },
+    radius
+  };
+}
+
+/**
+ * Calculate position at distance and bearing from center
+ * @param {Object} center - { lat, lng }
+ * @param {Number} distanceKm - Distance in kilometers
+ * @param {Number} bearingDeg - Bearing in degrees (0 = North, 90 = East)
+ * @returns {Object} { lat, lng }
+ */
+function calculatePosition(center, distanceKm, bearingDeg) {
+  const bearingRad = bearingDeg * Math.PI / 180;
+  const latRad = center.lat * Math.PI / 180;
+  
+  const earthRadiusKm = 6371;
+  const angularDist = distanceKm / earthRadiusKm;
+  
+  const newLatRad = Math.asin(
+    Math.sin(latRad) * Math.cos(angularDist) +
+    Math.cos(latRad) * Math.sin(angularDist) * Math.cos(bearingRad)
+  );
+  
+  const newLngRad = center.lng * Math.PI / 180 + Math.atan2(
+    Math.sin(bearingRad) * Math.sin(angularDist) * Math.cos(latRad),
+    Math.cos(angularDist) - Math.sin(latRad) * Math.sin(newLatRad)
+  );
+  
+  return {
+    lat: newLatRad * 180 / Math.PI,
+    lng: newLngRad * 180 / Math.PI
+  };
+}
+
+/**
+ * Draw distance annotations with labels
+ * @param {Object} markers - Marker positions
+ * @param {Object} envelopes - { cv, grb }
+ * @returns {Array} Distance annotations
+ */
+function drawDistances(markers, envelopes) {
+  const distances = [];
+  
+  // TOL → CV edge
+  const cvBounds = getFGBoundingCircle(envelopes.cv);
+  const tolToCvDist = cvBounds.radius;
+  distances.push({
+    from: markers.tol.position,
+    to: calculatePosition(markers.tol.position, tolToCvDist / 1000, 0), // North
+    label: `TOL→CV: ${Math.round(tolToCvDist)}m`,
+    color: '#f59e0b'
+  });
+  
+  // TOL → Safe Area (assume safeRadius from GRB)
+  const grbBounds = getFGBoundingCircle(envelopes.grb);
+  const safeRadiusDist = grbBounds.radius;
+  distances.push({
+    from: markers.tol.position,
+    to: calculatePosition(markers.tol.position, safeRadiusDist / 1000, 90), // East
+    label: `Safe Radius: ${Math.round(safeRadiusDist)}m`,
+    color: '#10b981'
+  });
+  
+  // TOL → E1
+  const tolToE1Dist = getDistance(markers.tol.position, markers.eSites[0].position) * 1000; // m
+  distances.push({
+    from: markers.tol.position,
+    to: markers.eSites[0].position,
+    label: `E1: ${Math.round(tolToE1Dist)}m`,
+    color: '#6b7280'
+  });
+  
+  return distances;
+}
+
+/**
+ * Get distance between two lat/lng points (Haversine formula)
+ * @param {Object} pos1 - { lat, lng }
+ * @param {Object} pos2 - { lat, lng }
+ * @returns {Number} Distance in kilometers
+ */
+function getDistance(pos1, pos2) {
+  const R = 6371; // Earth radius in km
+  const dLat = (pos2.lat - pos1.lat) * Math.PI / 180;
+  const dLng = (pos2.lng - pos1.lng) * Math.PI / 180;
+  
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(pos1.lat * Math.PI / 180) * Math.cos(pos2.lat * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  
+  return R * c;
+}
+
+/**
+ * Render SORA layers (FG, CV, GRB) on Google Maps
+ * @param {Object} map - Google Maps instance
+ * @param {Object} fg - Flight Geography GeoJSON
+ * @param {Object} cv - Contingency Volume GeoJSON
+ * @param {Object} grb - Ground Risk Buffer GeoJSON
+ */
+function renderSoraLayers(map, fg, cv, grb) {
+  if (!map) {
+    console.warn('[renderSoraLayers] No map instance');
+    return;
+  }
+  
+  // Clear existing SORA layers
+  clearSoraLayers();
+  
+  // GRB (bottom layer - red)
+  window.grbPolygon = createPolygonFromGeoJSON(map, grb, {
+    fillColor: '#ef4444',
+    fillOpacity: 0.25,
+    strokeColor: '#ef4444',
+    strokeWeight: 2,
+    zIndex: 1,
+    dataLayer: 'GRB'
+  });
+  
+  // CV (middle layer - yellow)
+  window.cvPolygon = createPolygonFromGeoJSON(map, cv, {
+    fillColor: '#f59e0b',
+    fillOpacity: 0.25,
+    strokeColor: '#f59e0b',
+    strokeWeight: 2,
+    zIndex: 2,
+    dataLayer: 'CV'
+  });
+  
+  // FG (top layer - green)
+  window.fgPolygon = createPolygonFromGeoJSON(map, fg, {
+    fillColor: '#16a34a',
+    fillOpacity: 0.15,
+    strokeColor: '#16a34a',
+    strokeWeight: 2,
+    zIndex: 3,
+    dataLayer: 'FG'
+  });
+  
+  logToConsole('SORA layers rendered: FG (green), CV (yellow), GRB (red)', 'success');
+}
+
+/**
+ * Create Google Maps Polygon from GeoJSON
+ * @param {Object} map - Google Maps instance
+ * @param {Object} geojson - GeoJSON Feature
+ * @param {Object} options - Polygon styling options
+ * @returns {Object} Google Maps Polygon
+ */
+function createPolygonFromGeoJSON(map, geojson, options) {
+  let coords = [];
+  
+  // Handle Circle (Point + radius)
+  if (geojson.properties?.type === 'Circle') {
+    const center = geojson.geometry.coordinates;
+    const radiusKm = geojson.properties.radius / 1000;
+    const circleFeature = turf.circle(center, radiusKm, { units: 'kilometers' });
+    coords = circleFeature.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+  }
+  // Handle Polygon
+  else if (geojson.geometry.type === 'Polygon') {
+    coords = geojson.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+  }
+  // Handle Feature with Polygon geometry
+  else if (geojson.type === 'Feature' && geojson.geometry.type === 'Polygon') {
+    coords = geojson.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+  }
+  
+  const polygon = new google.maps.Polygon({
+    paths: coords,
+    fillColor: options.fillColor,
+    fillOpacity: options.fillOpacity,
+    strokeColor: options.strokeColor,
+    strokeWeight: options.strokeWeight,
+    zIndex: options.zIndex,
+    map: map
+  });
+  
+  // Add data-layer attribute for E2E tests
+  polygon.set('dataLayer', options.dataLayer);
+  
+  return polygon;
+}
+
+/**
+ * Clear existing SORA layers from map
+ */
+function clearSoraLayers() {
+  if (window.fgPolygon) {
+    window.fgPolygon.setMap(null);
+    window.fgPolygon = null;
+  }
+  if (window.cvPolygon) {
+    window.cvPolygon.setMap(null);
+    window.cvPolygon = null;
+  }
+  if (window.grbPolygon) {
+    window.grbPolygon.setMap(null);
+    window.grbPolygon = null;
+  }
+}
+
+/**
+ * Render markers on Google Maps
+ * @param {Object} map - Google Maps instance
+ * @param {Object} markers - Marker collection
+ */
+function renderMarkersOnMap(map, markers) {
+  if (!map) return;
+  
+  // Clear existing auto-mission markers
+  clearAutoMissionMarkers();
+  
+  window.autoMissionMarkers = [];
+  
+  // TOL marker
+  if (markers.tol) {
+    const marker = new google.maps.Marker({
+      position: markers.tol.position,
+      map: map,
+      label: { text: markers.tol.label, color: 'white', fontWeight: 'bold' },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 12,
+        fillColor: markers.tol.color,
+        fillOpacity: 1,
+        strokeColor: 'white',
+        strokeWeight: 3
+      }
+    });
+    window.autoMissionMarkers.push(marker);
+  }
+  
+  // RP, VO markers
+  [markers.rp, markers.vo].forEach(m => {
+    if (m) {
+      const marker = new google.maps.Marker({
+        position: m.position,
+        map: map,
+        label: { text: m.label, color: 'white', fontSize: '10px', fontWeight: 'bold' },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 10,
+          fillColor: m.color,
+          fillOpacity: 1,
+          strokeColor: 'white',
+          strokeWeight: 2
+        }
+      });
+      window.autoMissionMarkers.push(marker);
+    }
+  });
+  
+  // Observers
+  markers.observers.forEach(obs => {
+    const marker = new google.maps.Marker({
+      position: obs.position,
+      map: map,
+      label: { text: obs.label.split(' ')[1], color: 'white', fontSize: '9px' }, // Just number
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 9,
+        fillColor: obs.color,
+        fillOpacity: 1,
+        strokeColor: 'white',
+        strokeWeight: 2
+      }
+    });
+    window.autoMissionMarkers.push(marker);
+  });
+  
+  // E-sites
+  markers.eSites.forEach(e => {
+    const marker = new google.maps.Marker({
+      position: e.position,
+      map: map,
+      label: { text: e.label, color: 'white', fontSize: '9px', fontWeight: 'bold' },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 9,
+        fillColor: e.color,
+        fillOpacity: 1,
+        strokeColor: 'white',
+        strokeWeight: 2
+      }
+    });
+    window.autoMissionMarkers.push(marker);
+  });
+  
+  logToConsole(`Rendered ${window.autoMissionMarkers.length} markers`, 'success');
+}
+
+/**
+ * Clear auto-mission markers from map
+ */
+function clearAutoMissionMarkers() {
+  if (window.autoMissionMarkers) {
+    window.autoMissionMarkers.forEach(m => m.setMap(null));
+    window.autoMissionMarkers = [];
+  }
+}
+
+// Expose for testing
+window.placeMandatoryMarkers = placeMandatoryMarkers;
+window.drawDistances = drawDistances;
+window.renderSoraLayers = renderSoraLayers;
+window.renderMarkersOnMap = renderMarkersOnMap;
+
+
+/**
+ * Render 3D or generate KML export
+ * @param {Object} fg - Flight Geography GeoJSON
+ * @param {Object} cv - Contingency Volume GeoJSON
+ * @param {Object} grb - Ground Risk Buffer GeoJSON
+ * @param {Object} markers - Marker positions
+ * @param {Number} heightFg - FG height in meters AGL
+ * @param {Boolean} enable3D - Whether 3D mode is enabled
+ * @returns {String|null} KML blob URL or null
+ */
+async function render3DOrKml(fg, cv, grb, markers, heightFg, enable3D) {
+  const sw3dMode = document.getElementById('sw-3d-mode');
+  const is3DEnabled = sw3dMode?.checked || enable3D;
+  
+  if (is3DEnabled && autoMissionState.USE_CESIUM_3D) {
+    // Cesium 3D rendering (not implemented yet - feature flag off by default)
+    logToConsole('Cesium 3D preview would render here (USE_CESIUM_3D=true required)', 'info');
+    return null;
+  }
+  
+  // Generate KML for Google Earth export
+  logToConsole('Generating KML for Google Earth export...', 'info');
+  const kml = generateKML(fg, cv, grb, markers, heightFg);
+  const blob = new Blob([kml], { type: 'application/vnd.google-earth.kml+xml' });
+  const url = URL.createObjectURL(blob);
+  
+  logToConsole(`KML generated (${(blob.size / 1024).toFixed(1)} KB)`, 'success');
+  return url;
+}
+
+/**
+ * Generate KML document
+ * @param {Object} fg - Flight Geography GeoJSON
+ * @param {Object} cv - Contingency Volume GeoJSON
+ * @param {Object} grb - Ground Risk Buffer GeoJSON
+ * @param {Object} markers - Marker positions
+ * @param {Number} heightFg - FG height in meters AGL
+ * @returns {String} KML XML content
+ */
+function generateKML(fg, cv, grb, markers, heightFg) {
+  let kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2">
+<Document>
+  <name>SKYWORKS Auto-Mission (SORA Compliant)</name>
+  <description>Generated by SKYWORKS Phase 6 Auto-Mission Designer</description>
+  
+  <!-- Styles -->
+  <Style id="fgStyle">
+    <LineStyle><color>ff16a34a</color><width>2</width></LineStyle>
+    <PolyStyle><color>2616a34a</color></PolyStyle>
+  </Style>
+  <Style id="cvStyle">
+    <LineStyle><color>fff59e0b</color><width>2</width></LineStyle>
+    <PolyStyle><color>40f59e0b</color></PolyStyle>
+  </Style>
+  <Style id="grbStyle">
+    <LineStyle><color>ffef4444</color><width>2</width></LineStyle>
+    <PolyStyle><color>40ef4444</color></PolyStyle>
+  </Style>
+  
+  <!-- Flight Geography -->
+  ${generatePolygonPlacemark(fg, 'Flight Geography (FG)', 'fgStyle', heightFg)}
+  
+  <!-- Contingency Volume -->
+  ${generatePolygonPlacemark(cv, 'Contingency Volume (CV)', 'cvStyle', heightFg + 30)}
+  
+  <!-- Ground Risk Buffer -->
+  ${generatePolygonPlacemark(grb, 'Ground Risk Buffer (GRB)', 'grbStyle', heightFg + 30)}
+  
+  <!-- Markers -->
+  ${generateMarkerPlacemark(markers.tol, 'TOL (Take-Off/Landing)')}
+  ${markers.rp ? generateMarkerPlacemark(markers.rp, 'Remote Pilot (RP)') : ''}
+  ${markers.vo ? generateMarkerPlacemark(markers.vo, 'Visual Observer (VO)') : ''}
+  ${markers.observers.map((obs, i) => generateMarkerPlacemark(obs, `Observer ${i + 1}`)).join('\n  ')}
+  ${markers.eSites.map((e, i) => generateMarkerPlacemark(e, `Emergency Site ${e.label}`)).join('\n  ')}
+  
+</Document>
+</kml>`;
+  
+  return kml;
+}
+
+/**
+ * Generate KML Placemark for polygon with extrusion
+ * @param {Object} geojson - GeoJSON Feature
+ * @param {String} name - Placemark name
+ * @param {String} styleId - Style ID reference
+ * @param {Number} height - Extrusion height in meters
+ * @returns {String} KML Placemark XML
+ */
+function generatePolygonPlacemark(geojson, name, styleId, height) {
+  let coords = [];
+  
+  // Handle Circle (Point + radius)
+  if (geojson.properties?.type === 'Circle') {
+    const center = geojson.geometry.coordinates;
+    const radiusKm = geojson.properties.radius / 1000;
+    const circleFeature = turf.circle(center, radiusKm, { units: 'kilometers' });
+    coords = circleFeature.geometry.coordinates[0];
+  }
+  // Handle Polygon
+  else if (geojson.geometry.type === 'Polygon') {
+    coords = geojson.geometry.coordinates[0];
+  }
+  // Handle Feature with Polygon geometry
+  else if (geojson.type === 'Feature' && geojson.geometry.type === 'Polygon') {
+    coords = geojson.geometry.coordinates[0];
+  }
+  
+  const coordString = coords.map(c => `${c[0]},${c[1]},0`).join(' ');
+  
+  return `<Placemark>
+    <name>${name}</name>
+    <styleUrl>#${styleId}</styleUrl>
+    <Polygon>
+      <extrude>1</extrude>
+      <altitudeMode>relativeToGround</altitudeMode>
+      <outerBoundaryIs>
+        <LinearRing>
+          <coordinates>${coordString}</coordinates>
+        </LinearRing>
+      </outerBoundaryIs>
+    </Polygon>
+  </Placemark>`;
+}
+
+/**
+ * Generate KML Placemark for marker (point)
+ * @param {Object} marker - { position: {lat, lng}, label, type }
+ * @param {String} description - Marker description
+ * @returns {String} KML Placemark XML
+ */
+function generateMarkerPlacemark(marker, description) {
+  if (!marker) return '';
+  
+  return `<Placemark>
+    <name>${marker.label || description}</name>
+    <description>${description}</description>
+    <Point>
+      <coordinates>${marker.position.lng},${marker.position.lat},0</coordinates>
+    </Point>
+  </Placemark>`;
+}
+
+/**
+ * Update panels (SORA version badge, SAIL/ARC/GRC)
+ * @param {String} soraVersion - '2.0_amc' or '2.5_jarus'
+ */
+function updateAutoMissionPanels(soraVersion) {
+  // Update SORA version badge
+  const badgeContainer = document.getElementById('sora-version-badge');
+  if (badgeContainer) {
+    let badgeHtml = '';
+    
+    if (soraVersion === '2.0_amc') {
+      badgeHtml = `<div class="inline-flex items-center px-3 py-1 border-2 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border-blue-300">
+        🛡️ EASA SORA 2.0 AMC
+      </div>`;
+    } else if (soraVersion === '2.5_jarus') {
+      badgeHtml = `<div class="inline-flex items-center px-3 py-1 border-2 rounded-full text-xs font-semibold bg-green-100 text-green-800 border-green-300">
+        🛡️ JARUS SORA 2.5 Annex A
+      </div>`;
+    }
+    
+    badgeContainer.innerHTML = badgeHtml;
+    logToConsole(`SORA version badge updated: ${soraVersion}`, 'info');
+  }
+  
+  // Note: SAIL/ARC/GRC values should be loaded from /api/v1/missions/{id}/overview
+  // This function only updates the version badge
+  // If missionId exists, the values are already loaded by loadMissionFromApi()
+}
+
+// Expose for testing
+window.render3DOrKml = render3DOrKml;
+window.generateKML = generateKML;
+window.updateAutoMissionPanels = updateAutoMissionPanels;
