@@ -1,68 +1,79 @@
 # 🚀 SKYWORKS AI SUITE V5 - PROJECT STATUS REPORT
 
-**Τελευταία Ενημέρωση:** 2025-11-12 (**Phase 6: Regime-Aware Mission Builder (SORA/PDRA/STS)** 🚧)  
+**Τελευταία Ενημέρωση:** 2025-11-12 (**Phase 6: Regime-Aware Mission Builder - IMPLEMENTED** ✅)  
 **Branch:** main  
 **Current Phase:** Phase 6 Extension - Regime-Aware Maps  
-**Status:** 🚧 **IN PROGRESS** - Implementing MASTER PROMPT v2
+**Status:** ✅ **CODE COMPLETE** - Ready for Testing
 
 ---
 
 ## 🎯 ΤΡΕΧΟΥΣΑ ΚΑΤΑΣΤΑΣΗ - ΔΙΑΒΑΣΕ ΠΡΩΤΑ!
 
-### 🚧 Phase 6 Extension: Regime-Aware Mission Builder (2025-11-12)
+### ✅ Phase 6 Extension: Regime-Aware Mission Builder (2025-11-12)
 
-**ΣΕ ΕΞΕΛΙΞΗ:**
-- 🚧 **Dynamic Form για SORA 2.0/2.5/PDRA/STS**
+**ΟΛΟΚΛΗΡΩΘΗΚΕ:**
+- ✅ **Dynamic Form για SORA 2.0/2.5/PDRA/STS**
   - ✅ HTML: Προστέθηκε `#regime-select` με 9 options
   - ✅ Δυναμικά πεδία: `#sora25-fields`, `#sora20-fields`, `#pdra-fields`, `#sts-fields`
   - ✅ Show/hide logic: `buildRegimeForm(regime)`
-  - Inputs: FG height, CV/GRB methods, mitigations (M1A/M1B/M1C/M2), PDRA/STS specific
+  - ✅ Inputs: FG height, CV/GRB methods, mitigations (M1A/M1B/M1C/M2), PDRA/STS specific
   
-- 🚧 **Client-Side Calculations**
+- ✅ **Client-Side Calculations**
   - ✅ `computeEnvelopes(regime, inputs)`: FG/CV/GRB per regime
   - ✅ SORA 2.5: Annex A formula για GRB (1.5 × √(H_FG × MTOM))
   - ✅ SORA 2.0: Simpler buffers (20% CV, 30% GRB)
   - ✅ PDRA/STS: Μόνο FG, όχι CV/GRB
   
-- 🚧 **Rendering & Annotations**
+- ✅ **Rendering & Annotations**
   - ✅ `renderEnvelopes()`: FG (green), CV (orange), GRB (red) polygons
   - ✅ `placePins()`: TOL/RP/VO/Obs1-3/E1-E3 (9 pins total)
   - ✅ `renderDistances()`: TOL→CV, TOL→GRB, TOL→E1 distance lines
   - ✅ `renderLegendAndBadge()`: Δυναμικό badge (blue/green/gray)
   - ✅ Legend items hide CV/GRB για PDRA/STS
   
-- 🚧 **Reset & Export**
+- ✅ **Reset & Export**
   - ✅ `resetAll()`: Καθαρισμός όλων (polygons, pins, lines, labels)
   - ✅ Buttons: `#btn-create-mission`, `#btn-reset-mission`, `#btn-export-kml`
-  - 🔜 PDRA/STS PDF compliance tables (placeholders)
+  - ✅ PDRA/STS PDF compliance tables (placeholders με alerts)
   
-- 🚧 **E2E Tests**
-  - ✅ `regime-switch.spec.ts`: SORA 2.0 ↔ 2.5 bounds diff, badge updates
-  - ✅ `pdra-sts-forms.spec.ts`: 9 regimes × field visibility
-  - ✅ `auto-mission-create.spec.ts`: Updated selectors, label overlap check
-  - 🔜 Run tests + fix errors
+- ✅ **E2E Tests**
+  - ✅ `regime-switch.spec.ts`: SORA 2.0 ↔ 2.5 bounds diff, badge updates (3 tests)
+  - ✅ `pdra-sts-forms.spec.ts`: 9 regimes × field visibility (11 tests)
+  - ✅ `auto-mission-create.spec.ts`: Updated selectors, label overlap check (8 tests)
+  - ✅ TypeScript compilation: 0 errors
+  
+**COMMITS:**
+1. `0a85b9f` - feat(maps): regime-aware mission builder for SORA/PDRA/STS
+2. `84b79bc` - fix: TypeScript null check in regime-switch test
 
 **ΑΡΧΕΙΑ ΤΡΟΠΟΠΟΙΗΘΗΚΑΝ:**
-1. **airspace-maps.html**:
+1. **airspace-maps.html** (465 lines added):
    - Lines 553-830: Νέα form structure με regime-specific fields
    - Lines 706-750: Updated legend box με regime badge
    
-2. **airspace.js**:
-   - Lines 919-1420: Phase 6 Maps functions (getRegime, buildRegimeForm, computeEnvelopes, render*, resetAll)
+2. **airspace.js** (501 lines added):
+   - Lines 919-1420: Phase 6 Maps functions (getRegime, buildRegimeForm, computeEnvelopes, render*, resetAll, recomputeAndRender)
    - Lines 2450-2510: Event listeners για regime select, create/reset buttons
    
-3. **E2E Tests**:
-   - `regime-switch.spec.ts` (NEW): 3 tests
-   - `pdra-sts-forms.spec.ts` (NEW): 11 tests
-   - `auto-mission-create.spec.ts` (UPDATED): 8 tests με νέα selectors
+3. **E2E Tests** (3 files, 390 lines):
+   - `regime-switch.spec.ts` (NEW, 171 lines): 3 tests
+   - `pdra-sts-forms.spec.ts` (NEW, 195 lines): 11 tests
+   - `auto-mission-create.spec.ts` (UPDATED, 227 lines): 8 tests με νέα selectors
 
 **ΕΠΟΜΕΝΑ ΒΗΜΑΤΑ:**
-1. ⏳ Τρέξιμο E2E tests (`npx playwright test`)
-2. ⏳ Διόρθωση compilation/runtime errors
-3. ⏳ Manual testing: Akrotiri Limassol coordinates (34.5937, 32.9980)
-4. ⏳ Validation: SORA 2.0 vs 2.5 διαφορετικά CV/GRB
-5. ⏳ Commit με message: `feat(maps): regime-aware mission builder for SORA/PDRA/STS`
-6. ⏳ Update PROJECT_STATUS.md με αποτελέσματα
+1. ⏳ Τρέξιμο E2E tests (`npx playwright test e2e/ui/regime-switch.spec.ts`)
+2. ⏳ Manual testing: Akrotiri Limassol (34.5937, 32.9980) - Verify SORA 2.0 vs 2.5 differences
+3. ⏳ Screenshot verification: FG/CV/GRB colors, pins, labels
+4. ⏳ Validation report: Compliance με MASTER PROMPT v2 (10 sections)
+5. ⏳ Final commit + push to main
+
+**IMPLEMENTATION NOTES:**
+- 🎯 **100% Client-Side**: Όλοι οι υπολογισμοί γίνονται στο browser, όχι backend changes
+- 🎨 **Χρώματα Annex A**: FG #16a34a (green), CV #f59e0b (orange), GRB #ef4444 (red)
+- 📍 **9 Pins**: TOL (green), RP (purple), VO (blue), 3× Observers (orange), 3× E-sites (gray)
+- 📏 **3 Distance Lines**: TOL→CV (green dashed), TOL→GRB (red dashed), TOL→E1 (red solid)
+- 🏷️ **Dynamic Badge**: SORA 2.5 (green), SORA 2.0 (blue), PDRA/STS (gray)
+- 🔄 **Reset**: Καθαρίζει ΟΛΑ (polygons, markers, lines, labels, state)
 
 ---
 
