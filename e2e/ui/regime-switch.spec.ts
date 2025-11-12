@@ -110,9 +110,11 @@ test.describe('Phase 6: Regime Switch (SORA 2.0 ↔ 2.5)', () => {
     
     expect(sora25Bounds).not.toBeNull();
     
-    // Verify bounds are different
-    expect(sora20Bounds.cv.north).not.toEqual(sora25Bounds.cv.north);
-    expect(sora20Bounds.grb.north).not.toEqual(sora25Bounds.grb.north);
+    // Verify bounds are different (with null checks)
+    if (sora20Bounds && sora25Bounds) {
+      expect(sora20Bounds.cv.north).not.toEqual(sora25Bounds.cv.north);
+      expect(sora20Bounds.grb.north).not.toEqual(sora25Bounds.grb.north);
+    }
   });
 
   test('should update regime badge correctly', async ({ page }) => {
