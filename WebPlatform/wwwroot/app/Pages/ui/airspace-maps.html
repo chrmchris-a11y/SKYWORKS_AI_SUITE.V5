@@ -230,6 +230,39 @@
       padding: 8px;
       border-radius: 4px;
     }
+    
+    /* Google Places Autocomplete Dropdown (ensure visibility) */
+    .pac-container {
+      z-index: 9999 !important;
+      background-color: white;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      font-family: inherit;
+      margin-top: 4px;
+    }
+    
+    .pac-item {
+      padding: 10px 14px;
+      border-top: 1px solid #f3f4f6;
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    
+    .pac-item:hover {
+      background-color: #f0f9ff;
+    }
+    
+    .pac-item-query {
+      font-weight: 600;
+      color: #1f2937;
+    }
+    
+    .pac-matched {
+      font-weight: 700;
+      color: #2563eb;
+    }
   </style>
 </head>
 <body>
@@ -310,7 +343,6 @@
       <label><input type="checkbox" id="layer_cba"> CBA (Cross-Border)</label>
       <label><input type="checkbox" id="layer_uas" checked> UAS Geo Zones</label>
       <label><input type="checkbox" id="layer_population"> Population Heatmap (iGRC proxy)</label>
-      <label><input type="checkbox" id="layer_buildings"> OSM Buildings (3D extrusions)</label>
     </div>
 
     <div class="sidebar-section">

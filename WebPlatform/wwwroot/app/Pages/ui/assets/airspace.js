@@ -40,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('[Airspace Maps] DOMContentLoaded - starting initialization');
   try {
     init2DMap();
-    attachEventListeners();
+    // NOTE: attachEventListeners() is called AFTER Google Maps loads (in initGoogleMaps callback)
     checkMissionIdParam();
     createTestBadgeAliases();
     logToConsole('Airspace Maps initialized (2D mode)', 'success');
@@ -228,8 +228,21 @@ function showMissionNotFoundBanner() {
   }, 10000);
 }
 
+// GOOGLE MAPS ONLY - Global arrays to track map objects for cleanup
+let missionPolylines = [];
+let missionPolygons = [];
+let missionMarkers = [];
+
 function renderMissionGeometry(geoJson) {
   if (!map2D) return;
+
+  // Clear existing Google Maps objects
+  missionPolylines.forEach(p => p.setMap(null));
+  missionPolygons.forEach(p => p.setMap(null));
+  missionMarkers.forEach(m => m.setMap(null));
+  missionPolylines = [];
+  missionPolygons = [];
+  missionMarkers = [];
 
   // Always build from missionData (includes both waypoints and CGA)
   const features = [];
@@ -265,25 +278,6 @@ function renderMissionGeometry(geoJson) {
   }
 
   geoJson = { type: 'FeatureCollection', features };
-
-  // Remove existing layers
-  if (map2D.getSource('mission-route')) {
-    map2D.removeLayer('mission-route-line');
-    map2D.removeSource('mission-route');
-  }
-  if (map2D.getLayer('mission-cga-fill')) map2D.removeLayer('mission-cga-fill');
-  if (map2D.getLayer('mission-cga-outline')) map2D.removeLayer('mission-cga-outline');
-  if (map2D.getSource('mission-cga')) map2D.removeSource('mission-cga');
-  if (map2D.getLayer('mission-corridor-fill')) map2D.removeLayer('mission-corridor-fill');
-  if (map2D.getLayer('mission-corridor-outline')) map2D.removeLayer('mission-corridor-outline');
-  if (map2D.getSource('mission-corridor')) map2D.removeSource('mission-corridor');
-  if (map2D.getLayer('mission-geofence-fill')) map2D.removeLayer('mission-geofence-fill');
-  if (map2D.getLayer('mission-geofence-outline')) map2D.removeLayer('mission-geofence-outline');
-  if (map2D.getSource('mission-geofence')) map2D.removeSource('mission-geofence');
-  
-  // Remove existing start/end markers
-  const existingMarkers = document.querySelectorAll('.mission-start-marker, .mission-end-marker');
-  existingMarkers.forEach(m => m.remove());
   
   // Separate features by type
   const routeFeatures = [];
@@ -307,135 +301,151 @@ function renderMissionGeometry(geoJson) {
     }
   });
   
-  // Render route
+  // Render route with Google Maps Polyline (blue #3b82f6, 3px)
   if (routeFeatures.length > 0) {
-    map2D.addSource('mission-route', { 
-      type: 'geojson', 
-      data: { type: 'FeatureCollection', features: routeFeatures }
-    });
-    map2D.addLayer({
-      id: 'mission-route-line',
-      type: 'line',
-      source: 'mission-route',
-      paint: { 'line-color': '#0066ff', 'line-width': 3 }
+    routeFeatures.forEach(f => {
+      const path = f.geometry.coordinates.map(c => ({ lat: c[1], lng: c[0] }));
+      const polyline = new google.maps.Polyline({
+        path,
+        strokeColor: '#3b82f6', // Blue
+        strokeOpacity: 0.8,
+        strokeWeight: 3,
+        map: map2D
+      });
+      missionPolylines.push(polyline);
     });
   }
   
-  // Render CGA polygon (yellow, 30% opacity)
+  // Render CGA polygon (yellow/gold #facc15, 30% opacity)
   if (cgaFeatures.length > 0) {
-    map2D.addSource('mission-cga', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: cgaFeatures }
-    });
-    map2D.addLayer({
-      id: 'mission-cga-fill',
-      type: 'fill',
-      source: 'mission-cga',
-      paint: {
-        'fill-color': '#FFD700', // Gold/Yellow
-        'fill-opacity': 0.3
-      }
-    });
-    map2D.addLayer({
-      id: 'mission-cga-outline',
-      type: 'line',
-      source: 'mission-cga',
-      paint: {
-        'line-color': '#FFD700',
-        'line-width': 2
-      }
+    cgaFeatures.forEach(f => {
+      const paths = f.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+      const polygon = new google.maps.Polygon({
+        paths,
+        strokeColor: '#eab308',
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        fillColor: '#facc15',
+        fillOpacity: 0.3,
+        map: map2D
+      });
+      missionPolygons.push(polygon);
     });
   }
   
-  // Render Corridor polygon (blue, 25% opacity)
+  // Render Corridor polygon (blue #3b82f6, 25% opacity)
   if (corridorFeatures.length > 0) {
-    map2D.addSource('mission-corridor', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: corridorFeatures }
-    });
-    map2D.addLayer({
-      id: 'mission-corridor-fill',
-      type: 'fill',
-      source: 'mission-corridor',
-      paint: {
-        'fill-color': '#3b82f6', // Blue
-        'fill-opacity': 0.25
-      }
-    });
-    map2D.addLayer({
-      id: 'mission-corridor-outline',
-      type: 'line',
-      source: 'mission-corridor',
-      paint: {
-        'line-color': '#3b82f6',
-        'line-width': 2,
-        'line-dasharray': [2, 2]
-      }
+    corridorFeatures.forEach(f => {
+      const paths = f.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+      const polygon = new google.maps.Polygon({
+        paths,
+        strokeColor: '#3b82f6',
+        strokeOpacity: 0.6,
+        strokeWeight: 2,
+        fillColor: '#3b82f6',
+        fillOpacity: 0.25,
+        map: map2D
+      });
+      missionPolygons.push(polygon);
     });
   }
   
-  // Render Geofence/No-Fly polygon (red, 20% opacity)
+  // Render Geofence/No-Fly polygon (red #ef4444, 20% opacity)
   if (geofenceFeatures.length > 0) {
-    map2D.addSource('mission-geofence', {
-      type: 'geojson',
-      data: { type: 'FeatureCollection', features: geofenceFeatures }
-    });
-    map2D.addLayer({
-      id: 'mission-geofence-fill',
-      type: 'fill',
-      source: 'mission-geofence',
-      paint: {
-        'fill-color': '#ef4444', // Red
-        'fill-opacity': 0.2
-      }
-    });
-    map2D.addLayer({
-      id: 'mission-geofence-outline',
-      type: 'line',
-      source: 'mission-geofence',
-      paint: {
-        'line-color': '#ef4444',
-        'line-width': 3,
-        'line-dasharray': [4, 2]
-      }
+    geofenceFeatures.forEach(f => {
+      const paths = f.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+      const polygon = new google.maps.Polygon({
+        paths,
+        strokeColor: '#ef4444',
+        strokeOpacity: 0.8,
+        strokeWeight: 3,
+        fillColor: '#ef4444',
+        fillOpacity: 0.2,
+        map: map2D
+      });
+      missionPolygons.push(polygon);
     });
   }
   
-  // Add Start/End markers
+  // Add Start/End markers with Google Maps Marker (custom HTML via icon)
   routeFeatures.forEach(f => {
     if (f.geometry.coordinates.length >= 2) {
       const coords = f.geometry.coordinates;
       
-      // Start marker "S"
-      const startEl = document.createElement('div');
-      startEl.className = 'mission-start-marker';
-      startEl.innerHTML = '<span>S</span>';
-      new maplibregl.Marker({ element: startEl })
-        .setLngLat(coords[0])
-        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML('<strong>Start Point</strong>'))
-        .addTo(map2D);
+      // Start marker "S" (green)
+      const startPos = { lat: coords[0][1], lng: coords[0][0] };
+      const startMarker = new google.maps.Marker({
+        map: map2D,
+        position: startPos,
+        title: 'Start Point',
+        label: {
+          text: 'S',
+          color: 'white',
+          fontSize: '16px',
+          fontWeight: 'bold'
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 16,
+          fillColor: '#10b981', // Green
+          fillOpacity: 1,
+          strokeColor: 'white',
+          strokeWeight: 3
+        }
+      });
+      missionMarkers.push(startMarker);
       
-      // End marker "E"
-      const endEl = document.createElement('div');
-      endEl.className = 'mission-end-marker';
-      endEl.innerHTML = '<span>E</span>';
-      new maplibregl.Marker({ element: endEl })
-        .setLngLat(coords[coords.length - 1])
-        .setPopup(new maplibregl.Popup({ offset: 25 }).setHTML('<strong>End Point</strong>'))
-        .addTo(map2D);
+      // InfoWindow for Start
+      const startInfoWindow = new google.maps.InfoWindow({
+        content: '<strong>Start Point</strong>'
+      });
+      startMarker.addListener('click', () => {
+        startInfoWindow.open(map2D, startMarker);
+      });
+      
+      // End marker "E" (red)
+      const endPos = { lat: coords[coords.length - 1][1], lng: coords[coords.length - 1][0] };
+      const endMarker = new google.maps.Marker({
+        map: map2D,
+        position: endPos,
+        title: 'End Point',
+        label: {
+          text: 'E',
+          color: 'white',
+          fontSize: '16px',
+          fontWeight: 'bold'
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 16,
+          fillColor: '#ef4444', // Red
+          fillOpacity: 1,
+          strokeColor: 'white',
+          strokeWeight: 3
+        }
+      });
+      missionMarkers.push(endMarker);
+      
+      // InfoWindow for End
+      const endInfoWindow = new google.maps.InfoWindow({
+        content: '<strong>End Point</strong>'
+      });
+      endMarker.addListener('click', () => {
+        endInfoWindow.open(map2D, endMarker);
+      });
     }
   });
   
-  // Fit bounds
-  const bounds = new maplibregl.LngLatBounds();
+  // Fit bounds with Google Maps LatLngBounds
+  const bounds = new google.maps.LatLngBounds();
   geoJson.features.forEach(f => {
     if (!f || !f.geometry) return; // Skip null/undefined
     if (f.geometry.type === 'LineString') {
-      f.geometry.coordinates.forEach(c => bounds.extend(c));
+      f.geometry.coordinates.forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
     } else if (f.geometry.type === 'Polygon') {
-      f.geometry.coordinates[0].forEach(c => bounds.extend(c));
+      f.geometry.coordinates[0].forEach(c => bounds.extend({ lat: c[1], lng: c[0] }));
     } else if (f.geometry.type === 'Point') {
-      bounds.extend(f.geometry.coordinates);
+      bounds.extend({ lat: f.geometry.coordinates[1], lng: f.geometry.coordinates[0] });
     }
   });
   if (!bounds.isEmpty()) {
@@ -950,6 +960,8 @@ function init2DMap() {
     // 1. GOOGLE PLACES AUTOCOMPLETE (Search Box)
     // ═══════════════════════════════════════════════════════════
     const searchInput = document.getElementById('searchLocationInput');
+    console.log('[Google Places] Search input element:', searchInput);
+    
     if (searchInput) {
       const autocomplete = new google.maps.places.Autocomplete(searchInput, {
         fields: ['geometry', 'name', 'formatted_address', 'place_id', 'types'],
@@ -959,6 +971,65 @@ function init2DMap() {
       autocomplete.bindTo('bounds', map2D); // Bias results to map viewport
 
       let searchMarker = null;
+      
+      // CUSTOM: Detect coordinates in multiple formats
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          let input = searchInput.value.trim();
+          
+          // Try multiple coordinate patterns
+          let lat = null, lng = null;
+          
+          // Pattern 1: "35.066871° N, 33.316661° E" or "35.066871 N, 33.316661 E"
+          let match = input.match(/^(-?\d+\.?\d*)\s*°?\s*[NS]?\s*,\s*(-?\d+\.?\d*)\s*°?\s*[EW]?$/i);
+          
+          // Pattern 2: "N 35.066871, E 33.316661"
+          if (!match) {
+            match = input.match(/^[NS]?\s*(-?\d+\.?\d*)\s*,\s*[EW]?\s*(-?\d+\.?\d*)$/i);
+          }
+          
+          // Pattern 3: Simple "37.9838, 23.7275"
+          if (!match) {
+            match = input.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
+          }
+          
+          if (match) {
+            e.preventDefault(); // Prevent Places Autocomplete
+            lat = parseFloat(match[1]);
+            lng = parseFloat(match[2]);
+            
+            if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
+              // Remove previous search marker
+              if (searchMarker) searchMarker.setMap(null);
+              
+              // Add marker at coordinates
+              const position = { lat, lng };
+              searchMarker = new google.maps.Marker({
+                map: map2D,
+                position: position,
+                title: `${lat}, ${lng}`,
+                animation: google.maps.Animation.DROP,
+                icon: {
+                  path: google.maps.SymbolPath.CIRCLE,
+                  scale: 10,
+                  fillColor: '#ef4444',
+                  fillOpacity: 1,
+                  strokeColor: '#fff',
+                  strokeWeight: 3
+                }
+              });
+              
+              map2D.setCenter(position);
+              map2D.setZoom(16);
+              logToConsole(`Coordinates: ${lat}, ${lng}`, 'success');
+              searchInput.value = ''; // Clear input
+            } else {
+              logToConsole('Invalid coordinates (lat: -90 to 90, lng: -180 to 180)', 'error');
+            }
+          }
+        }
+      });
+      
       autocomplete.addListener('place_changed', () => {
         const place = autocomplete.getPlace();
         
@@ -1125,6 +1196,9 @@ function init2DMap() {
 
     // Add airspace layers (Google Maps Data Layer format)
     addEUAirspaceLayers();
+    
+    // Re-attach event listeners after map initialization (DOM elements now exist)
+    attachEventListeners();
     
     logToConsole('✅ Google Maps 2D loaded (Athens, Greece)', 'success');
     console.log('[initGoogleMaps] Map initialization complete');
@@ -1429,12 +1503,36 @@ function addWaypoint(lat, lon, alt) {
   const wp = { lat, lon, alt_m: alt };
   missionData.waypoints.push(wp);
 
-  // Add marker to 2D map
+  // Add marker to 2D map with Google Maps
   if (map2D) {
-    const marker = new maplibregl.Marker({ color: '#2563eb' })
-      .setLngLat([lon, lat])
-      .setPopup(new maplibregl.Popup().setHTML(`<strong>WP ${missionData.waypoints.length}</strong><br>Alt: ${alt}m AGL`))
-      .addTo(map2D);
+    const marker = new google.maps.Marker({
+      map: map2D,
+      position: { lat, lng: lon },
+      title: `WP ${missionData.waypoints.length}`,
+      label: {
+        text: `${missionData.waypoints.length}`,
+        color: 'white',
+        fontSize: '12px',
+        fontWeight: 'bold'
+      },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#2563eb', // Blue
+        fillOpacity: 1,
+        strokeColor: 'white',
+        strokeWeight: 2
+      }
+    });
+    missionMarkers.push(marker);
+    
+    // InfoWindow for waypoint
+    const infoWindow = new google.maps.InfoWindow({
+      content: `<strong>WP ${missionData.waypoints.length}</strong><br>Alt: ${alt}m AGL`
+    });
+    marker.addListener('click', () => {
+      infoWindow.open(map2D, marker);
+    });
   }
 
   // Add entity to 3D viewer
@@ -1980,13 +2078,39 @@ function downloadFile(filename, content) {
 // 8. EVENT LISTENERS
 // ================================================================
 function attachEventListeners() {
-  document.getElementById('toggle2D3D').addEventListener('click', toggle2D3D);
-  document.getElementById('importRouteFile').addEventListener('change', handleRouteImport);
+  console.log('[attachEventListeners] Attaching event listeners...');
+  
+  // 2D/Oblique toggle - NOTE: uses onclick in HTML, no need to attach here
+  // document.getElementById('toggle-2d-oblique')?.addEventListener('click', toggle2DOblique);
+  
+  document.getElementById('importRouteFile')?.addEventListener('change', handleRouteImport);
   document.getElementById('importGoogleEarthKML')?.addEventListener('change', handleGoogleEarthKMLImport);
-  document.getElementById('addWaypoint').addEventListener('click', handleAddWaypoint);
-  document.getElementById('drawGeofence').addEventListener('click', handleDrawGeofence);
-  document.getElementById('drawCGA').addEventListener('click', handleDrawCGA);
-  document.getElementById('clearRoute').addEventListener('click', handleClearRoute);
+  
+  const addWaypointBtn = document.getElementById('addWaypoint');
+  if (addWaypointBtn) {
+    addWaypointBtn.addEventListener('click', handleAddWaypoint);
+    console.log('[attachEventListeners] ✅ addWaypoint listener attached');
+  } else {
+    console.warn('[attachEventListeners] ❌ addWaypoint button not found!');
+  }
+  
+  const drawGeofenceBtn = document.getElementById('drawGeofence');
+  if (drawGeofenceBtn) {
+    drawGeofenceBtn.addEventListener('click', handleDrawGeofence);
+    console.log('[attachEventListeners] ✅ drawGeofence listener attached');
+  }
+  
+  const drawCGABtn = document.getElementById('drawCGA');
+  if (drawCGABtn) {
+    drawCGABtn.addEventListener('click', handleDrawCGA);
+    console.log('[attachEventListeners] ✅ drawCGA listener attached');
+  }
+  
+  const clearRouteBtn = document.getElementById('clearRoute');
+  if (clearRouteBtn) {
+    clearRouteBtn.addEventListener('click', handleClearRoute);
+    console.log('[attachEventListeners] ✅ clearRoute listener attached');
+  }
 
   // Layer toggles
   ['rmz', 'tmz', 'ctr', 'tma', 'atz', 'prohibited', 'restricted', 'danger', 'tsa', 'tra', 'cba', 'uas', 'population', 'buildings'].forEach(layer => {
@@ -2003,74 +2127,9 @@ function attachEventListeners() {
   document.getElementById('exportPNG').addEventListener('click', exportPNG);
   document.getElementById('exportMissionPack').addEventListener('click', exportMissionPack);
 
-  // Simple Search (like Google Maps)
-  const searchInput = document.getElementById('searchLocationInput');
-  const searchBtn = document.getElementById('searchLocationBtn');
-  const searchResults = document.getElementById('searchResults');
-  
-  if (searchBtn && searchInput) {
-    searchBtn.addEventListener('click', async () => {
-      const query = searchInput.value.trim();
-      if (!query) return;
-      
-      searchBtn.textContent = 'Αναζήτηση...';
-      searchBtn.disabled = true;
-      
-      try {
-        // Check if coordinates (e.g., "37.9838, 23.7275")
-        const coordMatch = query.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/);
-        if (coordMatch) {
-          const lat = parseFloat(coordMatch[1]);
-          const lon = parseFloat(coordMatch[2]);
-          map2D.flyTo({ center: [lon, lat], zoom: 16 });
-          new maplibregl.Marker({ color: '#ef4444' }).setLngLat([lon, lat]).addTo(map2D);
-          searchResults.style.display = 'none';
-          searchBtn.textContent = 'Εύρεση';
-          searchBtn.disabled = false;
-          return;
-        }
-        
-        // Nominatim search (worldwide, cities, neighborhoods, addresses)
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=10&accept-language=el,en`;
-        const response = await fetch(url, { headers: { 'User-Agent': 'Skyworks-EASA/5.0' } });
-        const data = await response.json();
-        
-        if (data.length === 0) {
-          searchResults.innerHTML = '<div style="padding:8px;color:#666;font-size:11px;">Δεν βρέθηκαν αποτελέσματα</div>';
-          searchResults.style.display = 'block';
-        } else {
-          searchResults.innerHTML = data.map((item, i) => {
-            const icon = item.type === 'city' ? '🏙️' : item.type === 'suburb' ? '🏡' : item.type === 'road' ? '🛣️' : '📍';
-            return `<div style="padding:6px 8px;cursor:pointer;border-bottom:1px solid #eee;font-size:11px;${i===0?'background:#f0f9ff;font-weight:600;':''}" data-lon="${item.lon}" data-lat="${item.lat}">${icon} ${item.display_name}</div>`;
-          }).join('');
-          searchResults.style.display = 'block';
-          
-          // Click on result
-          searchResults.querySelectorAll('div').forEach(div => {
-            div.addEventListener('click', () => {
-              const lon = parseFloat(div.dataset.lon);
-              const lat = parseFloat(div.dataset.lat);
-              map2D.flyTo({ center: [lon, lat], zoom: 16, speed: 1.2 });
-              new maplibregl.Marker({ color: '#ef4444' }).setLngLat([lon, lat]).addTo(map2D);
-              searchResults.style.display = 'none';
-            });
-          });
-        }
-      } catch (e) {
-        console.error('[Search] Error:', e);
-        searchResults.innerHTML = '<div style="padding:8px;color:#ef4444;font-size:11px;">Σφάλμα αναζήτησης</div>';
-        searchResults.style.display = 'block';
-      }
-      
-      searchBtn.textContent = 'Εύρεση';
-      searchBtn.disabled = false;
-    });
-    
-    // Search on Enter key
-    searchInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') searchBtn.click();
-    });
-  }
+  // NOTE: Search functionality is now handled by Google Places Autocomplete
+  // in initGoogleMaps() callback (lines 930-1130). No need for separate search button.
+  // The #searchLocationInput has autocomplete attached automatically.
 
   // SORA Version Toggle
   const versionSelect = document.getElementById('soraVersion');

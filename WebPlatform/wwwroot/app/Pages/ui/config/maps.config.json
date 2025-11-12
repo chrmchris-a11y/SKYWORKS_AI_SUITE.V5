@@ -1,6 +1,6 @@
 {
-  "googleMapsApiKey": "*****PLACEHOLDER*****",
+  "googleMapsApiKey": "AIzaSyBXYf1yN-8hM0yaIFsLje9N7iJ1phHAnEE",
   "libraries": "places,geocoding,marker",
   "version": "weekly",
-  "notes": "PRODUCTION: Replace *****PLACEHOLDER***** with real Google Maps API key from Google Cloud Console"
+  "notes": "Google Maps API key configured on 2025-11-12. Restrictions needed: localhost:5210 + Maps/Places/Geocoding APIs only"
 }
