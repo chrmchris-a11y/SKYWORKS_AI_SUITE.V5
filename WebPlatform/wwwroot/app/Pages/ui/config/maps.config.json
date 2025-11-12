@@ -1,6 +1,6 @@
 {
   "googleMapsApiKey": "AIzaSyBXYf1yN-8hM0yaIFsLje9N7iJ1phHAnEE",
-  "libraries": "places,geocoding,marker",
+  "libraries": "places,geocoding,marker,drawing",
   "version": "weekly",
   "notes": "Google Maps API key configured on 2025-11-12. Restrictions needed: localhost:5210 + Maps/Places/Geocoding APIs only"
 }

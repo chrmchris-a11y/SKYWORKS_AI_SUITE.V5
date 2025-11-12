@@ -96,7 +96,30 @@ async function checkMissionIdParam() {
   if (missionId) {
     logToConsole(`Loading mission: ${missionId}`, 'info');
     await loadMissionFromApi(missionId);
+  } else {
+    // No mission loaded - show placeholders in SAIL/ARC/GRC panel
+    showEmptySoraBadges();
+    logToConsole('No mission loaded - SAIL panel shows placeholders', 'info');
   }
+}
+
+function showEmptySoraBadges() {
+  const badges = [
+    { id: 'kpi_igrc', value: '–', tooltip: 'No mission loaded' },
+    { id: 'kpi_fgrc', value: '–', tooltip: 'No mission loaded' },
+    { id: 'kpi_iarc', value: '–', tooltip: 'No mission loaded' },
+    { id: 'kpi_rarc', value: '–', tooltip: 'No mission loaded' },
+    { id: 'sailBadge', value: 'SAIL: –', tooltip: 'No mission loaded' }
+  ];
+  
+  badges.forEach(badge => {
+    const element = document.getElementById(badge.id);
+    if (element) {
+      element.textContent = badge.value;
+      element.title = badge.tooltip;
+      element.style.cursor = 'help';
+    }
+  });
 }
 
 async function loadMissionFromApi(missionId) {
@@ -104,8 +127,9 @@ async function loadMissionFromApi(missionId) {
     const response = await fetch(`/api/v1/missions/${missionId}/overview`);
     if (!response.ok) {
       if (response.status === 404) {
-        logToConsole(`❌ Mission not found: ${missionId}`, 'error');
+        logToConsole(`Mission not found: ${missionId}`, 'warning');
         showMissionNotFoundBanner();
+        showEmptySoraBadges(); // Show placeholders instead of errors
         return;
       }
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -190,8 +214,9 @@ async function loadMissionFromApi(missionId) {
     
     logToConsole(`✅ Mission loaded: ${mission.name} (${mission.templateCode})`, 'success');
   } catch (error) {
-    logToConsole(`❌ Failed to load mission: ${error.message}`, 'error');
+    logToConsole(`Failed to load mission: ${error.message}`, 'warning');
     showMissionNotFoundBanner();
+    showEmptySoraBadges(); // Show placeholders instead of errors
   }
 }
 
@@ -456,36 +481,47 @@ function renderMissionGeometry(geoJson) {
 function updateSoraBadges(sora) {
   if (!sora) return;
   
+  // Normalize SAIL (I-VI) - handle case variations
+  const sailValue = sora.sail || sora.SAIL || sora.Sail || 'N/A';
+  
+  // Normalize GRC values (1-7) - support multi-case keys
+  const initialGrc = sora.initialGrc || sora.InitialGrc || sora.initialGRC || sora.iGRC || 'N/A';
+  const finalGrc = sora.finalGrc || sora.FinalGrc || sora.finalGRC || sora.fGRC || 'N/A';
+  
+  // Normalize ARC values (a-d) - support multi-case keys
+  const initialArc = sora.initialArc || sora.InitialArc || sora.initialARC || sora.iARC || 'N/A';
+  const residualArc = sora.residualArc || sora.ResidualArc || sora.residualARC || sora.rARC || 'N/A';
+  
   const badges = [
     {
       id: 'kpi_igrc',
       altId: 'badge-igrc',
-      value: sora.initialGrc || 'N/A',
-      tooltip: 'Initial GRC (Ground Risk Class) - Inherent ground risk before mitigations. Range: 1 (low) to 10 (high).'
+      value: initialGrc,
+      tooltip: `Initial GRC (Ground Risk Class): ${initialGrc}. Inherent ground risk before mitigations. Range: 1 (low) to 10 (high).`
     },
     {
       id: 'kpi_fgrc',
       altId: 'badge-fgrc',
-      value: sora.finalGrc || 'N/A',
-      tooltip: 'Final GRC - Ground risk after applying M1 mitigations (sheltering, operational restrictions). Lower is safer.'
+      value: finalGrc,
+      tooltip: `Final GRC: ${finalGrc}. Ground risk after applying M1 mitigations (sheltering, operational restrictions). Lower is safer.`
     },
     {
       id: 'kpi_iarc',
       altId: 'badge-iarc',
-      value: sora.initialArc || 'N/A',
-      tooltip: 'Initial ARC (Air Risk Class) - Inherent air collision risk. a-d: Low controlled airspace, c-d: Higher risk.'
+      value: initialArc,
+      tooltip: `Initial ARC (Air Risk Class): ${initialArc}. Inherent air collision risk. a-d: Low controlled airspace, c-d: Higher risk.`
     },
     {
       id: 'kpi_rarc',
       altId: 'badge-rarc',
-      value: sora.residualArc || 'N/A',
-      tooltip: 'Residual ARC - Air risk after applying M2/M3 tactical mitigations (strategic). Target: as low as possible.'
+      value: residualArc,
+      tooltip: `Residual ARC: ${residualArc}. Air risk after applying M2/M3 tactical mitigations (strategic). Target: as low as possible.`
     },
     {
       id: 'sailBadge',
       altId: 'badge-sail',
-      value: `SAIL: ${sora.sail || 'N/A'}`,
-      tooltip: `SAIL ${sora.sail || 'N/A'} - Specific Assurance and Integrity Level. Higher SAIL = more OSO requirements. I-II: Low risk, III-IV: Medium, V-VI: High.`
+      value: `SAIL: ${sailValue}`,
+      tooltip: `SAIL ${sailValue} - Specific Assurance and Integrity Level. Higher SAIL = more OSO requirements. I-II: Low risk, III-IV: Medium, V-VI: High.`
     }
   ];
   
@@ -933,6 +969,14 @@ function init2DMap() {
   window.initGoogleMaps = function() {
     console.log('[initGoogleMaps] Google Maps API loaded, initializing map...');
     
+    // DEBUG: Verify Places library loaded
+    if (typeof google.maps.places === 'undefined') {
+      console.error('[initGoogleMaps] ❌ Google Places library NOT loaded! Check libraries parameter.');
+      alert('Google Places library failed to load. Check console for details.');
+      return;
+    }
+    console.log('[initGoogleMaps] ✅ Google Places library loaded:', google.maps.places);
+    
     // Create Google Map centered on Athens, Greece
     map2D = new google.maps.Map(document.getElementById('map2D'), {
       center: { lat: 37.9838, lng: 23.7275 }, // Athens
@@ -963,10 +1007,14 @@ function init2DMap() {
     console.log('[Google Places] Search input element:', searchInput);
     
     if (searchInput) {
+      console.log('[Google Places] Initializing Autocomplete...');
+      
       const autocomplete = new google.maps.places.Autocomplete(searchInput, {
         fields: ['geometry', 'name', 'formatted_address', 'place_id', 'types'],
         types: [] // All types: cities, addresses, neighborhoods, POIs
       });
+      
+      console.log('[Google Places] Autocomplete instance created:', autocomplete);
 
       autocomplete.bindTo('bounds', map2D); // Bias results to map viewport
 
@@ -1178,21 +1226,54 @@ function init2DMap() {
     }
 
     // ═══════════════════════════════════════════════════════════
-    // 4. 2D/OBLIQUE TOGGLE (tilt 0° vs 45°)
+    // 4. 2D/OBLIQUE TOGGLE (tilt 0° vs 45°) with graceful fallback
     // ═══════════════════════════════════════════════════════════
-    window.toggle2DOblique = function() {
-      const currentTilt = map2D.getTilt();
-      const newTilt = currentTilt === 0 ? 45 : 0;
-      map2D.setTilt(newTilt);
+    const obliqueBtn = document.getElementById('btn-oblique-toggle');
+    
+    if (obliqueBtn) {
+      obliqueBtn.addEventListener('click', function() {
+        const currentTilt = map2D.getTilt();
+        const newTilt = currentTilt === 0 ? 45 : 0;
+        
+        // Try to set tilt
+        map2D.setMapTypeId('satellite'); // Ensure satellite mode for oblique
+        map2D.setTilt(newTilt);
+        map2D.setHeading(0); // Reset heading
+        
+        // Check if tilt was actually applied (some areas don't support oblique)
+        setTimeout(() => {
+          const actualTilt = map2D.getTilt();
+          
+          if (newTilt === 45 && actualTilt === 0) {
+            // Oblique not available at this location/zoom
+            obliqueBtn.disabled = true;
+            obliqueBtn.title = 'Oblique view not available here';
+            obliqueBtn.textContent = '2D';
+            obliqueBtn.setAttribute('aria-pressed', 'false');
+            logToConsole('Oblique view not available at this location', 'warning');
+          } else {
+            // Tilt successful
+            obliqueBtn.disabled = false;
+            obliqueBtn.textContent = actualTilt === 0 ? '2D' : '45°';
+            obliqueBtn.title = actualTilt === 0 ? 'Switch to 45° oblique view' : 'Switch to 2D view';
+            obliqueBtn.setAttribute('aria-pressed', actualTilt === 45 ? 'true' : 'false');
+            logToConsole(`Map tilt: ${actualTilt}°`, 'success');
+          }
+        }, 100);
+      });
       
-      const btn = document.getElementById('toggle-2d-oblique');
-      if (btn) {
-        btn.textContent = newTilt === 0 ? '2D' : '45°';
-        btn.title = newTilt === 0 ? 'Switch to oblique view' : 'Switch to 2D view';
-      }
+      // Re-check oblique availability on zoom/pan
+      map2D.addListener('idle', () => {
+        const currentTilt = map2D.getTilt();
+        if (currentTilt === 0 && obliqueBtn.disabled) {
+          // Re-enable button when map moves (might have oblique now)
+          obliqueBtn.disabled = false;
+          obliqueBtn.title = 'Switch to 45° oblique view';
+        }
+      });
       
-      logToConsole(`Map tilt: ${newTilt}°`, 'success');
-    };
+      console.log('[Oblique Toggle] Control attached');
+    }
 
     // Add airspace layers (Google Maps Data Layer format)
     addEUAirspaceLayers();
@@ -1555,82 +1636,312 @@ function addWaypoint(lat, lon, alt) {
   }
 }
 
+// ================================================================
+// 5. ADD WAYPOINT (click mode with numbered markers + polyline)
+// ================================================================
+let waypointClickListener = null; // Store click listener to remove later
+let waypointMode = false;
+
 function handleAddWaypoint() {
-  // Demo: add waypoint at map center
-  const center = map2D && map2D.getCenter ? map2D.getCenter() : null;
-  if (!center || typeof center.lng === 'undefined' || typeof center.lat === 'undefined') {
-    // Fallback to Berlin if map not ready
-    addWaypoint(52.5200, 13.4050, 100);
-    updateGeometryStats();
-    logToConsole(`Added waypoint at Berlin (map not ready)`, 'success');
-    return;
+  const btn = document.getElementById('addWaypoint');
+  
+  if (!waypointMode) {
+    // ENTER waypoint mode
+    waypointMode = true;
+    if (btn) {
+      btn.style.background = '#10b981';
+      btn.style.color = 'white';
+      btn.textContent = '✓ Click Map to Add';
+    }
+    
+    // Change cursor
+    map2D.setOptions({ draggableCursor: 'crosshair' });
+    
+    // Add click listener
+    waypointClickListener = map2D.addListener('click', (event) => {
+      const lat = event.latLng.lat();
+      const lng = event.latLng.lng();
+      const alt = 100; // Default 100m AGL
+      
+      // Add to missionData
+      if (!missionData.waypoints) missionData.waypoints = [];
+      const seq = missionData.waypoints.length + 1;
+      missionData.waypoints.push({ lat, lon: lng, alt_m: alt, seq });
+      
+      // Create numbered marker
+      const marker = new google.maps.Marker({
+        map: map2D,
+        position: { lat, lng },
+        label: {
+          text: `${seq}`,
+          color: 'white',
+          fontSize: '14px',
+          fontWeight: 'bold'
+        },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: '#3b82f6',
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 3
+        },
+        title: `Waypoint ${seq}`,
+        draggable: false
+      });
+      
+      missionMarkers.push(marker);
+      
+      // InfoWindow
+      const infoWindow = new google.maps.InfoWindow({
+        content: `<strong>Waypoint ${seq}</strong><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}<br>Alt: ${alt}m AGL`
+      });
+      marker.addListener('click', () => {
+        infoWindow.open(map2D, marker);
+      });
+      
+      // Re-draw route polyline
+      updateRoutePolyline();
+      
+      logToConsole(`Waypoint ${seq} added: [${lat.toFixed(4)}, ${lng.toFixed(4)}]`, 'success');
+      updateGeometryStats();
+    });
+    
+    logToConsole('Waypoint mode: Click map to add waypoints', 'info');
+  } else {
+    // EXIT waypoint mode
+    waypointMode = false;
+    if (btn) {
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.textContent = '➕ Add Waypoint';
+    }
+    
+    // Reset cursor
+    map2D.setOptions({ draggableCursor: null });
+    
+    // Remove click listener
+    if (waypointClickListener) {
+      google.maps.event.removeListener(waypointClickListener);
+      waypointClickListener = null;
+    }
+    
+    logToConsole('Waypoint mode: OFF', 'info');
+  }
+}
+
+// Update route polyline connecting all waypoints
+function updateRoutePolyline() {
+  // Remove old polyline
+  if (window.routePolyline) {
+    window.routePolyline.setMap(null);
   }
   
-  const alt = 100; // 100m AGL default
-  addWaypoint(center.lat, center.lng, alt);
-  updateGeometryStats();
-  logToConsole(`Added waypoint at [${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}]`, 'success');
+  if (!missionData.waypoints || missionData.waypoints.length < 2) {
+    return; // Need at least 2 points for a line
+  }
+  
+  // Create path from waypoints
+  const path = missionData.waypoints
+    .sort((a, b) => a.seq - b.seq) // Sort by sequence
+    .map(wp => ({ lat: wp.lat, lng: wp.lon }));
+  
+  // Draw polyline
+  window.routePolyline = new google.maps.Polyline({
+    map: map2D,
+    path: path,
+    strokeColor: '#3b82f6',
+    strokeWeight: 3,
+    strokeOpacity: 0.8,
+    geodesic: true
+  });
 }
+
+// ================================================================
+// 6. DRAW GEOFENCE (red polygon) with DrawingManager
+// ================================================================
+let geofenceDrawingManager = null;
+let geofencePolygon = null;
 
 function handleDrawGeofence() {
-  // Demo: cylinder geofence around first waypoint
-  if (missionData.waypoints.length === 0) {
-    logToConsole('Add waypoints first to draw geofence', 'warning');
-    return;
+  const btn = document.getElementById('drawGeofence');
+  
+  if (!geofenceDrawingManager) {
+    // Initialize DrawingManager for geofence
+    geofenceDrawingManager = new google.maps.drawing.DrawingManager({
+      drawingMode: null,
+      drawingControl: false,
+      polygonOptions: {
+        strokeColor: '#ef4444',
+        strokeWeight: 3,
+        strokeOpacity: 1,
+        fillColor: '#ef4444',
+        fillOpacity: 0.2,
+        editable: true,
+        draggable: false
+      }
+    });
+    
+    geofenceDrawingManager.setMap(map2D);
+    
+    // Listen for polygon complete
+    google.maps.event.addListener(geofenceDrawingManager, 'polygoncomplete', (polygon) => {
+      // Remove old geofence if exists
+      if (geofencePolygon) {
+        geofencePolygon.setMap(null);
+      }
+      
+      geofencePolygon = polygon;
+      
+      // Save to missionData
+      const path = polygon.getPath();
+      const vertices = [];
+      for (let i = 0; i < path.getLength(); i++) {
+        const point = path.getAt(i);
+        vertices.push({ lat: point.lat(), lng: point.lng() });
+      }
+      
+      missionData.geofence = {
+        type: 'polygon',
+        vertices: vertices
+      };
+      
+      // Exit drawing mode
+      geofenceDrawingManager.setDrawingMode(null);
+      if (btn) {
+        btn.style.background = '';
+        btn.style.color = '';
+      }
+      
+      logToConsole(`Geofence polygon drawn: ${vertices.length} vertices`, 'success');
+      updateGeometryStats();
+    });
   }
-
-  const center = missionData.waypoints[0];
-  missionData.geofence = {
-    type: 'cylinder',
-    center: [center.lon, center.lat],
-    radius_m: 500,
-    height_m: 150
-  };
-
-  renderMissionGeometry();
-  updateGeometryStats();
-  logToConsole('Geofence drawn: 500m radius, 150m height', 'success');
+  
+  // Toggle drawing mode
+  const currentMode = geofenceDrawingManager.getDrawingMode();
+  if (currentMode === null) {
+    // Enter drawing mode
+    geofenceDrawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+    if (btn) {
+      btn.style.background = '#ef4444';
+      btn.style.color = 'white';
+    }
+    logToConsole('Draw geofence: Click to add polygon vertices', 'info');
+  } else {
+    // Exit drawing mode
+    geofenceDrawingManager.setDrawingMode(null);
+    if (btn) {
+      btn.style.background = '';
+      btn.style.color = '';
+    }
+  }
 }
 
+// ================================================================
+// 7. DRAW CGA (amber polygon) with DrawingManager
+// ================================================================
+let cgaDrawingManager = null;
+let cgaPolygon = null;
+
 function handleDrawCGA() {
-  // Demo: rectangle CGA around first 2 waypoints
-  if (missionData.waypoints.length < 2) {
-    logToConsole('Add at least 2 waypoints to draw CGA', 'warning');
-    return;
+  const btn = document.getElementById('drawCGA');
+  
+  if (!cgaDrawingManager) {
+    // Initialize DrawingManager for CGA
+    cgaDrawingManager = new google.maps.drawing.DrawingManager({
+      drawingMode: null,
+      drawingControl: false,
+      polygonOptions: {
+        strokeColor: '#f59e0b',
+        strokeWeight: 2,
+        strokeOpacity: 1,
+        fillColor: '#f59e0b',
+        fillOpacity: 0.25,
+        editable: true,
+        draggable: false
+      }
+    });
+    
+    cgaDrawingManager.setMap(map2D);
+    
+    // Listen for polygon complete
+    google.maps.event.addListener(cgaDrawingManager, 'polygoncomplete', (polygon) => {
+      // Remove old CGA if exists
+      if (cgaPolygon) {
+        cgaPolygon.setMap(null);
+      }
+      
+      cgaPolygon = polygon;
+      
+      // Save to missionData
+      const path = polygon.getPath();
+      const vertices = [];
+      for (let i = 0; i < path.getLength(); i++) {
+        const point = path.getAt(i);
+        vertices.push({ lat: point.lat(), lng: point.lng() });
+      }
+      
+      missionData.cga = {
+        type: 'polygon',
+        vertices: vertices
+      };
+      
+      // Exit drawing mode
+      cgaDrawingManager.setDrawingMode(null);
+      if (btn) {
+        btn.style.background = '';
+        btn.style.color = '';
+      }
+      
+      logToConsole(`CGA polygon drawn: ${vertices.length} vertices`, 'success');
+      updateGeometryStats();
+    });
   }
-
-  const w1 = missionData.waypoints[0];
-  const w2 = missionData.waypoints[1];
-  const buffer = 0.01; // ~1km buffer
-
-  missionData.cga = {
-    type: 'Feature',
-    properties: { name: 'Controlled Ground Area' },
-    geometry: {
-      type: 'Polygon',
-      coordinates: [[
-        [w1.lon - buffer, w1.lat - buffer],
-        [w2.lon + buffer, w1.lat - buffer],
-        [w2.lon + buffer, w2.lat + buffer],
-        [w1.lon - buffer, w2.lat + buffer],
-        [w1.lon - buffer, w1.lat - buffer]
-      ]]
+  
+  // Toggle drawing mode
+  const currentMode = cgaDrawingManager.getDrawingMode();
+  if (currentMode === null) {
+    // Enter drawing mode
+    cgaDrawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+    if (btn) {
+      btn.style.background = '#f59e0b';
+      btn.style.color = 'white';
     }
-  };
-
-  renderMissionGeometry();
-  updateGeometryStats();
-  logToConsole('CGA polygon drawn', 'success');
+    logToConsole('Draw CGA: Click to add polygon vertices', 'info');
+  } else {
+    // Exit drawing mode
+    cgaDrawingManager.setDrawingMode(null);
+    if (btn) {
+      btn.style.background = '';
+      btn.style.color = '';
+    }
+  }
 }
 
 function handleClearRoute() {
   missionData = { waypoints: [], geofence: null, cga: null, route: null };
   
-  // Clear 2D map
-  if (map2D) {
-    if (map2D.getSource('mission-waypoints')) map2D.removeLayer('mission-waypoints');
-    if (map2D.getSource('mission-route')) map2D.removeLayer('mission-route');
-    if (map2D.getSource('mission-cga')) map2D.removeLayer('mission-cga');
+  // Clear all markers
+  missionMarkers.forEach(marker => marker.setMap(null));
+  missionMarkers = [];
+  
+  // Clear route polyline
+  if (window.routePolyline) {
+    window.routePolyline.setMap(null);
+    window.routePolyline = null;
+  }
+  
+  // Clear geofence polygon
+  if (geofencePolygon) {
+    geofencePolygon.setMap(null);
+    geofencePolygon = null;
+  }
+  
+  // Clear CGA polygon
+  if (cgaPolygon) {
+    cgaPolygon.setMap(null);
+    cgaPolygon = null;
   }
 
   // Clear 3D viewer
