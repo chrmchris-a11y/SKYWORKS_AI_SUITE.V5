@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSO Coverage Panel - EASA/JARUS SORA 2.5</title>
+    <style>
+        body { 
+            margin: 0; 
+            padding: 20px; 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #f3f4f6;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #1f2937;
+            margin-bottom: 24px;
+            font-size: 24px;
+        }
+        .panel-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .scenario-btn {
+            padding: 10px 16px;
+            margin: 0 8px 8px 0;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .scenario-btn:hover {
+            background: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 OSO Coverage Panel Test</h1>
+        
+        <div class="panel-container">
+            <div class="panel-title">Test Scenarios</div>
+            <button class="scenario-btn" onclick="loadScenario('excellent')">🟢 Excellent (95%)</button>
+            <button class="scenario-btn" onclick="loadScenario('good')">🟢 Good (82%)</button>
+            <button class="scenario-btn" onclick="loadScenario('moderate')">🟡 Moderate (65%)</button>
+            <button class="scenario-btn" onclick="loadScenario('low')">🔴 Low (35%)</button>
+            <button class="scenario-btn" onclick="loadScenario('critical')">🔴 Critical (15%)</button>
+        </div>
+        
+        <div class="panel-container">
+            <div class="panel-title">OSO Coverage Status</div>
+            <div id="oso-panel"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Import updateOsoPanel function (inline copy)
+        function updateOsoPanel(oso) {
+          if (!oso) return;
+          const panel = document.getElementById('oso-panel');
+          if (!panel) return;
+          
+          const required = oso.required || oso.requiredCount || 0;
+          const covered = oso.covered || oso.coveredCount || 0;
+          const missing = oso.missing || oso.missingCount || (required - covered);
+          
+          // Calculate coverage percentage
+          const coveragePercent = required > 0 ? ((covered / required) * 100).toFixed(1) : '0.0';
+          
+          // Traffic light color coding
+          let coverageColorHex = 'ef4444';
+          let coverageEmoji = '🔴';
+          let coverageLabel = 'LOW COVERAGE';
+          
+          if (parseFloat(coveragePercent) >= 80) {
+            coverageColorHex = '10b981';
+            coverageEmoji = '🟢';
+            coverageLabel = 'GOOD COVERAGE';
+          } else if (parseFloat(coveragePercent) >= 50) {
+            coverageColorHex = 'f59e0b';
+            coverageEmoji = '🟡';
+            coverageLabel = 'MODERATE COVERAGE';
+          }
+          
+          let osoHtml = `
+            <div style="margin:12px 0;padding:12px;background:#f9fafb;border-radius:8px;border:1px solid #e5e7eb;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+                <div style="padding:8px;background:white;border-radius:4px;text-align:center;">
+                  <div style="font-size:20px;font-weight:bold;color:#1f2937;">${required}</div>
+                  <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Required</div>
+                </div>
+                <div style="padding:8px;background:white;border-radius:4px;text-align:center;">
+                  <div style="font-size:20px;font-weight:bold;color:#${coverageColorHex};">${covered}</div>
+                  <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;">Covered</div>
+                </div>
+              </div>
+              
+              <div style="padding:12px;background:#${coverageColorHex};color:white;border-radius:6px;text-align:center;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+                <div style="font-size:11px;opacity:0.9;margin-bottom:4px;">${coverageEmoji} ${coverageLabel}</div>
+                <div style="font-size:24px;font-weight:bold;">${coveragePercent}%</div>
+                <div style="font-size:10px;opacity:0.8;margin-top:4px;">${covered} of ${required} OSOs</div>
+              </div>
+            </div>
+          `;
+          
+          // Display missing OSOs
+          if (oso.missingOsos && oso.missingOsos.length > 0) {
+            osoHtml += `
+              <div style="margin-top:16px;padding:12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;">
+                <div style="display:flex;align-items:center;margin-bottom:8px;">
+                  <span style="font-size:16px;margin-right:6px;">⚠️</span>
+                  <h5 style="margin:0;font-size:12px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px;">Missing OSOs (${oso.missingOsos.length})</h5>
+                </div>
+                <div style="background:white;border-radius:4px;padding:8px;">
+            `;
+            
+            const maxDisplay = Math.min(5, oso.missingOsos.length);
+            for (let i = 0; i < maxDisplay; i++) {
+              const osoItem = oso.missingOsos[i];
+              const osoCode = osoItem.code || osoItem.Code;
+              const osoLabel = osoItem.label || osoItem.Label;
+              
+              osoHtml += `
+                <div style="padding:6px 0;border-bottom:1px solid #f3f4f6;${i === maxDisplay - 1 && oso.missingOsos.length <= maxDisplay ? 'border-bottom:none;' : ''}">
+                  <div style="font-size:11px;font-weight:700;color:#dc2626;margin-bottom:2px;">${osoCode}</div>
+                  <div style="font-size:10px;color:#6b7280;line-height:1.4;">${osoLabel}</div>
+                </div>
+              `;
+            }
+            
+            if (oso.missingOsos.length > maxDisplay) {
+              osoHtml += `
+                <div style="padding:8px 0;text-align:center;">
+                  <span style="font-size:10px;color:#9ca3af;font-style:italic;">+ ${oso.missingOsos.length - maxDisplay} more OSO${oso.missingOsos.length - maxDisplay > 1 ? 's' : ''} missing</span>
+                </div>
+              `;
+            }
+            
+            osoHtml += `</div></div>`;
+          } else if (missing === 0 && required > 0) {
+            osoHtml += `
+              <div style="margin-top:12px;padding:12px;background:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;">
+                <p style="margin:0;font-size:12px;color:#047857;font-weight:600;">✅ All required OSOs are covered!</p>
+              </div>
+            `;
+          }
+          
+          panel.innerHTML = osoHtml;
+        }
+        
+        // Test scenarios
+        const scenarios = {
+          excellent: {
+            required: 21,
+            covered: 20,
+            missingOsos: [
+              { code: 'OSO#24', label: 'UAS operations manual' }
+            ]
+          },
+          good: {
+            required: 23,
+            covered: 19,
+            missingOsos: [
+              { code: 'OSO#11', label: 'Procedures to keep distance from uninvolved people' },
+              { code: 'OSO#19', label: 'Safe recovery from technical issues' },
+              { code: 'OSO#21', label: 'Abnormal and emergency procedures' },
+              { code: 'OSO#24', label: 'UAS operations manual' }
+            ]
+          },
+          moderate: {
+            required: 24,
+            covered: 16,
+            missingOsos: [
+              { code: 'OSO#03', label: 'UAS operator competency' },
+              { code: 'OSO#11', label: 'Procedures to keep distance from uninvolved people' },
+              { code: 'OSO#13', label: 'External services supporting UAS operations' },
+              { code: 'OSO#18', label: 'Automatic protection of flight geography' },
+              { code: 'OSO#19', label: 'Safe recovery from technical issues' },
+              { code: 'OSO#21', label: 'Abnormal and emergency procedures' },
+              { code: 'OSO#22', label: 'Remote crew trained to handle emergencies' },
+              { code: 'OSO#24', label: 'UAS operations manual' }
+            ]
+          },
+          low: {
+            required: 24,
+            covered: 8,
+            missingOsos: [
+              { code: 'OSO#01', label: 'Operational procedures designed to manage ground risk' },
+              { code: 'OSO#03', label: 'UAS operator competency' },
+              { code: 'OSO#07', label: 'Inspect UA to ensure consistency with approved design' },
+              { code: 'OSO#09', label: 'Detect and avoid capability' },
+              { code: 'OSO#11', label: 'Procedures to keep distance from uninvolved people' },
+              { code: 'OSO#13', label: 'External services supporting UAS operations' },
+              { code: 'OSO#14', label: 'External services supporting detect and avoid' },
+              { code: 'OSO#15', label: 'Density and distribution of uninvolved people' },
+              { code: 'OSO#16', label: 'UAS developed to authority recognized design standards' },
+              { code: 'OSO#18', label: 'Automatic protection of flight geography' },
+              { code: 'OSO#19', label: 'Safe recovery from technical issues' },
+              { code: 'OSO#20', label: 'Physical separation from uninvolved people' },
+              { code: 'OSO#21', label: 'Abnormal and emergency procedures' },
+              { code: 'OSO#22', label: 'Remote crew trained to handle emergencies' },
+              { code: 'OSO#23', label: 'C2 link performance' },
+              { code: 'OSO#24', label: 'UAS operations manual' }
+            ]
+          },
+          critical: {
+            required: 24,
+            covered: 4,
+            missingOsos: [
+              { code: 'OSO#01', label: 'Operational procedures designed to manage ground risk' },
+              { code: 'OSO#02', label: 'UAS design reviewed for safe operation' },
+              { code: 'OSO#03', label: 'UAS operator competency' },
+              { code: 'OSO#05', label: 'Safe design: UA fail-safe' },
+              { code: 'OSO#07', label: 'Inspect UA to ensure consistency with approved design' },
+              { code: 'OSO#08', label: 'Operational procedures designed to manage air risk' },
+              { code: 'OSO#09', label: 'Detect and avoid capability' },
+              { code: 'OSO#10', label: 'Strategic mitigation by airspace design' },
+              { code: 'OSO#11', label: 'Procedures to keep distance from uninvolved people' },
+              { code: 'OSO#12', label: 'Detect and avoid evaluation' },
+              { code: 'OSO#13', label: 'External services supporting UAS operations' },
+              { code: 'OSO#14', label: 'External services supporting detect and avoid' },
+              { code: 'OSO#15', label: 'Density and distribution of uninvolved people' },
+              { code: 'OSO#16', label: 'UAS developed to authority recognized design standards' },
+              { code: 'OSO#17', label: 'No interference with other RF services' },
+              { code: 'OSO#18', label: 'Automatic protection of flight geography' },
+              { code: 'OSO#19', label: 'Safe recovery from technical issues' },
+              { code: 'OSO#20', label: 'Physical separation from uninvolved people' },
+              { code: 'OSO#21', label: 'Abnormal and emergency procedures' },
+              { code: 'OSO#22', label: 'Remote crew trained to handle emergencies' }
+            ]
+          }
+        };
+        
+        function loadScenario(name) {
+          updateOsoPanel(scenarios[name]);
+        }
+        
+        // Load default scenario
+        loadScenario('moderate');
+    </script>
+</body>
+</html>

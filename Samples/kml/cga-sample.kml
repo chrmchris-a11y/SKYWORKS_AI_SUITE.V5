@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Controlled Ground Area (CGA)</name>
+    <description>Example CGA polygon exported from Google Earth</description>
+    <Style id="cgaStyle">
+      <PolyStyle>
+        <color>4dFFD700</color>
+        <outline>1</outline>
+      </PolyStyle>
+      <LineStyle>
+        <color>ffFFD700</color>
+        <width>2</width>
+      </LineStyle>
+    </Style>
+    <Placemark>
+      <name>Mission CGA - Secured Area</name>
+      <description>Controlled Ground Area for drone operations</description>
+      <styleUrl>#cgaStyle</styleUrl>
+      <Polygon>
+        <outerBoundaryIs>
+          <LinearRing>
+            <coordinates>
+              23.7270,37.9835,0
+              23.7350,37.9835,0
+              23.7350,37.9855,0
+              23.7270,37.9855,0
+              23.7270,37.9835,0
+            </coordinates>
+          </LinearRing>
+        </outerBoundaryIs>
+      </Polygon>
+    </Placemark>
+  </Document>
+</kml>

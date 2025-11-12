@@ -1,0 +1,205 @@
+{
+  "flightGeography": {
+    "type": "Feature",
+    "geometry": {
+      "type": "Point",
+      "coordinates": [23.7275, 37.9838]
+    },
+    "properties": {
+      "radius": 150,
+      "type": "Circle"
+    }
+  },
+  "contingencyVolume": {
+    "type": "Feature",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [23.725392, 37.985978],
+          [23.725500, 37.985900],
+          [23.729100, 37.985900],
+          [23.729208, 37.985978],
+          [23.729300, 37.986050],
+          [23.729300, 37.981550],
+          [23.729208, 37.981622],
+          [23.729100, 37.981700],
+          [23.725500, 37.981700],
+          [23.725392, 37.981622],
+          [23.725300, 37.981550],
+          [23.725300, 37.986050],
+          [23.725392, 37.985978]
+        ]
+      ]
+    },
+    "properties": {
+      "name": "Contingency Volume (CV)",
+      "buffer": "30m from FG (JARUS SORA 2.5 Annex A §A.5.1)"
+    }
+  },
+  "groundRiskBuffer": {
+    "type": "Feature",
+    "geometry": {
+      "type": "Polygon",
+      "coordinates": [
+        [
+          [23.724784, 37.986247],
+          [23.724900, 37.986150],
+          [23.729700, 37.986150],
+          [23.729816, 37.986247],
+          [23.729900, 37.986330],
+          [23.729900, 37.981270],
+          [23.729816, 37.981353],
+          [23.729700, 37.981450],
+          [23.724900, 37.981450],
+          [23.724784, 37.981353],
+          [23.724700, 37.981270],
+          [23.724700, 37.986330],
+          [23.724784, 37.986247]
+        ]
+      ]
+    },
+    "properties": {
+      "name": "Ground Risk Buffer (GRB)",
+      "buffer": "30m from CV (JARUS SORA 2.5 Annex A §A.5.1, total 60m from FG)"
+    }
+  },
+  "markers": {
+    "tol": {
+      "position": {
+        "lat": 37.9838,
+        "lng": 23.7275
+      },
+      "label": "TOL",
+      "color": "#10b981",
+      "type": "tol"
+    },
+    "rp": {
+      "position": {
+        "lat": 37.9801963963964,
+        "lng": 23.7275
+      },
+      "label": "RP",
+      "color": "#8b5cf6",
+      "type": "remote-pilot"
+    },
+    "vo": {
+      "position": {
+        "lat": 37.9801963963964,
+        "lng": 23.727842885322985
+      },
+      "label": "VO",
+      "color": "#8b5cf6",
+      "type": "visual-observer"
+    },
+    "observers": [
+      {
+        "position": {
+          "lat": 37.98514898240888,
+          "lng": 23.7275
+        },
+        "label": "Observer 1",
+        "color": "#f97316",
+        "type": "observer"
+      },
+      {
+        "position": {
+          "lat": 37.9831254994958,
+          "lng": 23.7289821933921
+        },
+        "label": "Observer 2",
+        "color": "#f97316",
+        "type": "observer"
+      },
+      {
+        "position": {
+          "lat": 37.9831254994958,
+          "lng": 23.7260178066079
+        },
+        "label": "Observer 3",
+        "color": "#f97316",
+        "type": "observer"
+      }
+    ],
+    "eSites": [
+      {
+        "position": {
+          "lat": 37.98568394135136,
+          "lng": 23.729890320034524
+        },
+        "label": "E1",
+        "color": "#6b7280",
+        "type": "emergency-site"
+      },
+      {
+        "position": {
+          "lat": 37.98113567038578,
+          "lng": 23.7275
+        },
+        "label": "E2",
+        "color": "#6b7280",
+        "type": "emergency-site"
+      },
+      {
+        "position": {
+          "lat": 37.98513212852828,
+          "lng": 23.724572489812946
+        },
+        "label": "E3",
+        "color": "#6b7280",
+        "type": "emergency-site"
+      }
+    ]
+  },
+  "distances": [
+    {
+      "from": {
+        "lat": 37.9838,
+        "lng": 23.7275
+      },
+      "to": {
+        "lat": 37.985978,
+        "lng": 23.7275
+      },
+      "label": "TOL→CV: 180m",
+      "color": "#f59e0b"
+    },
+    {
+      "from": {
+        "lat": 37.9838,
+        "lng": 23.7275
+      },
+      "to": {
+        "lat": 37.9838,
+        "lng": 23.732
+      },
+      "label": "Safe Radius: 500m",
+      "color": "#10b981"
+    },
+    {
+      "from": {
+        "lat": 37.9838,
+        "lng": 23.7275
+      },
+      "to": {
+        "lat": 37.98568394135136,
+        "lng": 23.729890320034524
+      },
+      "label": "E1: 268m",
+      "color": "#6b7280"
+    }
+  ],
+  "options": {
+    "center": {
+      "lat": 37.9838,
+      "lng": 23.7275
+    },
+    "soraVersion": "2.5_jarus",
+    "template": "VLOS_Spot",
+    "heightFg": 60,
+    "speed": 10,
+    "mtom": 25,
+    "safeRadius": 500,
+    "enable3D": false
+  }
+}

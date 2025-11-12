@@ -1,0 +1,323 @@
+{
+  "STS-01": {
+    "title": "VLOS over a Controlled Ground Area in a Populated Environment",
+    "approval": "Declaration",
+    "operationMode": "VLOS",
+    "environment": "Populated",
+    "groundArea": "Controlled",
+    "uasClass": "C5",
+    "maxAGL_m": 120,
+    "result": "Fixed scenario – no SORA computation",
+    "documents": [
+      "STS Declaration Form",
+      "Pilot competency (STS-01 theoretical & practical)",
+      "OM extracts for procedures"
+    ],
+    "references": [
+      {
+        "label": "EASA STS Overview",
+        "url": "https://www.easa.europa.eu/en/domains/civil-drones/standard-scenarios"
+      },
+      {
+        "label": "EAR UAS STS-01 Chapter",
+        "url": "https://www.easa.europa.eu/en/document-library/easy-access-rules/easy-access-rules-unmanned-aircraft-systems"
+      }
+    ],
+    "downloadLinks": [
+      {
+        "label": "📄 STS-01 Declaration Form",
+        "href": "https://www.easa.europa.eu/en/downloads/137156/en"
+      },
+      {
+        "label": "📋 STS-01 Operational Procedures Template",
+        "href": "#sts01-procedures"
+      }
+    ],
+    "eligibility": [
+      "UAS has C5 class marking",
+      "Operation in VLOS only",
+      "Controlled Ground Area (CGA) established",
+      "Populated environment",
+      "Max height ≤ 120m AGL",
+      "Pilot has STS-01 competency (theoretical + practical)"
+    ],
+    "scope": "VLOS operations over controlled ground areas in populated environments. Requires C5 UAS and pilot declaration to Competent Authority."
+  },
+  "STS-02": {
+    "title": "BVLOS with Airspace Observers over Controlled Ground Area in a Sparsely Populated Environment",
+    "approval": "Declaration",
+    "operationMode": "BVLOS (with observers)",
+    "environment": "Sparsely populated",
+    "groundArea": "Controlled",
+    "uasClass": "C6",
+    "maxAGL_m": 120,
+    "maxRange_km": 2,
+    "result": "Fixed scenario – no SORA computation",
+    "documents": [
+      "STS Declaration Form",
+      "Pilot competency (STS-02 theoretical & practical)",
+      "OM extracts for BVLOS with observers"
+    ],
+    "references": [
+      {
+        "label": "EASA STS Overview",
+        "url": "https://www.easa.europa.eu/en/domains/civil-drones/standard-scenarios"
+      },
+      {
+        "label": "EAR UAS STS-02 Chapter",
+        "url": "https://www.easa.europa.eu/en/document-library/easy-access-rules/easy-access-rules-unmanned-aircraft-systems"
+      },
+      {
+        "label": "STS-02 BVLOS Guide (AvTrain)",
+        "url": "https://avtrain.aero/sts-02-bvlos-observers"
+      }
+    ],
+    "downloadLinks": [
+      {
+        "label": "📄 STS-02 Declaration Form",
+        "href": "https://www.easa.europa.eu/en/downloads/137157/en"
+      },
+      {
+        "label": "📋 STS-02 BVLOS Procedures Template",
+        "href": "#sts02-procedures"
+      }
+    ],
+    "eligibility": [
+      "UAS has C6 class marking",
+      "Operation in BVLOS with airspace observers",
+      "Controlled Ground Area (CGA) established",
+      "Sparsely populated environment",
+      "Max height ≤ 120m AGL",
+      "Max operational range ~2 km from RP/observers",
+      "Pilot has STS-02 competency (theoretical + practical)"
+    ],
+    "scope": "BVLOS operations with airspace observers over controlled ground areas in sparsely populated environments. Requires C6 UAS and pilot declaration."
+  },
+  "PDRA-S01": {
+    "title": "PDRA derived from STS-01 (no C-class requirement)",
+    "approval": "Operational Authorisation",
+    "operationMode": "VLOS",
+    "environment": "Populated",
+    "groundArea": "Controlled",
+    "uasClass": "No C-class required",
+    "maxAGL_m": 120,
+    "result": "Fixed envelope per PDRA table – no SORA computation",
+    "documents": [
+      "PDRA S-01 Table",
+      "Operations Manual (per PDRA S-01 OM example)",
+      "Evidence list as required by Authority"
+    ],
+    "references": [
+      {
+        "label": "EASA PDRA S-01",
+        "url": "https://www.easa.europa.eu/en/document-library/general-publications/pdra-s-01"
+      },
+      {
+        "label": "PDRA S-01 OM Example",
+        "url": "https://www.easa.europa.eu/en/downloads/136258/en"
+      },
+      {
+        "label": "PDRA Hub (All PDRAs)",
+        "url": "https://www.easa.europa.eu/en/domains/civil-drones/predefined-risk-assessment-pdra"
+      }
+    ],
+    "downloadLinks": [
+      {
+        "label": "📄 PDRA S-01 Table",
+        "href": "https://www.easa.europa.eu/en/downloads/136256/en"
+      },
+      {
+        "label": "📋 PDRA S-01 OM Example",
+        "href": "https://www.easa.europa.eu/en/downloads/136258/en"
+      },
+      {
+        "label": "📝 Application Form (Operational Authorisation)",
+        "href": "https://www.easa.europa.eu/en/downloads/7652/en"
+      }
+    ],
+    "eligibility": [
+      "No C-class marking required (derivative of STS-01)",
+      "Operation in VLOS only",
+      "Controlled Ground Area (CGA) established",
+      "Populated environment",
+      "Max height ≤ 120m AGL",
+      "Operations Manual prepared",
+      "Apply for Operational Authorisation from NAA"
+    ],
+    "scope": "Similar to STS-01 but without mandatory C5 class requirement. Requires Operational Authorisation instead of declaration."
+  },
+  "PDRA-S02": {
+    "title": "PDRA derived from STS-02 (BVLOS with observers)",
+    "approval": "Operational Authorisation",
+    "operationMode": "BVLOS (with observers)",
+    "environment": "Sparsely populated",
+    "groundArea": "Controlled",
+    "uasClass": "No C-class required",
+    "maxAGL_m": 120,
+    "result": "Fixed envelope per PDRA table – no SORA computation",
+    "documents": [
+      "PDRA S-02 Table",
+      "OM annexes (BVLOS)",
+      "Evidence list as required by Authority"
+    ],
+    "references": [
+      {
+        "label": "EASA PDRA S-02",
+        "url": "https://www.easa.europa.eu/en/document-library/general-publications/pdra-s-02"
+      },
+      {
+        "label": "PDRA Hub (All PDRAs)",
+        "url": "https://www.easa.europa.eu/en/domains/civil-drones/predefined-risk-assessment-pdra"
+      }
+    ],
+    "downloadLinks": [
+      {
+        "label": "📄 PDRA S-02 Table",
+        "href": "https://www.easa.europa.eu/en/downloads/136257/en"
+      },
+      {
+        "label": "📝 Application Form (Operational Authorisation)",
+        "href": "https://www.easa.europa.eu/en/downloads/7652/en"
+      }
+    ],
+    "eligibility": [
+      "No C-class marking required (derivative of STS-02)",
+      "Operation in BVLOS with airspace observers",
+      "Controlled Ground Area (CGA) established",
+      "Sparsely populated environment",
+      "Max height ≤ 120m AGL",
+      "Operations Manual prepared",
+      "Apply for Operational Authorisation from NAA"
+    ],
+    "scope": "Similar to STS-02 but without mandatory C6 class requirement. BVLOS with observers in sparsely populated areas."
+  },
+  "PDRA-G01": {
+    "title": "Generic PDRA — surveillance / long-range cargo ops",
+    "approval": "Operational Authorisation",
+    "operationMode": "As per PDRA table",
+    "environment": "As per PDRA table",
+    "groundArea": "As per PDRA table",
+    "uasClass": "As per PDRA table",
+    "maxAGL_m": "As per PDRA table",
+    "result": "Fixed envelope per PDRA G-01 – no SORA computation",
+    "documents": [
+      "PDRA G-01 Table",
+      "OM extracts",
+      "Evidence list as required by Authority"
+    ],
+    "references": [
+      {
+        "label": "EASA PDRA Forms Page",
+        "url": "https://www.easa.europa.eu/en/domains/civil-drones/predefined-risk-assessment-pdra"
+      },
+      {
+        "label": "PDRA G-01 Documentation",
+        "url": "https://www.easa.europa.eu/en/document-library/general-publications"
+      }
+    ],
+    "downloadLinks": [
+      {
+        "label": "📄 PDRA G-01 Table",
+        "href": "#pdra-g01-table"
+      },
+      {
+        "label": "📝 Application Form (Operational Authorisation)",
+        "href": "https://www.easa.europa.eu/en/downloads/7652/en"
+      }
+    ],
+    "eligibility": [
+      "Surveillance or long-range cargo operations",
+      "Compliance with PDRA G-01 envelope",
+      "Operations Manual prepared",
+      "Apply for Operational Authorisation from NAA"
+    ],
+    "scope": "Generic PDRA for surveillance and long-range cargo operations. Follows PDRA G-01 envelope and requirements."
+  },
+  "PDRA-G02": {
+    "title": "Generic PDRA — BVLOS without observers in TSA (segregated airspace)",
+    "approval": "Operational Authorisation",
+    "operationMode": "BVLOS (no observers, TSA)",
+    "environment": "Sparsely populated / TSA",
+    "groundArea": "Controlled (segregated volume)",
+    "uasClass": "As per PDRA table",
+    "maxAGL_m": "As per PDRA table",
+    "result": "Fixed envelope per PDRA G-02 – no SORA computation",
+    "documents": [
+      "PDRA G-02 Table",
+      "OM + TSA coordination",
+      "Evidence list as required by Authority"
+    ],
+    "references": [
+      {
+        "label": "EASA PDRA G-02",
+        "url": "https://www.easa.europa.eu/en/document-library/general-publications/pdra-g-02"
+      },
+      {
+        "label": "PDRA G-02 Guides",
+        "url": "https://www.easa.europa.eu/en/domains/civil-drones/predefined-risk-assessment-pdra"
+      }
+    ],
+    "downloadLinks": [
+      {
+        "label": "📄 PDRA G-02 Table",
+        "href": "#pdra-g02-table"
+      },
+      {
+        "label": "📝 Application Form (Operational Authorisation)",
+        "href": "https://www.easa.europa.eu/en/downloads/7652/en"
+      }
+    ],
+    "eligibility": [
+      "BVLOS without airspace observers",
+      "Operations in TSA (Temporary Segregated Airspace)",
+      "ARC-a by design (segregated airspace)",
+      "Compliance with PDRA G-02 envelope",
+      "TSA coordination with ANSP",
+      "Operations Manual prepared",
+      "Apply for Operational Authorisation from NAA"
+    ],
+    "scope": "BVLOS operations without observers in segregated airspace (TSA). ARC-a achieved by airspace segregation."
+  },
+  "PDRA-G03": {
+    "title": "Generic PDRA — linear inspections & agricultural works",
+    "approval": "Operational Authorisation",
+    "operationMode": "As per PDRA table",
+    "environment": "As per PDRA table",
+    "groundArea": "As per PDRA table",
+    "uasClass": "As per PDRA table",
+    "maxAGL_m": "As per PDRA table",
+    "result": "Fixed envelope per PDRA G-03 – no SORA computation",
+    "documents": [
+      "PDRA G-03 Table",
+      "OM extracts",
+      "Evidence list as required by Authority"
+    ],
+    "references": [
+      {
+        "label": "EASA PDRA G-03",
+        "url": "https://www.easa.europa.eu/en/document-library/general-publications/pdra-g-03"
+      },
+      {
+        "label": "PDRA Hub",
+        "url": "https://www.easa.europa.eu/en/domains/civil-drones/predefined-risk-assessment-pdra"
+      }
+    ],
+    "downloadLinks": [
+      {
+        "label": "📄 PDRA G-03 Table",
+        "href": "#pdra-g03-table"
+      },
+      {
+        "label": "📝 Application Form (Operational Authorisation)",
+        "href": "https://www.easa.europa.eu/en/downloads/7652/en"
+      }
+    ],
+    "eligibility": [
+      "Linear inspections (pipelines, power lines, railways) or agricultural works",
+      "Compliance with PDRA G-03 envelope",
+      "Operations Manual prepared",
+      "Apply for Operational Authorisation from NAA"
+    ],
+    "scope": "Generic PDRA for linear infrastructure inspections and agricultural operations. Designed for these specific use cases."
+  }
+}

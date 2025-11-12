@@ -47,6 +47,81 @@ body {
   color: var(--slate-800);
   font-size: var(--font-body);
   line-height: 1.5;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* Prevent body scroll */
+  display: grid;
+  grid-template-rows: 64px 1fr;
+  grid-template-columns: 280px 1fr 380px;
+  height: 100vh;
+  width: 100vw;
+}
+
+.header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+.sidebar {
+  grid-column: 1;
+  grid-row: 2;
+  overflow-y: auto;
+}
+
+.main-content {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  overflow: hidden;
+}
+
+.map-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#map2D,
+#map3D {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#map2D {
+  display: block;
+}
+
+#map3D {
+  display: none;
+}
+
+/* Map Container - CRITICAL for MapLibre/Cesium */
+#map2D,
+#map3D {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#map2D {
+  display: block;
+}
+
+#map3D {
+  display: none; /* Hidden by default, shown when switching to 3D */
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -431,10 +506,16 @@ body {
   overflow: hidden;
 }
 
+.map-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
 .map-container {
   width: 100%;
   height: 100%;
-  position: relative;
 }
 
 .right-panel {
@@ -528,3 +609,159 @@ body {
 .maplibregl-ctrl-bottom-right {
   display: none; /* Hide default attribution for cleaner UI */
 }
+
+/* ========================================
+   MISSION WIZARD
+   ======================================== */
+.wizard-card {
+  background: white;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 32px;
+  margin: 24px auto;
+  max-width: 720px;
+}
+
+.wizard-progress {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  position: relative;
+}
+
+.wizard-progress::before {
+  content: '';
+  position: absolute;
+  top: 16px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--slate-200);
+  z-index: 0;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  background: var(--slate-50);
+  padding: 0 16px;
+}
+
+.progress-step .step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--slate-200);
+  color: var(--slate-600);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.progress-step.active .step-number {
+  background: var(--brand-500);
+  color: white;
+}
+
+.progress-step .step-label {
+  font-size: 12px;
+  color: var(--slate-600);
+}
+
+.progress-step.active .step-label {
+  color: var(--brand-600);
+  font-weight: 600;
+}
+
+.wizard-step {
+  min-height: 320px;
+  /* display controlled by inline styles */
+}
+
+.wizard-step.active {
+  display: block !important; /* Ensure active steps are visible */
+}
+
+.wizard-step h3 {
+  font-size: 18px;
+  margin-bottom: 24px;
+  color: var(--slate-800);
+}
+
+.wizard-nav {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 32px;
+}
+
+#template-preview {
+  background: var(--slate-50);
+  border-radius: var(--radius-button);
+  padding: 16px;
+  margin-top: 16px;
+}
+
+#template-preview p {
+  margin: 8px 0;
+  font-size: var(--font-body);
+}
+
+.wizard-result {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  border-radius: var(--radius-button);
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.wizard-result p {
+  margin: 8px 0;
+}
+
+.wizard-result a {
+  color: var(--brand-500);
+  text-decoration: none;
+  margin-right: 16px;
+}
+
+.wizard-result a:hover {
+  text-decoration: underline;
+}
+
+/* ========================================
+   ERP & OSO PANELS
+   ======================================== */
+.erp-panel, .oso-panel {
+  background: white;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.erp-panel h4, .oso-panel h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--slate-800);
+  margin-bottom: 12px;
+}
+
+.erp-panel pre {
+  font-size: 12px;
+  color: var(--slate-600);
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.oso-panel p {
+  font-size: 13px;
+  color: var(--slate-700);
+  margin: 6px 0;
+}
+

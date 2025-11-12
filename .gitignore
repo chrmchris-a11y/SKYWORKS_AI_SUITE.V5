@@ -18,3 +18,18 @@ Tools/TrainingCenter/agent_memory/*
 Tools/TrainingCenter/logs/*
 !Tools/TrainingCenter/logs/
 !Tools/TrainingCenter/logs/.gitkeep
+
+# Playwright test artifacts
+e2e/test-results.json/
+e2e/playwright-report/
+e2e/results.json
+e2e/test-toggle.js
+e2e/Samples/
+e2e/debug/
+# Keep debug-map-properties.spec.ts (production test), ignore others
+e2e/ui/debug-console.spec.js
+e2e/ui/debug-geofence.spec.ts
+e2e/ui/debug-kml-dual.spec.ts
+e2e/ui/debug-toggle.spec.ts
+test-results/
+Backend/test-results/

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SORA API Client - Smoke Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 {
+      color: #333;
+      border-bottom: 3px solid #007acc;
+      padding-bottom: 10px;
+    }
+    .test-group {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .test-case {
+      margin: 15px 0;
+      padding: 15px;
+      border-left: 4px solid #ccc;
+      background: #fafafa;
+    }
+    .test-case.pass {
+      border-left-color: #28a745;
+      background: #e8f5e9;
+    }
+    .test-case.fail {
+      border-left-color: #dc3545;
+      background: #ffebee;
+    }
+    .test-case h3 {
+      margin: 0 0 10px 0;
+      color: #333;
+    }
+    .result {
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      background: #f5f5f5;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-weight: bold;
+      margin: 2px;
+    }
+    .badge.sail { background: #007acc; color: white; }
+    .badge.grc { background: #28a745; color: white; }
+    .badge.arc { background: #ff9800; color: white; }
+    button {
+      background: #007acc;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #005a9e;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .summary {
+      background: #e3f2fd;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border-left: 4px solid #2196f3;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 SORA API Client - Smoke Tests</h1>
+  
+  <div class="summary">
+    <p><strong>Purpose:</strong> Verify soraClient.js correctly calls backend /api/v1/sora/* endpoints</p>
+    <p><strong>Backend:</strong> Must be running on http://localhost:5210</p>
+    <p><strong>Tests:</strong> 5 scenarios (2 SORA 2.5 + 2 SORA 2.0 + 1 validation)</p>
+  </div>
+  
+  <button id="runTests">▶️ Run All Tests</button>
+  
+  <div id="testResults"></div>
+  
+  <script type="module">
+    import { soraApi, buildSora25Request, buildSora20Request, formatSAIL, getSAILSeverity } from './soraClient.js';
+    
+    const resultsDiv = document.getElementById('testResults');
+    const runButton = document.getElementById('runTests');
+    
+    function renderTestCase(title, status, result, error = null) {
+      const div = document.createElement('div');
+      div.className = `test-case ${status}`;
+      
+      let content = `<h3>${status === 'pass' ? '✅' : '❌'} ${title}</h3>`;
+      
+      if (status === 'pass') {
+        content += `
+          <div>
+            <span class="badge sail">SAIL: ${formatSAIL(result.sail)}</span>
+            <span class="badge grc">iGRC: ${result.initialGRC}</span>
+            <span class="badge grc">fGRC: ${result.finalGRC}</span>
+            <span class="badge arc">iARC: ${result.initialARC}</span>
+            <span class="badge arc">rARC: ${result.residualARC}</span>
+            <span class="badge">AEC: ${result.aec}</span>
+          </div>
+          <div class="result">${JSON.stringify(result, null, 2)}</div>
+        `;
+      } else {
+        content += `<div class="result" style="color: #dc3545;">${error}</div>`;
+      }
+      
+      div.innerHTML = content;
+      return div;
+    }
+    
+    async function runTests() {
+      runButton.disabled = true;
+      resultsDiv.innerHTML = '';
+      
+      const testGroup = document.createElement('div');
+      testGroup.className = 'test-group';
+      testGroup.innerHTML = '<h2>Test Results</h2>';
+      resultsDiv.appendChild(testGroup);
+      
+      let passCount = 0;
+      let failCount = 0;
+      
+      // ========================================================================
+      // Test 1: SORA 2.5 - DJI Mini 4 Pro over Sparsely Populated Area
+      // ========================================================================
+      try {
+        console.log('🧪 Test 1: SORA 2.5 - DJI Mini 4 Pro (<500 density, M1A Low, M2 Medium)');
+        
+        const request1 = buildSora25Request({
+          drone: {
+            mtom_kg: 0.249,
+            maxSpeed_ms: 16,
+            characteristicDimension_m: 0.213
+          },
+          populationDensity: "<500",
+          m1a: "Low",
+          m2: "Medium",
+          altitude_ft: 400,
+          isVLOS: true
+        });
+        
+        const result1 = await soraApi.calculate(request1);
+        
+        // Basic validation
+        if (!result1.sail || !result1.initialGRC || !result1.aec) {
+          throw new Error('Missing required fields in response');
+        }
+        
+        testGroup.appendChild(renderTestCase(
+          'SORA 2.5 - DJI Mini 4 Pro (<500 density)',
+          'pass',
+          result1
+        ));
+        passCount++;
+      } catch (err) {
+        console.error('❌ Test 1 failed:', err);
+        testGroup.appendChild(renderTestCase(
+          'SORA 2.5 - DJI Mini 4 Pro (<500 density)',
+          'fail',
+          null,
+          err.message
+        ));
+        failCount++;
+      }
+      
+      // ========================================================================
+      // Test 2: SORA 2.5 - Larger drone over Dense Area
+      // ========================================================================
+      try {
+        console.log('🧪 Test 2: SORA 2.5 - Larger drone (5kg, <5000 density, M1A Medium, M2 High)');
+        
+        const request2 = buildSora25Request({
+          drone: {
+            mtom_kg: 5.0,
+            maxSpeed_ms: 25,
+            characteristicDimension_m: 1.2
+          },
+          populationDensity: "<5000",
+          m1a: "Medium",
+          m2: "High",
+          altitude_ft: 300,
+          isVLOS: false
+        });
+        
+        const result2 = await soraApi.calculate(request2);
+        
+        if (!result2.sail || !result2.initialGRC) {
+          throw new Error('Missing required fields in response');
+        }
+        
+        testGroup.appendChild(renderTestCase(
+          'SORA 2.5 - Larger drone (<5000 density)',
+          'pass',
+          result2
+        ));
+        passCount++;
+      } catch (err) {
+        console.error('❌ Test 2 failed:', err);
+        testGroup.appendChild(renderTestCase(
+          'SORA 2.5 - Larger drone (<5000 density)',
+          'fail',
+          null,
+          err.message
+        ));
+        failCount++;
+      }
+      
+      // ========================================================================
+      // Test 3: SORA 2.0 - VLOS over Sparsely Populated Area
+      // ========================================================================
+      try {
+        console.log('🧪 Test 3: SORA 2.0 - VLOS_Sparsely scenario');
+        
+        const request3 = buildSora20Request({
+          drone: {
+            mtom_kg: 2.0,
+            maxSpeed_ms: 20,
+            characteristicDimension_m: 0.5
+          },
+          operationScenario: "VLOS_Sparsely",
+          m1: "Low",
+          m2_20: "Medium",
+          altitude_ft: 350,
+          isVLOS: true
+        });
+        
+        const result3 = await soraApi.calculate(request3);
+        
+        if (!result3.sail || !result3.initialGRC) {
+          throw new Error('Missing required fields in response');
+        }
+        
+        testGroup.appendChild(renderTestCase(
+          'SORA 2.0 - VLOS_Sparsely scenario',
+          'pass',
+          result3
+        ));
+        passCount++;
+      } catch (err) {
+        console.error('❌ Test 3 failed:', err);
+        testGroup.appendChild(renderTestCase(
+          'SORA 2.0 - VLOS_Sparsely scenario',
+          'fail',
+          null,
+          err.message
+        ));
+        failCount++;
+      }
+      
+      // ========================================================================
+      // Test 4: SORA 2.0 - BVLOS over Controlled Ground
+      // ========================================================================
+      try {
+        console.log('🧪 Test 4: SORA 2.0 - BVLOS_Controlled scenario');
+        
+        const request4 = buildSora20Request({
+          drone: {
+            mtom_kg: 10.0,
+            maxSpeed_ms: 30,
+            characteristicDimension_m: 2.0
+          },
+          operationScenario: "BVLOS_Controlled",
+          m1: "High",
+          m2_20: "High",
+          m3: "Validated",
+          altitude_ft: 500,
+          controlledAirspace: true,
+          isVLOS: false
+        });
+        
+        const result4 = await soraApi.calculate(request4);
+        
+        if (!result4.sail || !result4.initialGRC) {
+          throw new Error('Missing required fields in response');
+        }
+        
+        testGroup.appendChild(renderTestCase(
+          'SORA 2.0 - BVLOS_Controlled scenario',
+          'pass',
+          result4
+        ));
+        passCount++;
+      } catch (err) {
+        console.error('❌ Test 4 failed:', err);
+        testGroup.appendChild(renderTestCase(
+          'SORA 2.0 - BVLOS_Controlled scenario',
+          'fail',
+          null,
+          err.message
+        ));
+        failCount++;
+      }
+      
+      // ========================================================================
+      // Test 5: Validation API - Invalid M1A + M1B combination
+      // ========================================================================
+      try {
+        console.log('🧪 Test 5: Validation API - Invalid M1A Medium + M1B combination');
+        
+        const validationRequest = {
+          soraVersion: "2.5",
+          drone: {
+            mtom_kg: 0.249,
+            maxSpeed_ms: 16,
+            characteristicDimension_m: 0.213
+          },
+          populationDensity: "<500",
+          m1a: "Medium",
+          m1b: "High" // INVALID: M1A Medium cannot combine with M1B
+        };
+        
+        const validationResult = await soraApi.validate(validationRequest);
+        
+        // Should return valid=false with error message
+        if (validationResult.valid === false && validationResult.errors && validationResult.errors.length > 0) {
+          testGroup.appendChild(renderTestCase(
+            'Validation API - Correctly rejects invalid M1A+M1B',
+            'pass',
+            { validation: validationResult }
+          ));
+          passCount++;
+        } else {
+          throw new Error('Validation should have rejected M1A Medium + M1B High');
+        }
+      } catch (err) {
+        console.error('❌ Test 5 failed:', err);
+        testGroup.appendChild(renderTestCase(
+          'Validation API - Correctly rejects invalid M1A+M1B',
+          'fail',
+          null,
+          err.message
+        ));
+        failCount++;
+      }
+      
+      // ========================================================================
+      // Summary
+      // ========================================================================
+      const summaryDiv = document.createElement('div');
+      summaryDiv.className = 'summary';
+      const totalTests = passCount + failCount;
+      const passRate = totalTests > 0 ? (passCount / totalTests * 100).toFixed(0) : 0;
+      
+      summaryDiv.innerHTML = `
+        <h2>📊 Test Summary</h2>
+        <p><strong>Total Tests:</strong> ${totalTests}</p>
+        <p><strong>Passed:</strong> ${passCount} ✅</p>
+        <p><strong>Failed:</strong> ${failCount} ❌</p>
+        <p><strong>Pass Rate:</strong> ${passRate}%</p>
+        ${passCount === totalTests ? '<p style="color: #28a745; font-weight: bold;">🎉 All tests passed! API client is working correctly.</p>' : '<p style="color: #dc3545; font-weight: bold;">⚠️ Some tests failed. Check backend is running on http://localhost:5210</p>'}
+      `;
+      
+      resultsDiv.appendChild(summaryDiv);
+      runButton.disabled = false;
+    }
+    
+    runButton.addEventListener('click', runTests);
+    
+    // Auto-run tests on page load
+    console.log('🚀 Auto-running SORA API Client smoke tests...');
+    setTimeout(runTests, 500);
+  </script>
+</body>
+</html>
