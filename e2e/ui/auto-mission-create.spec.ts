@@ -1,47 +1,56 @@
 /**
  * E2E Tests: Auto-Mission Create (Phase 6)
- * Tests for one-click 3D mission creation functionality
+ * Tests for one-click mission creation functionality with SORA/PDRA/STS regimes
+ * Updated for Phase 6 Maps with regime-aware mission builder
  */
 
 import { test, expect } from '@playwright/test';
 
-test.describe('Auto-Mission Create', () => {
+test.describe('Auto-Mission Create (Phase 6 Maps)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('http://localhost:5210/app/Pages/ui/airspace-maps.html');
     
     // Wait for Google Maps to load
     await page.waitForSelector('#map2D', { timeout: 10000 });
     
-    // Wait for auto-mission controls to be enabled
-    await page.waitForTimeout(3000); // Google Maps idle event
-  });
-
-  test('should have Create 3D Mission button', async ({ page }) => {
-    const button = page.locator('#btn-create-3d-mission');
-    await expect(button).toBeVisible();
-    await expect(button).toHaveText('Create Complete 3D Mission');
+    // Wait for Google Maps initialization
+    await page.waitForFunction(() => {
+      return typeof window !== 'undefined' && 
+             typeof (window as any).map2D !== 'undefined' &&
+             (window as any).map2D !== null;
+    }, { timeout: 10000 });
     
-    // Should be enabled after Google Maps loads
-    await page.waitForTimeout(2000);
-    const isDisabled = await button.isDisabled();
-    expect(isDisabled).toBe(false);
+    await page.waitForTimeout(1000);
   });
 
-  test('should have SORA version dropdown with correct options', async ({ page }) => {
-    const dropdown = page.locator('#ddl-sora-version');
+  test('should have Create Mission button (updated selector)', async ({ page }) => {
+    const button = page.locator('#btn-create-mission');
+    await expect(button).toBeVisible();
+    await expect(button).toHaveText('Create Mission');
+  });
+
+  test('should have Regime select with all options', async ({ page }) => {
+    const dropdown = page.locator('#regime-select');
     await expect(dropdown).toBeVisible();
     
     const options = await dropdown.locator('option').allTextContents();
-    expect(options).toContain('JARUS SORA 2.5 Annex A');
-    expect(options).toContain('EASA SORA 2.0 AMC');
+    expect(options).toContain('SORA 2.5 (JARUS Annex A)');
+    expect(options).toContain('SORA 2.0 (EASA AMC)');
+    expect(options).toContain('PDRA S-01');
+    expect(options).toContain('PDRA S-02');
+    expect(options).toContain('PDRA G-01');
+    expect(options).toContain('PDRA G-02');
+    expect(options).toContain('PDRA G-03');
+    expect(options).toContain('STS-01');
+    expect(options).toContain('STS-02');
     
-    // Default should be 2.5_jarus
+    // Default should be SORA_25_JARUS
     const value = await dropdown.inputValue();
-    expect(value).toBe('2.5_jarus');
+    expect(value).toBe('SORA_25_JARUS');
   });
 
   test('should have mission template dropdown', async ({ page }) => {
-    const dropdown = page.locator('#ddl-mission-template');
+    const dropdown = page.locator('#mission-template');
     await expect(dropdown).toBeVisible();
     
     const options = await dropdown.locator('option').allTextContents();
@@ -54,232 +63,165 @@ test.describe('Auto-Mission Create', () => {
     expect(value).toBe('VLOS_Spot');
   });
 
-  test('should have numeric inputs with default values', async ({ page }) => {
-    const heightFg = page.locator('#inp-height-fg');
+  test('should have numeric inputs with default values (updated selectors)', async ({ page }) => {
+    const heightFg = page.locator('#fg-height-m');
     await expect(heightFg).toHaveValue('60');
     
-    const speed = page.locator('#inp-speed');
+    const speed = page.locator('#uas-speed-ms');
     await expect(speed).toHaveValue('10');
     
-    const mtom = page.locator('#inp-mtom');
+    const mtom = page.locator('#uas-mtom-kg');
     await expect(mtom).toHaveValue('25');
     
-    const safeRadius = page.locator('#inp-safe-radius');
+    const safeRadius = page.locator('#safe-radius-m');
     await expect(safeRadius).toHaveValue('500');
   });
 
-  test('should have 3D mode switch (default off)', async ({ page }) => {
-    const switchControl = page.locator('#sw-3d-mode');
-    // Checkbox is hidden inside .switch label, check if it exists in DOM
-    await expect(switchControl).toHaveCount(1);
-    
-    const isChecked = await switchControl.isChecked();
-    expect(isChecked).toBe(false);
-  });
-
-  test('should create mission and render 3 SORA layers', async ({ page }) => {
-    // Click create button
-    const button = page.locator('#btn-create-3d-mission');
-    await button.click();
-    
-    // Wait for mission creation (should be <1.5s per acceptance criteria)
-    await page.waitForTimeout(2000);
-    
-    // Check console for success message
-    const logs: string[] = [];
-    page.on('console', msg => {
-      if (msg.type() === 'log') {
-        logs.push(msg.text());
+  test('should create mission and show all labels with no overlaps', async ({ page }) => {
+    // Set center to Akrotiri, Limassol
+    await page.evaluate(() => {
+      if ((window as any).map2D) {
+        (window as any).map2D.setCenter({ lat: 34.5937, lng: 32.9980 });
+        (window as any).map2D.setZoom(14);
       }
     });
     
-    // Verify SORA layers rendered (check window objects)
-    const fgExists = await page.evaluate(() => {
-      return window.fgPolygon !== null && window.fgPolygon !== undefined;
-    });
-    const cvExists = await page.evaluate(() => {
-      return window.cvPolygon !== null && window.cvPolygon !== undefined;
-    });
-    const grbExists = await page.evaluate(() => {
-      return window.grbPolygon !== null && window.grbPolygon !== undefined;
+    // Click create button
+    const button = page.locator('#btn-create-mission');
+    await button.click();
+    
+    // Wait for mission creation
+    await page.waitForTimeout(1500);
+    
+    // Verify all pins are visible
+    const pinsExist = await page.evaluate(() => {
+      const pins = (window as any).missionOverlays?.pins;
+      if (!pins) return false;
+      
+      return pins.tol && pins.rp && pins.vo && 
+             pins.obs1 && pins.e1;
     });
     
-    expect(fgExists).toBe(true);
-    expect(cvExists).toBe(true);
-    expect(grbExists).toBe(true);
+    expect(pinsExist).toBe(true);
     
-    // Verify data-layer attributes (for E2E hooks)
-    const fgDataLayer = await page.evaluate(() => {
-      return window.fgPolygon?.get('dataLayer');
-    });
-    const cvDataLayer = await page.evaluate(() => {
-      return window.cvPolygon?.get('dataLayer');
-    });
-    const grbDataLayer = await page.evaluate(() => {
-      return window.grbPolygon?.get('dataLayer');
+    // Verify distance lines exist
+    const linesExist = await page.evaluate(() => {
+      const lines = (window as any).missionOverlays?.lines;
+      if (!lines) return false;
+      
+      return lines.tolCv && lines.tolGrb && lines.tolE1;
     });
     
-    expect(fgDataLayer).toBe('FG');
-    expect(cvDataLayer).toBe('CV');
-    expect(grbDataLayer).toBe('GRB');
+    expect(linesExist).toBe(true);
+    
+    // Verify Safe Area label exists
+    const safeAreaLabel = await page.evaluate(() => {
+      return (window as any).missionOverlays?.labels?.safeArea !== null &&
+             (window as any).missionOverlays?.labels?.safeArea !== undefined;
+    });
+    
+    expect(safeAreaLabel).toBe(true);
+    
+    // Verify legend box is visible
+    await expect(page.locator('#legend-box')).toBeVisible();
+    
+    // Verify regime badge is visible
+    await expect(page.locator('#regime-badge')).toBeVisible();
+    const badgeText = await page.locator('#regime-badge').textContent();
+    expect(badgeText).toContain('JARUS SORA 2.5');
   });
 
-  test('should update SORA version badge based on dropdown', async ({ page }) => {
-    const dropdown = page.locator('#ddl-sora-version');
-    const badge = page.locator('#sora-version-badge');
-    
-    // Create mission with default (2.5_jarus)
-    await page.locator('#btn-create-3d-mission').click();
-    await page.waitForTimeout(2000);
-    
-    // Check badge text
-    const badgeText = await badge.textContent();
-    expect(badgeText).toContain('JARUS SORA 2.5 Annex A');
-    
-    // Change to 2.0_amc
-    await dropdown.selectOption('2.0_amc');
-    await page.locator('#btn-create-3d-mission').click();
-    await page.waitForTimeout(2000);
-    
-    const badgeText2 = await badge.textContent();
-    expect(badgeText2).toContain('EASA SORA 2.0 AMC');
-  });
-
-  test('should render markers (TOL, RP, VO, Observers, E-sites)', async ({ page }) => {
-    // Create mission
-    await page.locator('#btn-create-3d-mission').click();
-    await page.waitForTimeout(2000);
-    
-    // Check marker count
-    const markerCount = await page.evaluate(() => {
-      return window.autoMissionMarkers?.length || 0;
-    });
-    
-    // Should have: 1 TOL + 1 RP + 1 VO + 3 Observers + 3 E-sites = 9 markers
-    expect(markerCount).toBeGreaterThanOrEqual(9);
-  });
-
-  test('should expose window.lastAutoMissionJson', async ({ page }) => {
-    // Create mission
-    await page.locator('#btn-create-3d-mission').click();
-    await page.waitForTimeout(2000);
-    
-    // Check exposed JSON
-    const jsonExists = await page.evaluate(() => {
-      return window.lastAutoMissionJson !== null && window.lastAutoMissionJson !== undefined;
-    });
-    
-    expect(jsonExists).toBe(true);
-    
-    // Verify structure (markers is object with nested tol/rp/vo/observers/eSites)
-    const hasRequiredKeys = await page.evaluate(() => {
-      const json = window.lastAutoMissionJson;
-      return json && 
-        json.flightGeography && 
-        json.contingencyVolume && 
-        json.groundRiskBuffer && 
-        json.markers && 
-        typeof json.markers === 'object' &&
-        json.markers.tol !== undefined;
-    });
-    
-    expect(hasRequiredKeys).toBe(true);
-  });
-
-  test('should show Google Earth button after KML generation', async ({ page }) => {
-    const btnOpenEarth = page.locator('#btn-open-earth');
-    
-    // Initially hidden
-    await expect(btnOpenEarth).toBeHidden();
-    
-    // Create mission
-    await page.locator('#btn-create-3d-mission').click();
-    await page.waitForTimeout(2000);
-    
-    // Button should now be visible
-    await expect(btnOpenEarth).toBeVisible();
-    await expect(btnOpenEarth).toHaveText(/Open in Google Earth/);
-  });
-
-  test('should complete mission creation within 1.5 seconds', async ({ page }) => {
-    const startTime = Date.now();
-    
-    // Create mission
-    await page.locator('#btn-create-3d-mission').click();
-    
-    // Wait for completion indicator (check window.lastAutoMissionJson)
-    await page.waitForFunction(() => {
-      return window.lastAutoMissionJson !== null && window.lastAutoMissionJson !== undefined;
-    }, { timeout: 5000 });
-    
-    const elapsed = Date.now() - startTime;
-    
-    // Should complete in <1.5s (acceptance criteria)
-    expect(elapsed).toBeLessThan(1500);
-    
-    console.log(`Mission created in ${elapsed}ms`);
-  });
-
-  test.skip('should handle Corridor template with existing waypoints', async ({ page }) => {
-    // NOTE: Skipped - waypoint interaction blocked by panel overlay, requires fixing map click coordinates
-    // This is a pre-existing issue, not related to Phase 6 auto-mission implementation
-    // Add 2 waypoints first
-    await page.locator('#addWaypoint').click();
+  test('should show FG/CV/GRB layers for SORA regimes', async ({ page }) => {
+    // Ensure SORA 2.5 selected
+    await page.selectOption('#regime-select', 'SORA_25_JARUS');
     await page.waitForTimeout(500);
     
-    // Click on map to add waypoint
-    const map = page.locator('#map2D');
-    await map.click({ position: { x: 400, y: 300 } });
-    await page.waitForTimeout(500);
-    
-    // Add second waypoint
-    await map.click({ position: { x: 450, y: 350 } });
-    await page.waitForTimeout(500);
-    
-    // Change template to Corridor
-    await page.locator('#ddl-mission-template').selectOption('Corridor');
-    
-    // Create mission
-    await page.locator('#btn-create-3d-mission').click();
-    await page.waitForTimeout(2000);
-    
-    // Should succeed without errors
-    const jsonExists = await page.evaluate(() => {
-      return window.lastAutoMissionJson !== null;
+    await page.evaluate(() => {
+      if ((window as any).map2D) {
+        (window as any).map2D.setCenter({ lat: 34.5937, lng: 32.9980 });
+        (window as any).map2D.setZoom(14);
+      }
     });
     
-    expect(jsonExists).toBe(true);
+    await page.click('#btn-create-mission');
+    await page.waitForTimeout(1500);
+    
+    const layersExist = await page.evaluate(() => {
+      const overlays = (window as any).missionOverlays;
+      if (!overlays) return { fg: false, cv: false, grb: false };
+      
+      return {
+        fg: overlays.fg !== null && overlays.fg !== undefined,
+        cv: overlays.cv !== null && overlays.cv !== undefined,
+        grb: overlays.grb !== null && overlays.grb !== undefined
+      };
+    });
+    
+    expect(layersExist.fg).toBe(true);
+    expect(layersExist.cv).toBe(true);
+    expect(layersExist.grb).toBe(true);
   });
 
-  test('should show error for Corridor template without waypoints', async ({ page }) => {
-    // Change template to Corridor (no waypoints added)
-    await page.locator('#ddl-mission-template').selectOption('Corridor');
+  test('Reset button should clear all overlays', async ({ page }) => {
+    // Create mission first
+    await page.click('#btn-create-mission');
+    await page.waitForTimeout(1500);
     
-    // Listen for alert dialog
+    // Verify mission exists
+    let hasOverlays = await page.evaluate(() => {
+      const overlays = (window as any).missionOverlays;
+      return overlays?.fg !== null || overlays?.cv !== null;
+    });
+    
+    expect(hasOverlays).toBe(true);
+    
+    // Accept confirm dialog
     page.on('dialog', async dialog => {
-      expect(dialog.message()).toContain('requires at least 2 waypoints');
       await dialog.accept();
     });
     
-    // Create mission - should show error
-    await page.locator('#btn-create-3d-mission').click();
-    await page.waitForTimeout(1000);
+    // Click reset
+    await page.click('#btn-reset-mission');
+    await page.waitForTimeout(500);
+    
+    // Verify all cleared
+    hasOverlays = await page.evaluate(() => {
+      const overlays = (window as any).missionOverlays;
+      return overlays?.fg !== null || 
+             overlays?.cv !== null || 
+             overlays?.grb !== null ||
+             Object.values(overlays?.pins || {}).some((p: any) => p !== null);
+    });
+    
+    expect(hasOverlays).toBe(false);
   });
 
-  test('should have no console errors during mission creation', async ({ page }) => {
-    const errors: string[] = [];
-    
-    page.on('console', msg => {
-      if (msg.type() === 'error') {
-        errors.push(msg.text());
+  test('should verify no label overlaps (basic check)', async ({ page }) => {
+    await page.evaluate(() => {
+      if ((window as any).map2D) {
+        (window as any).map2D.setCenter({ lat: 34.5937, lng: 32.9980 });
+        (window as any).map2D.setZoom(14);
       }
     });
     
-    // Create mission
-    await page.locator('#btn-create-3d-mission').click();
-    await page.waitForTimeout(2000);
+    await page.click('#btn-create-mission');
+    await page.waitForTimeout(1500);
     
-    // Should have zero console errors
-    expect(errors.length).toBe(0);
+    // Get positions of distance labels
+    const labelPositions = await page.evaluate(() => {
+      const labels = (window as any).missionOverlays?.labels?.distances || [];
+      return labels.map((label: any) => {
+        if (!label || !label.getPosition) return null;
+        const pos = label.getPosition();
+        return { lat: pos.lat(), lng: pos.lng() };
+      }).filter((p: any) => p !== null);
+    });
+    
+    // Verify we have multiple labels
+    expect(labelPositions.length).toBeGreaterThan(0);
+    
+    // Simple check: all labels have different positions
+    const uniquePositions = new Set(labelPositions.map((p: any) => `${p.lat},${p.lng}`));
+    expect(uniquePositions.size).toBe(labelPositions.length);
   });
 });

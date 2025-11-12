@@ -1,13 +1,108 @@
 # 🚀 SKYWORKS AI SUITE V5 - PROJECT STATUS REPORT
 
-**Τελευταία Ενημέρωση:** 2025-11-12 (**Phase 6: Auto-Mission Designer MERGED TO MAIN** ✅)  
+**Τελευταία Ενημέρωση:** 2025-11-12 (**Phase 6: Regime-Aware Mission Builder (SORA/PDRA/STS)** 🚧)  
 **Branch:** main  
-**Current Phase:** Phase 6 Complete - Production Ready  
-**Status:** ✅ **PHASE 6 MERGED** - PR #2 Closed, All Tests Passing
+**Current Phase:** Phase 6 Extension - Regime-Aware Maps  
+**Status:** 🚧 **IN PROGRESS** - Implementing MASTER PROMPT v2
 
 ---
 
 ## 🎯 ΤΡΕΧΟΥΣΑ ΚΑΤΑΣΤΑΣΗ - ΔΙΑΒΑΣΕ ΠΡΩΤΑ!
+
+### 🚧 Phase 6 Extension: Regime-Aware Mission Builder (2025-11-12)
+
+**ΣΕ ΕΞΕΛΙΞΗ:**
+- 🚧 **Dynamic Form για SORA 2.0/2.5/PDRA/STS**
+  - ✅ HTML: Προστέθηκε `#regime-select` με 9 options
+  - ✅ Δυναμικά πεδία: `#sora25-fields`, `#sora20-fields`, `#pdra-fields`, `#sts-fields`
+  - ✅ Show/hide logic: `buildRegimeForm(regime)`
+  - Inputs: FG height, CV/GRB methods, mitigations (M1A/M1B/M1C/M2), PDRA/STS specific
+  
+- 🚧 **Client-Side Calculations**
+  - ✅ `computeEnvelopes(regime, inputs)`: FG/CV/GRB per regime
+  - ✅ SORA 2.5: Annex A formula για GRB (1.5 × √(H_FG × MTOM))
+  - ✅ SORA 2.0: Simpler buffers (20% CV, 30% GRB)
+  - ✅ PDRA/STS: Μόνο FG, όχι CV/GRB
+  
+- 🚧 **Rendering & Annotations**
+  - ✅ `renderEnvelopes()`: FG (green), CV (orange), GRB (red) polygons
+  - ✅ `placePins()`: TOL/RP/VO/Obs1-3/E1-E3 (9 pins total)
+  - ✅ `renderDistances()`: TOL→CV, TOL→GRB, TOL→E1 distance lines
+  - ✅ `renderLegendAndBadge()`: Δυναμικό badge (blue/green/gray)
+  - ✅ Legend items hide CV/GRB για PDRA/STS
+  
+- 🚧 **Reset & Export**
+  - ✅ `resetAll()`: Καθαρισμός όλων (polygons, pins, lines, labels)
+  - ✅ Buttons: `#btn-create-mission`, `#btn-reset-mission`, `#btn-export-kml`
+  - 🔜 PDRA/STS PDF compliance tables (placeholders)
+  
+- 🚧 **E2E Tests**
+  - ✅ `regime-switch.spec.ts`: SORA 2.0 ↔ 2.5 bounds diff, badge updates
+  - ✅ `pdra-sts-forms.spec.ts`: 9 regimes × field visibility
+  - ✅ `auto-mission-create.spec.ts`: Updated selectors, label overlap check
+  - 🔜 Run tests + fix errors
+
+**ΑΡΧΕΙΑ ΤΡΟΠΟΠΟΙΗΘΗΚΑΝ:**
+1. **airspace-maps.html**:
+   - Lines 553-830: Νέα form structure με regime-specific fields
+   - Lines 706-750: Updated legend box με regime badge
+   
+2. **airspace.js**:
+   - Lines 919-1420: Phase 6 Maps functions (getRegime, buildRegimeForm, computeEnvelopes, render*, resetAll)
+   - Lines 2450-2510: Event listeners για regime select, create/reset buttons
+   
+3. **E2E Tests**:
+   - `regime-switch.spec.ts` (NEW): 3 tests
+   - `pdra-sts-forms.spec.ts` (NEW): 11 tests
+   - `auto-mission-create.spec.ts` (UPDATED): 8 tests με νέα selectors
+
+**ΕΠΟΜΕΝΑ ΒΗΜΑΤΑ:**
+1. ⏳ Τρέξιμο E2E tests (`npx playwright test`)
+2. ⏳ Διόρθωση compilation/runtime errors
+3. ⏳ Manual testing: Akrotiri Limassol coordinates (34.5937, 32.9980)
+4. ⏳ Validation: SORA 2.0 vs 2.5 διαφορετικά CV/GRB
+5. ⏳ Commit με message: `feat(maps): regime-aware mission builder for SORA/PDRA/STS`
+6. ⏳ Update PROJECT_STATUS.md με αποτελέσματα
+
+---
+
+## 🧪 TESTING STATUS
+
+### E2E Tests (Playwright)
+- **Νέα Tests (Phase 6 Extension):**
+  - `regime-switch.spec.ts`: 3 scenarios
+  - `pdra-sts-forms.spec.ts`: 11 scenarios  
+  - `auto-mission-create.spec.ts`: 8 scenarios (updated)
+
+- **Υφιστάμενα (Phase 6 Base):**
+  - 23/25 tests passing
+  - 2 skipped (documented edge cases)
+
+**RUN COMMAND:**
+```bash
+cd e2e
+npx playwright test ui/regime-switch.spec.ts ui/pdra-sts-forms.spec.ts ui/auto-mission-create.spec.ts
+```
+
+---
+
+## 📚 COMPLIANCE & DOCUMENTATION
+
+**MASTER PROMPT v2 - Phase 6 Maps:**
+- ✅ Regulatory regimes: SORA 2.0, SORA 2.5, PDRA (S-01/02, G-01/02/03), STS-01/02
+- ✅ Dynamic form per regime (show/hide fields)
+- ✅ Client-side FG/CV/GRB calculations
+- ✅ Google Maps rendering (polygons, pins, lines, labels)
+- ✅ Legend & dynamic badge
+- ✅ Reset/Delete functionality
+- 🔜 E2E validation (bounds diff, badge updates, no overlaps)
+
+**ΑΠΑΓΟΡΕΥΣΕΙΣ:**
+- ❌ ΔΕΝ αλλάζουμε backend calculators (Phase 6 = client-side μόνο)
+- ❌ ΔΕΝ χρησιμοποιούμε OSM/Nominatim/MapLibre/Leaflet/Cesium
+- ✅ ΜΟΝΟ Google Maps JavaScript API
+
+---
 
 ### 🚧 Google Maps Migration - Πακέτο 1 & 2 ΟΛΟΚΛΗΡΩΘΗΚΑΝ (2025-11-11)
 

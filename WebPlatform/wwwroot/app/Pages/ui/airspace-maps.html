@@ -543,16 +543,23 @@
         <h4>🚁 Create Complete 3D Mission</h4>
         
         <div class="form-group">
-          <label class="form-label">SORA Version</label>
-          <select id="ddl-sora-version">
-            <option value="2.5_jarus">JARUS SORA 2.5 Annex A</option>
-            <option value="2.0_amc">EASA SORA 2.0 AMC</option>
+          <label class="form-label">Regulatory Regime</label>
+          <select id="regime-select">
+            <option value="SORA_25_JARUS">SORA 2.5 (JARUS Annex A)</option>
+            <option value="SORA_20_AMC">SORA 2.0 (EASA AMC)</option>
+            <option value="PDRA_S01">PDRA S-01</option>
+            <option value="PDRA_S02">PDRA S-02</option>
+            <option value="PDRA_G01">PDRA G-01</option>
+            <option value="PDRA_G02">PDRA G-02</option>
+            <option value="PDRA_G03">PDRA G-03</option>
+            <option value="STS_01">STS-01</option>
+            <option value="STS_02">STS-02</option>
           </select>
         </div>
         
         <div class="form-group">
           <label class="form-label">Mission Template</label>
-          <select id="ddl-mission-template">
+          <select id="mission-template">
             <option value="VLOS_Spot">VLOS Spot (150m radius)</option>
             <option value="Corridor">Corridor (from waypoints)</option>
             <option value="AreaScan">Area Scan (200×150m)</option>
@@ -561,28 +568,294 @@
         
         <div class="form-group">
           <label class="form-label">Flight Geography Height (H_FG, m AGL)</label>
-          <input type="number" id="inp-height-fg" value="60" min="0" max="500" step="5">
+          <input type="number" id="fg-height-m" value="60" min="0" max="500" step="5">
           <p class="help-text">Default: 60m above ground level</p>
         </div>
         
         <div class="input-group">
           <div>
             <label class="form-label">Speed (m/s)</label>
-            <input type="number" id="inp-speed" value="10" min="1" max="50" step="1">
+            <input type="number" id="uas-speed-ms" value="10" min="1" max="50" step="1">
           </div>
           <div>
             <label class="form-label">MTOM (kg)</label>
-            <input type="number" id="inp-mtom" value="25" min="0.1" max="150" step="0.1">
+            <input type="number" id="uas-mtom-kg" value="25" min="0.1" max="150" step="0.1">
           </div>
         </div>
         
         <div class="form-group">
           <label class="form-label">Safe Radius (m)</label>
-          <input type="number" id="inp-safe-radius" value="500" min="50" max="5000" step="50">
-          <p class="help-text">Distance for RP/VO placement</p>
+          <input type="number" id="safe-radius-m" value="500" min="50" max="5000" step="50">
+          <p class="help-text">Distance for RP/VO/Emergency placement</p>
         </div>
         
+        <!-- SORA 2.5 JARUS Specific Fields -->
+        <div id="sora25-fields" class="regime-fields" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">CV Method</label>
+            <select id="cv-method">
+              <option value="percent">% of FG radius</option>
+              <option value="fixed">Fixed buffer (m)</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">CV Value</label>
+            <input type="number" id="cv-value" value="20" min="0" max="1000" step="5">
+            <p class="help-text">Percentage or meters</p>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">GRB Method</label>
+            <select id="grb-method">
+              <option value="formula">Annex A formula (default)</option>
+              <option value="fixed">Fixed buffer (m)</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">GRB Value (m)</label>
+            <input type="number" id="grb-value" value="100" min="0" max="2000" step="10">
+            <p class="help-text">Active only if Fixed method selected</p>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">M1(A) Sheltering</label>
+            <select id="m1a">
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">M1(B) Operational Restrictions</label>
+            <select id="m1b">
+              <option value="None">None</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">M1(C) Ground Observation</label>
+            <select id="m1c">
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">M2 Impact Dynamics</label>
+            <select id="m2">
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- SORA 2.0 AMC Specific Fields -->
+        <div id="sora20-fields" class="regime-fields" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">iGRP Area Type</label>
+            <select id="igrp-area-type">
+              <option value="urban">Urban (High density)</option>
+              <option value="suburban">Suburban (Medium)</option>
+              <option value="rural">Rural (Low)</option>
+              <option value="remote">Remote/Wilderness</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">ARC Method</label>
+            <select id="arc-method">
+              <option value="tables">Use Tables</option>
+              <option value="explicit">Explicit ARC</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">M1(A) - SORA 2.0</label>
+            <select id="m1a-20">
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">M1(B) - SORA 2.0</label>
+            <select id="m1b-20">
+              <option value="None">None</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">M1(C) - SORA 2.0</label>
+            <select id="m1c-20">
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">M2 - SORA 2.0</label>
+            <select id="m2-20">
+              <option value="None">None</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+        </div>
+        
+        <!-- PDRA Specific Fields -->
+        <div id="pdra-fields" class="regime-fields" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">Environment</label>
+            <select id="pdra-environment">
+              <option value="Urban">Urban</option>
+              <option value="Suburban">Suburban</option>
+              <option value="Rural">Rural</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">VLOS/BVLOS</label>
+            <select id="pdra-vlos">
+              <option value="VLOS">VLOS</option>
+              <option value="BVLOS">BVLOS</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Max Altitude (m)</label>
+            <input type="number" id="pdra-max-alt-m" value="120" min="0" max="500" step="10">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Geo-Awareness</label>
+            <select id="pdra-geo-awareness">
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Remote ID</label>
+            <select id="pdra-remote-id">
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Competency Level</label>
+            <select id="pdra-competency">
+              <option value="Basic">Basic</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Containment</label>
+            <select id="pdra-containment">
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          
+          <button id="btn-pdra-pdf" class="btn-secondary full-width" style="margin-top:8px;">
+            Generate PDRA Compliance Table (PDF)
+          </button>
+        </div>
+        
+        <!-- STS Specific Fields -->
+        <div id="sts-fields" class="regime-fields" style="display:none;">
+          <div class="form-group">
+            <label class="form-label">UAS Category</label>
+            <select id="sts-uascategory">
+              <option value="C0">C0</option>
+              <option value="C1">C1</option>
+              <option value="C2">C2</option>
+              <option value="C3">C3</option>
+              <option value="C4">C4</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Class</label>
+            <select id="sts-class">
+              <option value="A1">A1</option>
+              <option value="A2">A2</option>
+              <option value="A3">A3</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Altitude Limit (m)</label>
+            <input type="number" id="sts-alt-limit" value="120" min="0" max="150" step="10">
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Training Completed</label>
+            <select id="sts-training">
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Equipments</label>
+            <select id="sts-equipments" multiple size="3">
+              <option value="RemoteID" selected>Remote ID</option>
+              <option value="GeoAwareness" selected>Geo-Awareness</option>
+              <option value="Lights">Lights</option>
+            </select>
+            <p class="help-text">Hold Ctrl to select multiple</p>
+          </div>
+          
+          <button id="btn-sts-pdf" class="btn-secondary full-width" style="margin-top:8px;">
+            Generate STS Compliance Table (PDF)
+          </button>
+        </div>
+        
+        <!-- TOL Auto Placement -->
         <div class="switch-container">
+          <span class="switch-label">Auto TOL Placement</span>
+          <label class="switch">
+            <input type="checkbox" id="auto-tol" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        
+        <div class="input-group">
+          <div>
+            <label class="form-label">RP Offset (m)</label>
+            <input type="number" id="rp-offset-m" value="100" min="0" max="1000" step="10">
+          </div>
+          <div>
+            <label class="form-label">VO Offset (m)</label>
+            <input type="number" id="vo-offset-m" value="150" min="0" max="1000" step="10">
+          </div>
+        </div>
+        
+        <button id="btn-create-mission" class="btn-create-mission">
+          Create Mission
+        </button>
+        
+        <button id="btn-reset-mission" class="btn-secondary full-width" style="margin-top:8px;">
+          Reset/Delete Mission
+        </button>
+        
+        <button id="btn-export-kml" class="btn-secondary full-width" style="margin-top:8px;">
+          🌍 Open in Google Earth (KML)
+        </button>
+        
+        <div class="switch-container" style="display:none;">
           <span class="switch-label">Enable 3D Mode</span>
           <label class="switch">
             <input type="checkbox" id="sw-3d-mode">
@@ -590,7 +863,7 @@
           </label>
         </div>
         
-        <button id="btn-create-3d-mission" class="btn-create-mission" disabled>
+        <button id="btn-create-3d-mission" class="btn-create-mission" style="display:none;" disabled>
           Create Complete 3D Mission
         </button>
         
@@ -652,50 +925,59 @@
     <div class="map-wrapper">
       <div id="map2D" class="map-container">
         <!-- Airspace Legend Panel -->
-        <div id="airspace-legend" class="airspace-legend">
+        <div id="legend-box" class="airspace-legend">
         <h4 style="margin:0 0 10px 0;font-size:14px;font-weight:600;border-bottom:1px solid #ddd;padding-bottom:8px;">
-          🗺️ Airspace Layers
+          🗺️ Legend
         </h4>
+        
+        <!-- Regime Badge -->
+        <div id="regime-badge" style="margin-bottom:12px;padding:8px;background:#e0f2fe;border-left:3px solid #0284c7;border-radius:4px;font-size:11px;font-weight:600;color:#0369a1;text-align:center;">
+          SORA 2.5 (JARUS)
+        </div>
+        
         <div class="legend-items">
+          <!-- FG/CV/GRB Color Chips -->
+          <div class="legend-item" id="legend-fg">
+            <span class="legend-color" style="background:#16a34a;opacity:0.15;border:2px solid #16a34a;"></span>
+            <span class="legend-label">FG (Flight Geography)</span>
+          </div>
+          <div class="legend-item" id="legend-cv">
+            <span class="legend-color" style="background:#f59e0b;opacity:0.25;border:2px solid #f59e0b;"></span>
+            <span class="legend-label">CV (Contingency Volume)</span>
+          </div>
+          <div class="legend-item" id="legend-grb">
+            <span class="legend-color" style="background:#ef4444;opacity:0.25;border:3px solid #ef4444;"></span>
+            <span class="legend-label">GRB (Ground Risk Buffer)</span>
+          </div>
+          
+          <!-- Pins -->
           <div class="legend-item">
-            <span class="legend-color" style="background:#0066ff;"></span>
-            <span class="legend-label">Route</span>
+            <span class="legend-marker" style="width:20px;height:20px;border-radius:50%;background:#16a34a;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);">T</span>
+            <span class="legend-label">TOL (Take-Off/Landing)</span>
           </div>
           <div class="legend-item">
-            <span class="legend-color" style="background:#FFD700;opacity:0.5;"></span>
-            <span class="legend-label">CGA (Controlled Ground Area)</span>
+            <span class="legend-marker" style="width:20px;height:20px;border-radius:50%;background:#9333ea;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);">R</span>
+            <span class="legend-label">RP (Remote Pilot)</span>
           </div>
           <div class="legend-item">
-            <span class="legend-color" style="background:#3b82f6;opacity:0.4;border:1px dashed #3b82f6;"></span>
-            <span class="legend-label">Flight Corridor</span>
+            <span class="legend-marker" style="width:20px;height:20px;border-radius:50%;background:#3b82f6;color:white;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);">V</span>
+            <span class="legend-label">VO (Visual Observer)</span>
           </div>
           <div class="legend-item">
-            <span class="legend-color" style="background:#ef4444;opacity:0.3;border:2px dashed #ef4444;"></span>
-            <span class="legend-label">No-Fly / Geofence</span>
+            <span class="legend-marker" style="width:20px;height:20px;border-radius:50%;background:#f97316;color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);">O</span>
+            <span class="legend-label">Observers (1-3)</span>
           </div>
           <div class="legend-item">
-            <span class="legend-marker mission-start-marker" style="width:20px;height:20px;font-size:11px;margin:0;">S</span>
-            <span class="legend-label">Start Point</span>
-          </div>
-          <div class="legend-item">
-            <span class="legend-marker mission-end-marker" style="width:20px;height:20px;font-size:11px;margin:0;">E</span>
-            <span class="legend-label">End Point</span>
-          </div>
-          <div class="legend-item">
-            <span class="legend-marker mission-emergency-marker" style="width:20px;height:20px;font-size:10px;margin:0;">E1</span>
-            <span class="legend-label">Emergency Landing Site</span>
-          </div>
-          <div class="legend-item">
-            <span class="legend-color" style="background:#10b981;opacity:0.3;border:2px dashed #10b981;"></span>
-            <span class="legend-label">Safe Area (ERP)</span>
+            <span class="legend-marker" style="width:20px;height:20px;border-radius:50%;background:#6b7280;color:white;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.2);">E</span>
+            <span class="legend-label">Emergency Sites (E1-E3)</span>
           </div>
         </div>
         <div style="margin-top:12px;padding-top:10px;border-top:1px solid #eee;">
-          <p style="margin:0;font-size:11px;color:#666;line-height:1.4;">
-            <strong>RMZ/TMZ/CTR:</strong> Controlled airspace regions<br>
-            <strong>ATZ:</strong> Aerodrome Traffic Zone<br>
-            <strong>P/R/D:</strong> Prohibited/Restricted/Danger areas<br>
-            <strong>TRA/TSA:</strong> Temporary Reserved/Segregated Airspace
+          <p style="margin:0;font-size:10px;color:#666;line-height:1.4;">
+            <strong>FG:</strong> Flight Geography (green, 15% fill)<br>
+            <strong>CV:</strong> Contingency Volume (orange, 25% fill)<br>
+            <strong>GRB:</strong> Ground Risk Buffer (red, 25% fill)<br>
+            <strong>Safe Area:</strong> C2 containment radius
           </p>
         </div>
       </div>

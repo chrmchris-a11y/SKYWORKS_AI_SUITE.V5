@@ -961,6 +961,680 @@ function createCirclePolygon(lon, lat, radiusMeters, points = 64) {
   return coords;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// PHASE 6 MAPS: REGIME-AWARE MISSION BUILDER (SORA 2.0/2.5, PDRA, STS)
+// ═══════════════════════════════════════════════════════════════════
+
+// Global state for map overlays
+let missionOverlays = {
+  fg: null,
+  cv: null,
+  grb: null,
+  pins: {
+    tol: null,
+    rp: null,
+    vo: null,
+    obs1: null,
+    obs2: null,
+    obs3: null,
+    e1: null,
+    e2: null,
+    e3: null
+  },
+  lines: {
+    tolCv: null,
+    tolGrb: null,
+    tolE1: null
+  },
+  labels: {
+    tol: null,
+    safeArea: null,
+    distances: []
+  }
+};
+
+/**
+ * Get current regulatory regime from #regime-select
+ */
+function getRegime() {
+  const select = document.getElementById('regime-select');
+  return select ? select.value : 'SORA_25_JARUS';
+}
+
+/**
+ * Build dynamic form based on selected regime
+ * Show/hide fields per SORA 2.0/2.5/PDRA/STS
+ */
+function buildRegimeForm(regime) {
+  // Hide all regime-specific field groups
+  const allRegimeFields = document.querySelectorAll('.regime-fields');
+  allRegimeFields.forEach(el => el.style.display = 'none');
+  
+  // Show appropriate group
+  if (regime === 'SORA_25_JARUS') {
+    const sora25Fields = document.getElementById('sora25-fields');
+    if (sora25Fields) sora25Fields.style.display = 'block';
+  } else if (regime === 'SORA_20_AMC') {
+    const sora20Fields = document.getElementById('sora20-fields');
+    if (sora20Fields) sora20Fields.style.display = 'block';
+  } else if (regime.startsWith('PDRA_')) {
+    const pdraFields = document.getElementById('pdra-fields');
+    if (pdraFields) pdraFields.style.display = 'block';
+  } else if (regime.startsWith('STS_')) {
+    const stsFields = document.getElementById('sts-fields');
+    if (stsFields) stsFields.style.display = 'block';
+  }
+  
+  // Update legend badge
+  renderLegendAndBadge(regime);
+}
+
+/**
+ * Compute FG/CV/GRB envelopes based on regime and inputs
+ * Returns { fg, cv, grb } as GeoJSON polygons
+ */
+function computeEnvelopes(regime, inputs) {
+  const result = { fg: null, cv: null, grb: null };
+  
+  // Get template type
+  const template = inputs.template || 'VLOS_Spot';
+  const heightM = parseFloat(inputs.heightM) || 60;
+  const center = inputs.center || { lat: 34.5937, lon: 32.9980 }; // Akrotiri, Limassol
+  
+  // === FG (Flight Geography) ===
+  let fgRadius = 150; // Default VLOS_Spot
+  if (template === 'Corridor') {
+    fgRadius = 100; // Corridor width
+  } else if (template === 'AreaScan') {
+    // Rectangle 200×150m
+    const halfWidth = 100; // 200m / 2
+    const halfHeight = 75; // 150m / 2
+    const metersPerDegreeLat = 110540;
+    const metersPerDegreeLon = 111320 * Math.cos(center.lat * Math.PI / 180);
+    
+    const coords = [
+      [center.lon - halfWidth/metersPerDegreeLon, center.lat + halfHeight/metersPerDegreeLat],
+      [center.lon + halfWidth/metersPerDegreeLon, center.lat + halfHeight/metersPerDegreeLat],
+      [center.lon + halfWidth/metersPerDegreeLon, center.lat - halfHeight/metersPerDegreeLat],
+      [center.lon - halfWidth/metersPerDegreeLon, center.lat - halfHeight/metersPerDegreeLat],
+      [center.lon - halfWidth/metersPerDegreeLon, center.lat + halfHeight/metersPerDegreeLat]
+    ];
+    
+    result.fg = {
+      type: 'Feature',
+      properties: { type: 'fg', regime, height_m: heightM },
+      geometry: { type: 'Polygon', coordinates: [coords] }
+    };
+  }
+  
+  if (!result.fg) {
+    // Circular FG
+    const fgCoords = createCirclePolygon(center.lon, center.lat, fgRadius, 64);
+    result.fg = {
+      type: 'Feature',
+      properties: { type: 'fg', regime, radius_m: fgRadius, height_m: heightM },
+      geometry: { type: 'Polygon', coordinates: [fgCoords] }
+    };
+  }
+  
+  // === CV (Contingency Volume) ===
+  // Only for SORA regimes
+  if (regime === 'SORA_25_JARUS' || regime === 'SORA_20_AMC') {
+    let cvRadius = fgRadius;
+    
+    if (regime === 'SORA_25_JARUS') {
+      const cvMethod = inputs.cvMethod || 'percent';
+      const cvValue = parseFloat(inputs.cvValue) || 20;
+      
+      if (cvMethod === 'percent') {
+        cvRadius = fgRadius + (fgRadius * cvValue / 100);
+      } else {
+        cvRadius = fgRadius + cvValue;
+      }
+    } else {
+      // SORA 2.0: simpler, % based
+      cvRadius = fgRadius * 1.2; // 20% buffer default
+    }
+    
+    const cvCoords = createCirclePolygon(center.lon, center.lat, cvRadius, 64);
+    result.cv = {
+      type: 'Feature',
+      properties: { type: 'cv', regime, radius_m: cvRadius, height_m: heightM },
+      geometry: { type: 'Polygon', coordinates: [cvCoords] }
+    };
+  }
+  
+  // === GRB (Ground Risk Buffer) ===
+  if (regime === 'SORA_25_JARUS' || regime === 'SORA_20_AMC') {
+    let grbRadius = fgRadius;
+    
+    if (regime === 'SORA_25_JARUS') {
+      const grbMethod = inputs.grbMethod || 'formula';
+      const grbValue = parseFloat(inputs.grbValue) || 100;
+      
+      if (grbMethod === 'formula') {
+        // Annex A formula (simplified): GRB = 1.5 × √(H_FG × MTOM)
+        const mtom = parseFloat(inputs.mtom) || 25;
+        grbRadius = fgRadius + (1.5 * Math.sqrt(heightM * mtom));
+      } else {
+        grbRadius = fgRadius + grbValue;
+      }
+    } else {
+      // SORA 2.0: simpler, 1.3× FG
+      grbRadius = fgRadius * 1.3;
+    }
+    
+    const grbCoords = createCirclePolygon(center.lon, center.lat, grbRadius, 64);
+    result.grb = {
+      type: 'Feature',
+      properties: { type: 'grb', regime, radius_m: grbRadius, height_m: heightM },
+      geometry: { type: 'Polygon', coordinates: [grbCoords] }
+    };
+  }
+  
+  return result;
+}
+
+/**
+ * Render FG/CV/GRB polygons on Google Maps
+ */
+function renderEnvelopes(layers) {
+  if (!map2D) return;
+  
+  // Clear existing overlays
+  if (missionOverlays.fg) missionOverlays.fg.setMap(null);
+  if (missionOverlays.cv) missionOverlays.cv.setMap(null);
+  if (missionOverlays.grb) missionOverlays.grb.setMap(null);
+  
+  // Render FG (green, 15% opacity, 2px stroke)
+  if (layers.fg) {
+    const coords = layers.fg.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+    missionOverlays.fg = new google.maps.Polygon({
+      paths: coords,
+      strokeColor: '#16a34a',
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: '#16a34a',
+      fillOpacity: 0.15,
+      map: map2D
+    });
+    missionOverlays.fg.set('data-id', 'fg-layer');
+  }
+  
+  // Render CV (orange, 25% opacity, 2px stroke)
+  if (layers.cv) {
+    const coords = layers.cv.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+    missionOverlays.cv = new google.maps.Polygon({
+      paths: coords,
+      strokeColor: '#f59e0b',
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: '#f59e0b',
+      fillOpacity: 0.25,
+      map: map2D
+    });
+    missionOverlays.cv.set('data-id', 'cv-layer');
+  }
+  
+  // Render GRB (red, 25% opacity, 3px stroke)
+  if (layers.grb) {
+    const coords = layers.grb.geometry.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+    missionOverlays.grb = new google.maps.Polygon({
+      paths: coords,
+      strokeColor: '#ef4444',
+      strokeOpacity: 0.8,
+      strokeWeight: 3,
+      fillColor: '#ef4444',
+      fillOpacity: 0.25,
+      map: map2D
+    });
+    missionOverlays.grb.set('data-id', 'grb-layer');
+  }
+}
+
+/**
+ * Place TOL/RP/VO/Observers/Emergency pins
+ */
+function placePins(inputs) {
+  if (!map2D) return;
+  
+  const center = inputs.center || { lat: 34.5937, lon: 32.9980 };
+  const heightM = parseFloat(inputs.heightM) || 60;
+  const rpOffset = parseFloat(inputs.rpOffset) || 100;
+  const voOffset = parseFloat(inputs.voOffset) || 150;
+  const safeRadius = parseFloat(inputs.safeRadius) || 500;
+  
+  // Clear existing pins
+  Object.values(missionOverlays.pins).forEach(pin => {
+    if (pin) pin.setMap(null);
+  });
+  
+  // TOL (green pin, center)
+  missionOverlays.pins.tol = new google.maps.Marker({
+    position: center,
+    map: map2D,
+    label: { text: 'TOL', color: 'white', fontSize: '12px', fontWeight: 'bold' },
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 14,
+      fillColor: '#16a34a',
+      fillOpacity: 1,
+      strokeColor: 'white',
+      strokeWeight: 2
+    },
+    title: `TOL - H_FG: ${heightM}m AGL`
+  });
+  missionOverlays.pins.tol.set('data-id', 'tol-pin');
+  
+  // RP (purple pin, offset north)
+  const rpLat = center.lat + (rpOffset / 110540);
+  missionOverlays.pins.rp = new google.maps.Marker({
+    position: { lat: rpLat, lng: center.lon },
+    map: map2D,
+    label: { text: 'RP', color: 'white', fontSize: '12px', fontWeight: 'bold' },
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 14,
+      fillColor: '#9333ea',
+      fillOpacity: 1,
+      strokeColor: 'white',
+      strokeWeight: 2
+    },
+    title: 'RP - Remote Pilot'
+  });
+  missionOverlays.pins.rp.set('data-id', 'rp-pin');
+  
+  // VO (blue pin, offset east)
+  const voLon = center.lon + (voOffset / (111320 * Math.cos(center.lat * Math.PI / 180)));
+  missionOverlays.pins.vo = new google.maps.Marker({
+    position: { lat: center.lat, lng: voLon },
+    map: map2D,
+    label: { text: 'VO', color: 'white', fontSize: '12px', fontWeight: 'bold' },
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 14,
+      fillColor: '#3b82f6',
+      fillOpacity: 1,
+      strokeColor: 'white',
+      strokeWeight: 2
+    },
+    title: 'VO - Visual Observer'
+  });
+  missionOverlays.pins.vo.set('data-id', 'vo-pin');
+  
+  // Observers (orange pins, placed around safe area)
+  const obsAngles = [45, 135, 225]; // degrees
+  obsAngles.forEach((angle, i) => {
+    const rad = angle * Math.PI / 180;
+    const obsLat = center.lat + (safeRadius * Math.sin(rad) / 110540);
+    const obsLon = center.lon + (safeRadius * Math.cos(rad) / (111320 * Math.cos(center.lat * Math.PI / 180)));
+    
+    missionOverlays.pins[`obs${i+1}`] = new google.maps.Marker({
+      position: { lat: obsLat, lng: obsLon },
+      map: map2D,
+      label: { text: `O${i+1}`, color: 'white', fontSize: '11px', fontWeight: 'bold' },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 12,
+        fillColor: '#f97316',
+        fillOpacity: 1,
+        strokeColor: 'white',
+        strokeWeight: 2
+      },
+      title: `Observer ${i+1}`
+    });
+    missionOverlays.pins[`obs${i+1}`].set('data-id', `obs-${i+1}`);
+  });
+  
+  // Emergency sites (gray pins)
+  const eAngles = [0, 120, 240];
+  eAngles.forEach((angle, i) => {
+    const rad = angle * Math.PI / 180;
+    const eLat = center.lat + (safeRadius * 0.8 * Math.sin(rad) / 110540);
+    const eLon = center.lon + (safeRadius * 0.8 * Math.cos(rad) / (111320 * Math.cos(center.lat * Math.PI / 180)));
+    
+    missionOverlays.pins[`e${i+1}`] = new google.maps.Marker({
+      position: { lat: eLat, lng: eLon },
+      map: map2D,
+      label: { text: `E${i+1}`, color: 'white', fontSize: '11px', fontWeight: 'bold' },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 12,
+        fillColor: '#6b7280',
+        fillOpacity: 1,
+        strokeColor: 'white',
+        strokeWeight: 2
+      },
+      title: `Emergency Site ${i+1}`
+    });
+    missionOverlays.pins[`e${i+1}`].set('data-id', `e${i+1}`);
+  });
+}
+
+/**
+ * Render distance lines and labels (TOL→CV/GRB/E1, Safe Area)
+ */
+function renderDistances(layers, pins) {
+  if (!map2D) return;
+  
+  // Clear existing lines
+  Object.values(missionOverlays.lines).forEach(line => {
+    if (line) line.setMap(null);
+  });
+  missionOverlays.labels.distances.forEach(label => {
+    if (label) label.setMap(null);
+  });
+  missionOverlays.labels.distances = [];
+  
+  if (!pins.tol) return;
+  
+  const tolPos = pins.tol.getPosition();
+  
+  // TOL→CV edge (green dashed line)
+  if (layers.cv && pins.tol) {
+    const cvCoords = layers.cv.geometry.coordinates[0];
+    // Find closest point on CV to TOL
+    const cvEdge = cvCoords[0]; // Simple approximation: first point
+    
+    missionOverlays.lines.tolCv = new google.maps.Polyline({
+      path: [tolPos, { lat: cvEdge[1], lng: cvEdge[0] }],
+      strokeColor: '#16a34a',
+      strokeOpacity: 0.7,
+      strokeWeight: 2,
+      map: map2D,
+      icons: [{
+        icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
+        offset: '0',
+        repeat: '10px'
+      }]
+    });
+    missionOverlays.lines.tolCv.set('data-id', 'line-tol-cv');
+    
+    // Label
+    const dist = google.maps.geometry.spherical.computeDistanceBetween(
+      tolPos,
+      new google.maps.LatLng(cvEdge[1], cvEdge[0])
+    ).toFixed(0);
+    
+    const midLat = (tolPos.lat() + cvEdge[1]) / 2;
+    const midLng = (tolPos.lng() + cvEdge[0]) / 2;
+    
+    const label = new google.maps.Marker({
+      position: { lat: midLat, lng: midLng },
+      map: map2D,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 0
+      },
+      label: {
+        text: `TOL→CV: ${dist}m`,
+        color: '#16a34a',
+        fontSize: '11px',
+        fontWeight: 'bold'
+      }
+    });
+    missionOverlays.labels.distances.push(label);
+  }
+  
+  // TOL→GRB edge (red dashed line)
+  if (layers.grb && pins.tol) {
+    const grbCoords = layers.grb.geometry.coordinates[0];
+    const grbEdge = grbCoords[0];
+    
+    missionOverlays.lines.tolGrb = new google.maps.Polyline({
+      path: [tolPos, { lat: grbEdge[1], lng: grbEdge[0] }],
+      strokeColor: '#ef4444',
+      strokeOpacity: 0.7,
+      strokeWeight: 2,
+      map: map2D,
+      icons: [{
+        icon: { path: 'M 0,-1 0,1', strokeOpacity: 1, scale: 2 },
+        offset: '0',
+        repeat: '10px'
+      }]
+    });
+    missionOverlays.lines.tolGrb.set('data-id', 'line-tol-grb');
+    
+    const dist = google.maps.geometry.spherical.computeDistanceBetween(
+      tolPos,
+      new google.maps.LatLng(grbEdge[1], grbEdge[0])
+    ).toFixed(0);
+    
+    const midLat = (tolPos.lat() + grbEdge[1]) / 2;
+    const midLng = (tolPos.lng() + grbEdge[0]) / 2;
+    
+    const label = new google.maps.Marker({
+      position: { lat: midLat + 0.0005, lng: midLng }, // Small offset to avoid overlap
+      map: map2D,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 0
+      },
+      label: {
+        text: `TOL→GRB: ${dist}m`,
+        color: '#ef4444',
+        fontSize: '11px',
+        fontWeight: 'bold'
+      }
+    });
+    missionOverlays.labels.distances.push(label);
+  }
+  
+  // TOL→E1 (red solid line)
+  if (pins.e1 && pins.tol) {
+    const e1Pos = pins.e1.getPosition();
+    
+    missionOverlays.lines.tolE1 = new google.maps.Polyline({
+      path: [tolPos, e1Pos],
+      strokeColor: '#ef4444',
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      map: map2D
+    });
+    missionOverlays.lines.tolE1.set('data-id', 'line-tol-e1');
+    
+    const dist = google.maps.geometry.spherical.computeDistanceBetween(tolPos, e1Pos).toFixed(0);
+    
+    const midLat = (tolPos.lat() + e1Pos.lat()) / 2;
+    const midLng = (tolPos.lng() + e1Pos.lng()) / 2;
+    
+    const label = new google.maps.Marker({
+      position: { lat: midLat, lng: midLng + 0.001 },
+      map: map2D,
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 0
+      },
+      label: {
+        text: `TOL→E1: ${dist}m`,
+        color: '#ef4444',
+        fontSize: '11px',
+        fontWeight: 'bold'
+      }
+    });
+    missionOverlays.labels.distances.push(label);
+  }
+  
+  // Safe Area label
+  const safeRadius = parseFloat(document.getElementById('safe-radius-m')?.value) || 500;
+  const safeArea = Math.PI * safeRadius * safeRadius / 1000000; // km²
+  
+  const safeLabel = new google.maps.Marker({
+    position: { lat: tolPos.lat() - 0.002, lng: tolPos.lng() },
+    map: map2D,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 0
+    },
+    label: {
+      text: `Safe Area: ${safeRadius}m / ${safeArea.toFixed(2)}km² (C2 containment)`,
+      color: '#0369a1',
+      fontSize: '12px',
+      fontWeight: 'bold'
+    }
+  });
+  safeLabel.set('data-id', 'label-safe-area');
+  missionOverlays.labels.safeArea = safeLabel;
+}
+
+/**
+ * Update legend and regime badge
+ */
+function renderLegendAndBadge(regime) {
+  const badgeEl = document.getElementById('regime-badge');
+  if (!badgeEl) return;
+  
+  const badgeTexts = {
+    'SORA_25_JARUS': 'JARUS SORA 2.5 Annex A',
+    'SORA_20_AMC': 'EASA SORA 2.0 AMC',
+    'PDRA_S01': 'PDRA S-01',
+    'PDRA_S02': 'PDRA S-02',
+    'PDRA_G01': 'PDRA G-01',
+    'PDRA_G02': 'PDRA G-02',
+    'PDRA_G03': 'PDRA G-03',
+    'STS_01': 'STS-01',
+    'STS_02': 'STS-02'
+  };
+  
+  const badgeColors = {
+    'SORA_25_JARUS': '#10b981',
+    'SORA_20_AMC': '#3b82f6',
+    'PDRA_S01': '#6b7280',
+    'PDRA_S02': '#6b7280',
+    'PDRA_G01': '#6b7280',
+    'PDRA_G02': '#6b7280',
+    'PDRA_G03': '#6b7280',
+    'STS_01': '#6b7280',
+    'STS_02': '#6b7280'
+  };
+  
+  badgeEl.textContent = badgeTexts[regime] || regime;
+  badgeEl.style.background = `linear-gradient(135deg, ${badgeColors[regime]}22 0%, ${badgeColors[regime]}44 100%)`;
+  badgeEl.style.borderLeftColor = badgeColors[regime];
+  badgeEl.style.color = badgeColors[regime];
+  
+  // Show/hide CV/GRB legend items based on regime
+  const legendCv = document.getElementById('legend-cv');
+  const legendGrb = document.getElementById('legend-grb');
+  
+  if (regime.startsWith('PDRA_') || regime.startsWith('STS_')) {
+    // PDRA/STS may not have CV/GRB
+    if (legendCv) legendCv.style.display = 'none';
+    if (legendGrb) legendGrb.style.display = 'none';
+  } else {
+    if (legendCv) legendCv.style.display = 'flex';
+    if (legendGrb) legendGrb.style.display = 'flex';
+  }
+}
+
+/**
+ * Reset/Delete all mission overlays and state
+ */
+function resetAll() {
+  if (!map2D) return;
+  
+  // Remove polygons
+  if (missionOverlays.fg) missionOverlays.fg.setMap(null);
+  if (missionOverlays.cv) missionOverlays.cv.setMap(null);
+  if (missionOverlays.grb) missionOverlays.grb.setMap(null);
+  
+  // Remove pins
+  Object.values(missionOverlays.pins).forEach(pin => {
+    if (pin) pin.setMap(null);
+  });
+  
+  // Remove lines
+  Object.values(missionOverlays.lines).forEach(line => {
+    if (line) line.setMap(null);
+  });
+  
+  // Remove labels
+  if (missionOverlays.labels.safeArea) missionOverlays.labels.safeArea.setMap(null);
+  missionOverlays.labels.distances.forEach(label => {
+    if (label) label.setMap(null);
+  });
+  
+  // Reset state
+  missionOverlays = {
+    fg: null,
+    cv: null,
+    grb: null,
+    pins: {
+      tol: null,
+      rp: null,
+      vo: null,
+      obs1: null,
+      obs2: null,
+      obs3: null,
+      e1: null,
+      e2: null,
+      e3: null
+    },
+    lines: {
+      tolCv: null,
+      tolGrb: null,
+      tolE1: null
+    },
+    labels: {
+      tol: null,
+      safeArea: null,
+      distances: []
+    }
+  };
+  
+  // Clear existing route data
+  missionPolylines.forEach(p => p.setMap(null));
+  missionPolygons.forEach(p => p.setMap(null));
+  missionMarkers.forEach(m => m.setMap(null));
+  missionPolylines = [];
+  missionPolygons = [];
+  missionMarkers = [];
+  
+  missionData.waypoints = [];
+  missionData.cga = null;
+  missionData.geofence = null;
+  
+  logToConsole('✅ Mission reset - all overlays cleared', 'success');
+}
+
+/**
+ * Main recompute and render function - called on regime change or Create button
+ */
+function recomputeAndRender() {
+  const regime = getRegime();
+  
+  // Gather inputs
+  const inputs = {
+    template: document.getElementById('mission-template')?.value || 'VLOS_Spot',
+    heightM: document.getElementById('fg-height-m')?.value || 60,
+    speed: document.getElementById('uas-speed-ms')?.value || 10,
+    mtom: document.getElementById('uas-mtom-kg')?.value || 25,
+    safeRadius: document.getElementById('safe-radius-m')?.value || 500,
+    rpOffset: document.getElementById('rp-offset-m')?.value || 100,
+    voOffset: document.getElementById('vo-offset-m')?.value || 150,
+    cvMethod: document.getElementById('cv-method')?.value || 'percent',
+    cvValue: document.getElementById('cv-value')?.value || 20,
+    grbMethod: document.getElementById('grb-method')?.value || 'formula',
+    grbValue: document.getElementById('grb-value')?.value || 100,
+    center: map2D ? { lat: map2D.getCenter().lat(), lon: map2D.getCenter().lng() } : { lat: 34.5937, lon: 32.9980 }
+  };
+  
+  // Compute envelopes
+  const layers = computeEnvelopes(regime, inputs);
+  
+  // Render
+  renderEnvelopes(layers);
+  placePins(inputs);
+  renderDistances(layers, missionOverlays.pins);
+  renderLegendAndBadge(regime);
+  
+  logToConsole(`✅ Mission created: ${regime} - ${inputs.template}`, 'success');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// END PHASE 6 MAPS REGIME-AWARE BUILDER
+// ═══════════════════════════════════════════════════════════════════
+
 function init2DMap() {
   console.log('[init2DMap] Starting map initialization...');
   
@@ -2393,6 +3067,64 @@ function downloadFile(filename, content) {
 // ================================================================
 function attachEventListeners() {
   console.log('[attachEventListeners] Attaching event listeners...');
+  
+  // === PHASE 6: REGIME-AWARE MISSION BUILDER ===
+  
+  // Regime select - show/hide fields
+  const regimeSelect = document.getElementById('regime-select');
+  if (regimeSelect) {
+    regimeSelect.addEventListener('change', (e) => {
+      const regime = e.target.value;
+      buildRegimeForm(regime);
+      logToConsole(`Switched to regime: ${regime}`, 'info');
+    });
+    // Initialize on load
+    buildRegimeForm(regimeSelect.value);
+  }
+  
+  // Create Mission button
+  const btnCreateMission = document.getElementById('btn-create-mission');
+  if (btnCreateMission) {
+    btnCreateMission.addEventListener('click', () => {
+      recomputeAndRender();
+    });
+  }
+  
+  // Reset/Delete Mission button
+  const btnResetMission = document.getElementById('btn-reset-mission');
+  if (btnResetMission) {
+    btnResetMission.addEventListener('click', () => {
+      if (confirm('Reset mission and clear all overlays?')) {
+        resetAll();
+      }
+    });
+  }
+  
+  // Export KML button (existing functionality)
+  const btnExportKml = document.getElementById('btn-export-kml');
+  if (btnExportKml) {
+    btnExportKml.addEventListener('click', exportKML);
+  }
+  
+  // PDRA PDF button
+  const btnPdraPdf = document.getElementById('btn-pdra-pdf');
+  if (btnPdraPdf) {
+    btnPdraPdf.addEventListener('click', () => {
+      alert('PDRA Compliance Table generation - Feature coming soon');
+      logToConsole('PDRA PDF generation requested', 'info');
+    });
+  }
+  
+  // STS PDF button
+  const btnStsPdf = document.getElementById('btn-sts-pdf');
+  if (btnStsPdf) {
+    btnStsPdf.addEventListener('click', () => {
+      alert('STS Compliance Table generation - Feature coming soon');
+      logToConsole('STS PDF generation requested', 'info');
+    });
+  }
+  
+  // === END PHASE 6 EVENTS ===
   
   // 2D/Oblique toggle - NOTE: uses onclick in HTML, no need to attach here
   // document.getElementById('toggle-2d-oblique')?.addEventListener('click', toggle2DOblique);
